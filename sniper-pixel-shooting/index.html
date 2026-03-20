@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sniper Pixel Shooting</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background-color: #050505; color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden; user-select: none;
+        }
+
+        /* Responsive Container */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 75vw; /* maintain 4:3 aspect ratio */
+            max-width: 800px;
+            max-height: 600px;
+            box-shadow: 0 0 40px #000; 
+            background-color: #000;
+        }
+        
+        @media (min-aspect-ratio: 4/3) {
+            #game-container {
+                width: 133.33vh;
+                height: 100vh;
+            }
+        }
+
+        canvas { 
+            cursor: none; 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+        }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+            box-sizing: border-box; padding: 15px 20px;
+        }
+
+        /* Responsive Font Sizes */
+        .hud-top {
+            display: flex; justify-content: space-between;
+            font-size: clamp(16px, 3vw, 22px); font-weight: bold;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+            color: #e0a526; 
+        }
+        .hud-center { display: flex; justify-content: center; font-size: clamp(14px, 2.5vw, 18px); color: #fff; }
+        
+        #screens {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 12, 15, 0.9); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10;
+        }
+        .screen-panel {
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            width: 100%; height: 100%; position: relative; justify-content: center;
+        }
+        
+        h1 {
+            color: #e0a526; font-size: clamp(36px, 7vw, 56px); margin-bottom: 15px;
+            text-transform: uppercase; text-shadow: 3px 3px #000;
+        }
+        
+        /* Extra spacing specifically for the main menu title */
+        #menu-screen h1 {
+            margin-bottom: 50px; 
+        }
+
+        h2 { color: #fff; font-size: clamp(20px, 4vw, 28px); margin-bottom: 10px; text-transform: uppercase; }
+        p {
+            font-size: clamp(14px, 2.5vw, 18px); color: #ccc; margin-bottom: 25px;
+            text-shadow: 1px 1px #000; max-width: 80%; line-height: 1.5;
+        }
+        
+        button {
+            padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 40px); 
+            font-size: clamp(18px, 3vw, 24px); 
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold; background-color: #e0a526; color: #000;
+            border: none; cursor: pointer; text-transform: uppercase;
+            transition: background 0.2s, transform 0.1s; box-shadow: 4px 4px 0 #000;
+            margin-bottom: 15px; pointer-events: auto;
+        }
+        button:hover { background-color: #fff; transform: translateY(-2px); }
+        button:active { transform: translateY(2px); box-shadow: 2px 2px 0 #000; }
+        
+        .more-games-btn {
+            display: inline-block; margin-top: 15px; padding: 10px 20px;
+            font-size: clamp(14px, 2vw, 16px); background-color: #111; color: #e0a526;
+            text-decoration: none; border: 2px solid #e0a526;
+            transition: all 0.2s; font-family: 'Courier New', Courier, monospace;
+            font-weight: bold; text-transform: uppercase; cursor: pointer;
+            pointer-events: auto;
+        }
+        .more-games-btn:hover { background-color: #e0a526; color: #000; }
+
+        .logo-link {
+            position: absolute; bottom: 30px;
+            transition: transform 0.2s; cursor: pointer;
+            pointer-events: auto;
+        }
+        .logo-link:hover { transform: scale(1.1) translateY(-2px); }
+        
+        #g55-logo {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: clamp(120px, 20vw, 160px);
+            display: block;
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div id="scoreDisplay">SCORE: 0</div>
+            <div class="hud-center" id="levelDisplay">LEVEL 1</div>
+            <div id="timeDisplay">TIME: 60</div>
+        </div>
+        <div class="hud-top" style="justify-content: center; color: #fff;">
+            <div id="targetDisplay">TARGET: 0</div>
+        </div>
+    </div>
+
+    <div id="screens">
+        <div id="menu-screen" class="screen-panel">
+            <h1>Sniper Pixel Shooting</h1>
+            <button id="startBtn">Play Now</button>
+            
+            <a href="https://g55.co/" target="_blank" class="logo-link">
+                <img id="g55-logo" alt="G55.co">
+            </a>
+        </div>
+        
+        <div id="level-transition-screen" class="screen-panel hidden">
+            <h1 id="transition-title">Area Cleared</h1>
+            <h2 id="transition-subtitle">Next: Sector Alpha</h2>
+            <p id="transition-stats">Score: 0 / Target: 0</p>
+            <button id="nextLevelBtn">Proceed to Next Area</button>
+            <a href="https://g55.co/" target="_blank" class="more-games-btn">More Games</a>
+        </div>
+
+        <div id="game-over-screen" class="screen-panel hidden">
+            <h1 style="color: #f33;">Mission Failed</h1>
+            <p id="fail-reason">Target score not reached.</p>
+            <p id="final-score">Final Score: 0</p>
+            <button id="restartBtn">Retry Campaign</button>
+            <a href="https://g55.co/" target="_blank" class="more-games-btn">More Games</a>
+        </div>
+
+        <div id="victory-screen" class="screen-panel hidden">
+            <h1 style="color: #3f3;">Campaign Complete</h1>
+            <p>All sectors cleared successfully. Exceptional work.</p>
+            <p id="victory-score">Total Score: 0</p>
+            <button id="playAgainBtn">Play Again</button>
+            <a href="https://g55.co/" target="_blank" class="more-games-btn">More Games</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // --- UI Setup ---
+    const screens = document.getElementById('screens');
+    const transitionScreen = document.getElementById('level-transition-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const victoryScreen = document.getElementById('victory-screen');
+    const ui = {
+        score: document.getElementById('scoreDisplay'),
+        time: document.getElementById('timeDisplay'),
+        level: document.getElementById('levelDisplay'),
+        target: document.getElementById('targetDisplay'),
+        transTitle: document.getElementById('transition-title'),
+        transSub: document.getElementById('transition-subtitle'),
+        transStats: document.getElementById('transition-stats'),
+        failReason: document.getElementById('fail-reason'),
+        finalScore: document.getElementById('final-score'),
+        victoryScore: document.getElementById('victory-score')
+    };
+
+    // --- Dynamic Pixel Art Generators ---
+    function createIndexedSprite(data, palette, width, height) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width; tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const char = data[y][x];
+                if (char !== '0' && palette[char]) {
+                    tempCtx.fillStyle = palette[char];
+                    tempCtx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+        const img = new Image(); img.src = tempCanvas.toDataURL("image/png");
+        return { img, width, height };
+    }
+
+    // --- Pixel Matrices ---
+    // Soldier (24x24)
+    const soldierData = [
+        "000000001111110000000000","000000012222221000000000","000000122222222100000000",
+        "000000121111112100000000","000000141551551100000000","000000141551551100000000",
+        "000000014111111000000000","000000014444441000000000","000000111444411100000000",
+        "000001333111133310000000","000113332222223331100000","001333322222222333310000",
+        "013333322222222333331000","013333321111112333331000","013333122222222133331000",
+        "011111116666666666666610","017771116666666666666610","011111118811166111111110",
+        "000000011100016610000000","000000000000011110000000","000001222222221000000000",
+        "000001222222221000000000","000001111111111000000000","000000000000000000000000"
+    ];
+
+    // Backgrounds (48x24)
+    const cityData = [
+        "000000000000000000000000000000000000000000000000",
+        "000000000000100000000000000000000000000000000000",
+        "000000000001110000000000000000000000000000000000",
+        "000000000001110000000000000000001111000000000000",
+        "000000000001110000000000000000001111000000000000",
+        "001111000001110000000000000000001111000000011100",
+        "001411000001110000000111111000001141000000011100",
+        "001111000001310000000141141000001111000000014100",
+        "001141000001110000110111111000001111000000011100",
+        "001111000001410000110114111000001411001110011100",
+        "001411011101110000110141141000001111001410014100",
+        "001111011101110000110111111000001141001110011100",
+        "001141014101310000110111141000001111001110011100",
+        "001111011101111111110114111000001111001410011100",
+        "001411011101411111110111111000001411001110014100",
+        "001111011101111411110141141000001111001110011100",
+        "001111014101111111110111111011101141001110011100",
+        "001141011101411114110111141011101111001410011100",
+        "001111011101111111110114111014101111001110014100",
+        "222222222222222222222222222222222222222222222222",
+        "222222222222222222222222222222222222222222222222",
+        "222222222222222222222222222222222222222222222222",
+        "222222222222222222222222222222222222222222222222",
+        "222222222222222222222222222222222222222222222222"
+    ];
+
+    const desertData = [
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000000000000",
+        "000000000000000000000000000000000000000001100000",
+        "000000000000000000000000000000000000000011110000",
+        "000000000000000000000000000000000000000111211000",
+        "000000000000000000000000000000000000001112221100",
+        "000000000000000000000000000000000000011122222110",
+        "000000000000000000000000000000000000111222222211",
+        "000000000000000000000000000000000001112222222221",
+        "000000000000000000000000000000000011122222222222",
+        "111000000000000000000000000000000111222222222222",
+        "111111000000000000000000000000001112222222222222",
+        "111111111000000000000000000000011122222222222222",
+        "111111111111000000000000000000111222222222222222",
+        "111111111111111000000000000001112222222222222222",
+        "111111111111111111000000000011122222222222222222",
+        "111111111111111111111111111111222222222222222222"
+    ];
+
+    const jungleData = [
+        "000000000000000000000000000000000000000000000000",
+        "001110000000000000002222000000000000000000110000",
+        "011111000002222000022322200000000000111001111000",
+        "111211100022232200223332220000111001121111211100",
+        "112221110223333222233133220001121101222112221100",
+        "112122110223113322231113220011222111212222122110",
+        "122112211231111322311411322012212212211221112211",
+        "121111221231441133314441132012111222111111411221",
+        "211441121314444113144444132021141121144114441121",
+        "114444111314444413144444132111444111444414444111",
+        "000440000000440000000400000000040000004400440000",
+        "000440000000440000000400000000040000004400440000",
+        "000440000000440000000400000000040000004400440000",
+        "000440000000440000000400000000040000004400440000",
+        "000440000000440000000400000000040000004400440000",
+        "222442220000440000022422000002242200004400440000",
+        "232442322002442000232423200023242320024422442000",
+        "333443333223443202333433320233343332234433443200",
+        "333443333333443323333433332333343333334433443320",
+        "333443333333443333333433333333343333334433443330",
+        "333443333333443333333433333333343333334433443330",
+        "333443333333443333333433333333343333334433443330",
+        "333443333333443333333433333333343333334433443330",
+        "333443333333443333333433333333343333334433443330"
+    ];
+
+    // Walls (16x16)
+    const brickWallData = [
+        "1111111311111113","2111111321111113","1111111311111113","3333333333333333",
+        "1113111111131111","2113211111132111","1113111111131111","3333333333333333",
+        "1111111311111113","2111111321111113","1111111311111113","3333333333333333",
+        "1113111111131111","2113211111132111","1113111111131111","3333333333333333"
+    ];
+    
+    const sandWallData = [
+        "1111111111111112","1133111111111312","1111111111111112","1111111111111112",
+        "2222222222222222","1111111211111112","1113111211113112","1111111211111112",
+        "1111111211111112","2222222222222222","1111111111111112","1111311111111112",
+        "1111111111111112","1111111111111112","2222222222222222","1111111211111112"
+    ];
+
+    const mossWallData = [
+        "1111111311111113","2111611321116613","1116611311666113","3333333333333333",
+        "1663111111131111","2163211111132111","1113111111131166","3333333333333333",
+        "1111111311111113","2111111321111113","1111111311111113","3333333333333333",
+        "1113111166131111","2113211661132111","1113111111131111","3333333333333333"
+    ];
+
+    // Ledges (16x4)
+    const ledgeData = ["5555555555555555","4444444444444444","4444444444444444","3333333333333333"];
+    const mossLedgeData = ["5555555555555555","4446644444446444","4466644444466444","3336333333336333"];
+    const sandLedgeData = ["1111111111111111","2222222222222222","2222222222222222","3333333333333333"];
+
+    // G55.CO Logo Data (32x7)
+    const logoData = [
+        "01110011111011111000001110001110",
+        "10000010000010000000010001010001",
+        "10000011110011110000010000010001",
+        "10110000001000001000010000010001",
+        "10010000001000001033010001010001",
+        "01110001110001110033001110001110",
+        "02220002220002220022002220002220"
+    ];
+
+    const bgMap = { city: cityData, desert: desertData, jungle: jungleData };
+    const wallMap = { brick: brickWallData, sand: sandWallData, moss: mossWallData };
+    const ledgeMap = { brick: ledgeData, sand: sandLedgeData, moss: mossLedgeData };
+
+    // --- Level Configurations & Palettes ---
+    const gameLevels = [
+        {
+            id: 1, name: "Urban Dusk", time: 40, targetScore: 300, spawnChance: 0.015, speedMult: 1.0,
+            bgType: 'city', wallType: 'brick', skyTop: '#4a6b8c', skyBot: '#98b0c4', fog: 'rgba(60, 70, 80, 0.4)', sunMoon: '#e8c49e',
+            palettes: {
+                soldier: { '1':'#050505', '2':'#26292e', '3':'#4a5259', '4':'#14161a', '5':'#ff2222', '6':'#42454a', '7':'#3b3b3b', '8':'#111111' },
+                bg: { '1':'#2d3640', '2':'#1f252b', '3':'#171b21', '4':'#e8b472' },
+                wall: { '1':'#3c434a', '2':'#495159', '3':'#24282e', '4':'#4b535c', '5':'#58626e' }
+            }
+        },
+        {
+            id: 2, name: "Desert Strike", time: 40, targetScore: 600, spawnChance: 0.02, speedMult: 1.2,
+            bgType: 'desert', wallType: 'sand', skyTop: '#5a8ebf', skyBot: '#c29d6b', fog: 'rgba(190, 150, 100, 0.4)', sunMoon: '#fff8d6',
+            palettes: {
+                soldier: { '1':'#050505', '2':'#26292e', '3':'#8c7b50', '4':'#14161a', '5':'#ff2222', '6':'#42454a', '7':'#3b3b3b', '8':'#111111' },
+                bg: { '1':'#c29d6b', '2':'#a88454' },
+                wall: { '1':'#ba9766', '2':'#a38255', '3':'#917248' }
+            }
+        },
+        {
+            id: 3, name: "Jungle Ambush", time: 35, targetScore: 900, spawnChance: 0.03, speedMult: 1.4,
+            bgType: 'jungle', wallType: 'moss', skyTop: '#3e5c4d', skyBot: '#6d8c72', fog: 'rgba(40, 60, 45, 0.6)', sunMoon: '#fff',
+            palettes: {
+                soldier: { '1':'#050505', '2':'#26292e', '3':'#3b5235', '4':'#14161a', '5':'#ff2222', '6':'#42454a', '7':'#3b3b3b', '8':'#111111' },
+                bg: { '1':'#233623', '2':'#1b291a', '3':'#2a4228', '4':'#1a1410' },
+                wall: { '1':'#3a4045', '2':'#495159', '3':'#24282e', '4':'#4b535c', '5':'#58626e', '6':'#284221' }
+            }
+        },
+        {
+            id: 4, name: "Midnight Raid", time: 35, targetScore: 1200, spawnChance: 0.035, speedMult: 1.5,
+            bgType: 'city', wallType: 'brick', skyTop: '#080b12', skyBot: '#151b24', fog: 'rgba(10, 15, 20, 0.8)', sunMoon: '#dbe4eb',
+            palettes: {
+                soldier: { '1':'#050505', '2':'#1f2226', '3':'#1e2126', '4':'#0f1114', '5':'#ff2222', '6':'#32353a', '7':'#2b2b2b', '8':'#0a0a0a' },
+                bg: { '1':'#0f1217', '2':'#07090b', '3':'#040505', '4':'#ebd06a' },
+                wall: { '1':'#1a1e24', '2':'#222830', '3':'#0e1014', '4':'#242a33', '5':'#2b333d' }
+            }
+        },
+        {
+            id: 5, name: "Dawn Assault", time: 30, targetScore: 1500, spawnChance: 0.045, speedMult: 1.7,
+            bgType: 'desert', wallType: 'sand', skyTop: '#994a38', skyBot: '#cf9263', fog: 'rgba(150, 90, 60, 0.5)', sunMoon: '#ffb366',
+            palettes: {
+                soldier: { '1':'#050505', '2':'#26292e', '3':'#8c6450', '4':'#14161a', '5':'#ff2222', '6':'#42454a', '7':'#3b3b3b', '8':'#111111' },
+                bg: { '1':'#ab6c46', '2':'#8c5432' },
+                wall: { '1':'#a16340', '2':'#8f5534', '3':'#784427' }
+            }
+        }
+    ];
+
+    // Pre-generate sprites cache
+    const spriteCache = {};
+    gameLevels.forEach(lvl => {
+        spriteCache[lvl.id] = {
+            soldier: createIndexedSprite(soldierData, lvl.palettes.soldier, 24, 24),
+            bg: createIndexedSprite(bgMap[lvl.bgType], lvl.palettes.bg, 48, 24),
+            wall: createIndexedSprite(wallMap[lvl.wallType], lvl.palettes.wall, 16, 16),
+            ledge: createIndexedSprite(ledgeMap[lvl.wallType], lvl.palettes.wall, 16, 4)
+        };
+    });
+
+    // Generate Logo
+    const logoSprite = createIndexedSprite(logoData, { '1': '#e0a526', '2': '#a87212', '3': '#ffffff' }, 32, 7);
+    document.getElementById('g55-logo').src = logoSprite.img.src;
+
+    // Depth Rows
+    const rows = [
+        { id: 0, baseY: 320, scale: 0.45 },
+        { id: 1, baseY: 450, scale: 0.75 },
+        { id: 2, baseY: 600, scale: 1.30 }
+    ];
+
+    // Game State
+    let state = 'menu';
+    let currentLevelIndex = 0;
+    let score = 0, totalScore = 0, timeLeft = 0, lastTime = 0, timerAccumulator = 0;
+    let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+    let recoil = 0, swayX = 0, swayY = 0, timeElapsed = 0, muzzleFlashAlpha = 0;
+    let soldiers = [], particles = [], floatingTexts = [];
+
+    // --- Audio System ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const actx = new AudioContext();
+
+    function playGunshot() {
+        if (actx.state === 'suspended') actx.resume();
+        const bufferSize = actx.sampleRate * 1.0;
+        const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = actx.createBufferSource(); noise.buffer = buffer;
+        const filter = actx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000;
+        const gain = actx.createGain(); gain.gain.setValueAtTime(1, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.8);
+        noise.connect(filter); filter.connect(gain); gain.connect(actx.destination);
+        noise.start();
+    }
+
+    function playHitMarker(isHeadshot) {
+        if (actx.state === 'suspended') actx.resume();
+        const osc = actx.createOscillator(); const gain = actx.createGain();
+        osc.type = isHeadshot ? 'square' : 'sine';
+        osc.frequency.setValueAtTime(isHeadshot ? 1200 : 600, actx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(isHeadshot ? 1800 : 900, actx.currentTime + 0.1);
+        gain.gain.setValueAtTime(isHeadshot ? 0.4 : 0.6, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(actx.destination);
+        osc.start(); osc.stop(actx.currentTime + 0.15);
+    }
+
+    // --- Entities ---
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x; this.y = y;
+            this.vx = (Math.random() - 0.5) * 300; this.vy = (Math.random() - 1.0) * 300;
+            this.life = 1.0; this.color = color; this.size = 2 + Math.random() * 4;
+        }
+        update(dt) {
+            this.vy += 700 * dt; this.x += this.vx * dt; this.y += this.vy * dt;
+            this.life -= dt * 1.5; return this.life <= 0;
+        }
+        draw(ctx) {
+            ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.size, this.size); ctx.globalAlpha = 1.0;
+        }
+    }
+
+    class Soldier {
+        constructor(row, x, levelData) {
+            this.row = row; this.x = x; this.yBase = row.baseY;
+            this.baseScale = row.scale; this.pixelScale = 5.5 * this.baseScale;
+            this.sprite = spriteCache[levelData.id].soldier;
+            this.activeTime = 0;
+            this.lifespan = (1.5 + Math.random() * 2.0) / levelData.speedMult; 
+            this.state = 'popping_up';
+            this.yOffset = 0; this.maxOffset = this.sprite.height * this.pixelScale; 
+            this.rotation = 0; this.speedMult = levelData.speedMult;
+        }
+        update(dt) {
+            this.activeTime += dt;
+            const speed = 350 * this.baseScale * this.speedMult * dt;
+            if (this.state === 'popping_up') {
+                this.yOffset += speed;
+                if (this.yOffset >= this.maxOffset) { this.yOffset = this.maxOffset; this.state = 'active'; this.activeTime = 0; }
+            } else if (this.state === 'active') {
+                if (this.activeTime > this.lifespan) this.state = 'hiding';
+            } else if (this.state === 'hiding') {
+                this.yOffset -= speed * 0.8; if (this.yOffset <= 0) return true;
+            } else if (this.state === 'dying') {
+                this.rotation -= dt * 6; this.yOffset -= speed * 0.3; 
+                if (this.rotation <= -Math.PI / 1.5) return true;
+            }
+            return false;
+        }
+        draw(ctx) {
+            ctx.save(); ctx.translate(this.x, this.yBase);
+            if (this.state === 'dying') ctx.rotate(this.rotation);
+            ctx.imageSmoothingEnabled = false;
+            const drawW = this.sprite.width * this.pixelScale, drawH = this.sprite.height * this.pixelScale;
+            if (this.yOffset > 0) ctx.drawImage(this.sprite.img, -drawW / 2, -this.yOffset, drawW, drawH);
+            ctx.restore(); ctx.imageSmoothingEnabled = true; 
+        }
+    }
+
+    class FloatingText {
+        constructor(x, y, text, color, rowId) {
+            this.x = x; this.y = y; this.text = text; this.color = color;
+            this.life = 1.0; this.rowId = rowId;
+        }
+        update(dt) { this.y -= 40 * dt; this.life -= dt; return this.life <= 0; }
+        draw(ctx) {
+            ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color;
+            ctx.font = 'bold 22px Courier New'; ctx.textAlign = 'center';
+            ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+            ctx.fillText(this.text, this.x, this.y); ctx.shadowBlur = 0; ctx.globalAlpha = 1.0;
+        }
+    }
+
+    // --- Input & Combat ---
+    function updateMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        mouse.x = (e.clientX - rect.left) * scaleX;
+        mouse.y = (e.clientY - rect.top) * scaleY;
+    }
+
+    canvas.addEventListener('mousemove', updateMousePos);
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (state !== 'playing' || e.button !== 0) return;
+        updateMousePos(e); 
+
+        playGunshot(); recoil = 45; muzzleFlashAlpha = 1.0;
+        const aimX = mouse.x + swayX, aimY = mouse.y + swayY;
+
+        for (let i = soldiers.length - 1; i >= 0; i--) {
+            let s = soldiers[i];
+            if (s.state !== 'active' && s.state !== 'popping_up' && s.state !== 'hiding') continue;
+
+            const topY = s.yBase - s.yOffset;
+            const headRadius = 4 * s.pixelScale, headY = topY + (5 * s.pixelScale); 
+            const bodyRadius = 8 * s.pixelScale, bodyY = topY + (14 * s.pixelScale); 
+
+            if (Math.hypot(aimX - s.x, aimY - headY) < headRadius) {
+                score += 100; ui.score.innerText = `SCORE: ${score}`; playHitMarker(true);
+                for(let k=0; k<15; k++) particles.push(new Particle(s.x, headY, '#aa0000'));
+                floatingTexts.push(new FloatingText(s.x, headY - 20, "HEADSHOT 100", '#ff3333', s.row.id));
+                s.state = 'dying'; break;
+            } else if (Math.hypot(aimX - s.x, aimY - bodyY) < bodyRadius) {
+                score += 25; ui.score.innerText = `SCORE: ${score}`; playHitMarker(false);
+                for(let k=0; k<15; k++) particles.push(new Particle(s.x, bodyY, '#aa0000'));
+                floatingTexts.push(new FloatingText(s.x, bodyY - 20, "+25", '#e0a526', s.row.id));
+                s.state = 'dying'; break;
+            }
+        }
+    });
+
+    // --- Game Flow ---
+    function startLevel(index) {
+        state = 'playing'; const lvl = gameLevels[index];
+        score = 0; // Reset level score
+        timeLeft = lvl.time; soldiers = []; particles = []; floatingTexts = [];
+        ui.score.innerText = `SCORE: ${score}`; ui.time.innerText = `TIME: ${timeLeft}`;
+        ui.level.innerText = `LEVEL ${lvl.id}: ${lvl.name}`; ui.target.innerText = `TARGET: ${lvl.targetScore}`;
+        document.querySelectorAll('.screen-panel').forEach(el => el.classList.add('hidden'));
+        screens.classList.add('hidden');
+        lastTime = performance.now(); requestAnimationFrame(gameLoop);
+    }
+
+    function levelComplete() {
+        state = 'transition'; screens.classList.remove('hidden');
+        const lvl = gameLevels[currentLevelIndex];
+        
+        if (score >= lvl.targetScore) {
+            totalScore += score;
+            if (currentLevelIndex + 1 < gameLevels.length) {
+                transitionScreen.classList.remove('hidden');
+                ui.transTitle.innerText = `Sector Cleared`; ui.transTitle.style.color = '#3f3';
+                ui.transSub.innerText = `Next: ${gameLevels[currentLevelIndex + 1].name}`;
+                ui.transStats.innerText = `Level Score: ${score} | Next Target: ${gameLevels[currentLevelIndex + 1].targetScore}`;
+            } else {
+                victoryScreen.classList.remove('hidden'); 
+                ui.victoryScore.innerText = `Total Campaign Score: ${totalScore}`;
+            }
+        } else {
+            gameOverScreen.classList.remove('hidden');
+            ui.failReason.innerText = `Target score of ${lvl.targetScore} not reached.`;
+            ui.finalScore.innerText = `Level Score: ${score} \nTotal Score: ${totalScore + score}`;
+        }
+    }
+
+    ['startBtn','restartBtn','playAgainBtn'].forEach(id => document.getElementById(id).addEventListener('click', () => {
+        totalScore = 0; currentLevelIndex = 0; startLevel(currentLevelIndex);
+    }));
+    document.getElementById('nextLevelBtn').addEventListener('click', () => startLevel(++currentLevelIndex));
+
+    // --- Rendering ---
+    function drawEnvironment(lvl) {
+        let grad = ctx.createLinearGradient(0, 0, 0, 400);
+        grad.addColorStop(0, lvl.skyTop); grad.addColorStop(1, lvl.skyBot);
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = lvl.sunMoon; ctx.shadowColor = lvl.sunMoon; ctx.shadowBlur = 20;
+        ctx.beginPath(); ctx.arc(650, 100, 30, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+
+        ctx.imageSmoothingEnabled = false;
+        const bgSprite = spriteCache[lvl.id].bg;
+        const cScale = 6; const cW = bgSprite.width * cScale, cH = bgSprite.height * cScale;
+        for(let x=0; x < canvas.width; x += cW) ctx.drawImage(bgSprite.img, x, 320 - cH, cW, cH);
+        
+        ctx.fillStyle = lvl.fog; ctx.fillRect(0, 200, canvas.width, 120);
+        ctx.imageSmoothingEnabled = true;
+    }
+
+    function drawWall(row, lvl) {
+        ctx.imageSmoothingEnabled = false;
+        const sprites = spriteCache[lvl.id];
+        const scale = row.scale * 3.5; 
+        const bSize = sprites.wall.width * scale, lH = sprites.ledge.height * scale;
+
+        for(let x = 0; x < canvas.width; x += bSize) ctx.drawImage(sprites.ledge.img, x, row.baseY, bSize, lH);
+        for(let y = row.baseY + lH; y < canvas.height; y += bSize) {
+            for(let x = 0; x < canvas.width; x += bSize) ctx.drawImage(sprites.wall.img, x, y, bSize, bSize);
+        }
+        ctx.imageSmoothingEnabled = true;
+    }
+
+    function drawScopeOverlay() {
+        const cx = mouse.x, cy = mouse.y - recoil, r = 240;
+        
+        ctx.fillStyle = '#000'; ctx.beginPath();
+        ctx.rect(0, 0, canvas.width, canvas.height); ctx.arc(cx, cy, r, 0, Math.PI * 2, true); ctx.fill();
+
+        let lensGrad = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r);
+        lensGrad.addColorStop(0, 'rgba(0, 10, 0, 0)'); lensGrad.addColorStop(1, 'rgba(0, 10, 0, 0.7)');
+        ctx.fillStyle = lensGrad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+        const rCX = cx + swayX, rCY = cy + swayY;
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.moveTo(rCX - r, rCY); ctx.lineTo(rCX + r, rCY); ctx.moveTo(rCX, rCY - r); ctx.lineTo(rCX, rCY + r); ctx.stroke();
+
+        ctx.fillStyle = '#000';
+        for(let i = -5; i <= 5; i++) {
+            if(i !== 0) {
+                ctx.beginPath(); ctx.arc(rCX + (i * 35), rCY, 2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(rCX, rCY + (i * 35), 2, 0, Math.PI*2); ctx.fill();
+            }
+        }
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)'; ctx.beginPath(); ctx.arc(rCX, rCY, 2.5, 0, Math.PI*2); ctx.fill();
+
+        if (muzzleFlashAlpha > 0) {
+            ctx.fillStyle = `rgba(255, 200, 50, ${muzzleFlashAlpha * 0.25})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // --- Main Loop ---
+    function gameLoop(timestamp) {
+        if (state !== 'playing') return;
+
+        const dt = (timestamp - lastTime) / 1000; lastTime = timestamp; timeElapsed += dt;
+        const lvl = gameLevels[currentLevelIndex];
+
+        timerAccumulator += dt;
+        if (timerAccumulator >= 1.0) {
+            timeLeft--; ui.time.innerText = `TIME: ${timeLeft}`; timerAccumulator -= 1.0;
+            if (timeLeft <= 0) return levelComplete();
+        }
+
+        recoil *= 0.85; if (recoil < 0.1) recoil = 0;
+        muzzleFlashAlpha -= dt * 15; if (muzzleFlashAlpha < 0) muzzleFlashAlpha = 0;
+        swayX = Math.sin(timeElapsed * 1.3) * 4 + Math.sin(timeElapsed * 0.7) * 2;
+        swayY = Math.cos(timeElapsed * 1.1) * 4 + Math.sin(timeElapsed * 0.6) * 2;
+
+        const spawnChance = lvl.spawnChance + ((lvl.time - timeLeft) * 0.0005); 
+        if (Math.random() < spawnChance && soldiers.length < 6) {
+            let valid = false, attempts = 0;
+            while(!valid && attempts < 10) {
+                let r = rows[Math.floor(Math.random() * rows.length)];
+                let sx = (canvas.width / 2) + (Math.random() - 0.5) * 650;
+                valid = true;
+                for(let s of soldiers) if (s.row.id === r.id && Math.abs(s.x - sx) < 100 * r.scale) { valid = false; break; }
+                if(valid) soldiers.push(new Soldier(r, sx, lvl)); attempts++;
+            }
+        }
+
+        for (let i = soldiers.length - 1; i >= 0; i--) if (soldiers[i].update(dt)) soldiers.splice(i, 1);
+        for (let i = particles.length - 1; i >= 0; i--) if (particles[i].update(dt)) particles.splice(i, 1);
+        for (let i = floatingTexts.length - 1; i >= 0; i--) if (floatingTexts[i].update(dt)) floatingTexts.splice(i, 1);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawEnvironment(lvl);
+
+        for (let r = 0; r < rows.length; r++) {
+            soldiers.filter(s => s.row.id === r).forEach(s => s.draw(ctx));
+            drawWall(rows[r], lvl);
+            particles.forEach(p => p.draw(ctx)); 
+            floatingTexts.filter(ft => ft.rowId === r).forEach(ft => ft.draw(ctx));
+        }
+
+        drawScopeOverlay();
+        requestAnimationFrame(gameLoop);
+    }
+
+    drawEnvironment(gameLevels[0]); rows.forEach(r => drawWall(r, gameLevels[0]));
+</script>
+</body>
+</html>
