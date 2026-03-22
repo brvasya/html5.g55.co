@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Updated Title Tag for SEO -->
+    <title>Minecraft Flappy Creeper - g55.co</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #538dff;
+            color: white;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated; 
+        }
+        #ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            pointer-events: none; 
+            text-shadow: 3px 3px 0 #000;
+        }
+        h1 {
+            /* Slightly smaller clamp to accommodate the longer "Minecraft Flappy Creeper" text on mobile */
+            font-size: clamp(1.2rem, 4vw, 2.5rem);
+            margin: 0 0 20px 0;
+            color: #55FF55;
+            line-height: 1.5;
+        }
+        p {
+            font-size: clamp(0.7rem, 2vw, 1rem);
+            color: #FFF;
+            line-height: 2;
+        }
+        .hidden { display: none !important; }
+        
+        #more-games-btn {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 15px 20px;
+            background-color: #55FF55;
+            color: #000;
+            text-decoration: none;
+            font-size: clamp(0.6rem, 2vw, 0.9rem);
+            border: 4px solid #22AA22;
+            box-shadow: 4px 4px 0px #000;
+            text-shadow: none;
+            pointer-events: auto; 
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        #more-games-btn:hover { background-color: #77FF77; }
+        #more-games-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .branding {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.6rem;
+            color: #fff;
+            text-shadow: 1px 1px 0 #000;
+            pointer-events: none;
+        }
+        .branding a {
+            color: #55FF55;
+            text-decoration: none;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <!-- Updated Game Title UI -->
+            <h1 id="title">MINECRAFT<br>FLAPPY CREEPER</h1>
+            <p id="instruction">TAP TO JUMP</p>
+            <h2 id="score-display" class="hidden">0</h2>
+            <a id="more-games-btn" class="hidden" href="https://g55.co" target="_blank">MORE GAMES</a>
+        </div>
+        <div class="branding">Powered by <a href="https://g55.co" target="_blank">g55.co</a></div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const ui = document.getElementById('ui');
+    const title = document.getElementById('title');
+    const instruction = document.getElementById('instruction');
+    const moreGamesBtn = document.getElementById('more-games-btn');
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let frames = 0;
+    let score = 0;
+    let highScore = localStorage.getItem('g55_mc_highscore') || 0;
+    let currentState = 0; // 0: Start, 1: Playing, 2: Game Over
+
+    // --- AUDIO ENGINE ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playTone(freq1, freq2, type, duration, vol = 0.1) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(freq1, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq2, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    const sfx = {
+        jump: () => playTone(150, 300, 'square', 0.1, 0.05),
+        score: () => playTone(800, 1200, 'sine', 0.1, 0.1),
+        crash: () => playTone(300, 50, 'sawtooth', 0.3, 0.15)
+    };
+
+    // --- DETAILED MINECRAFT BACKGROUND ENGINE ---
+    const bg = {
+        drawLayer: function(color, yBase, amplitude, speed, waveScale, blockSize) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            
+            let offset = (frames * speed) % blockSize;
+            let startX = -offset;
+            
+            for(let x = startX; x < canvas.width + blockSize; x += blockSize) {
+                let globalX = Math.floor((x + frames * speed) / blockSize);
+                let wave = Math.sin(globalX * waveScale) + Math.cos(globalX * waveScale * 2.3);
+                let y = yBase - (Math.floor(wave * amplitude) * blockSize);
+                
+                ctx.lineTo(x, y);
+                ctx.lineTo(x + blockSize, y);
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.fill();
+        },
+        draw: function() {
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
+            grad.addColorStop(0, '#3A78FF'); 
+            grad.addColorStop(1, '#A0C4FF'); 
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let sunSize = Math.max(48, canvas.width * 0.05);
+            ctx.fillStyle = '#FFE97D';
+            ctx.fillRect(canvas.width * 0.75, canvas.height * 0.1, sunSize, sunSize);
+            ctx.fillStyle = '#FFF5B5'; 
+            ctx.fillRect(canvas.width * 0.75 + (sunSize*0.1), canvas.height * 0.1 + (sunSize*0.1), sunSize*0.8, sunSize*0.8);
+
+            this.drawLayer('#7D8287', canvas.height * 0.65, 3, 0.2, 0.1, 24);
+            this.drawLayer('#2B6B2B', canvas.height * 0.8, 2, 0.6, 0.15, 32);
+            this.drawLayer('#3AA83A', canvas.height * 0.95, 1, 1.2, 0.2, 32);
+        }
+    };
+
+    const clouds = {
+        list: [
+            {x: 50, y: 80, w: 120, h: 40, speed: 0.15},
+            {x: 350, y: 150, w: 160, h: 50, speed: 0.25},
+            {x: 700, y: 100, w: 100, h: 30, speed: 0.1}
+        ],
+        draw: function() {
+            this.list.forEach(c => {
+                ctx.fillStyle = '#D0D6E0';
+                ctx.fillRect(c.x, c.y + c.h - 10, c.w, 10);
+                ctx.fillRect(c.x + 10, c.y + c.h, c.w - 20, 10); 
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(c.x, c.y, c.w, c.h - 10);
+                ctx.fillRect(c.x + 10, c.y - 10, c.w - 20, 10); 
+                ctx.fillRect(c.x + 30, c.y - 20, c.w - 60, 10); 
+            });
+        },
+        update: function() {
+            this.list.forEach(c => {
+                c.x -= c.speed;
+                if(c.x + c.w < -50) {
+                    c.x = canvas.width + 50;
+                    c.y = Math.random() * (canvas.height * 0.3) + 30;
+                }
+            });
+        }
+    };
+
+    const creeperMap = [
+        [2, 1, 1, 2, 1, 1, 2, 1],
+        [1, 2, 1, 1, 2, 1, 1, 2],
+        [1, 0, 0, 1, 1, 0, 0, 1],
+        [2, 0, 0, 2, 1, 0, 0, 2],
+        [1, 1, 1, 0, 0, 1, 1, 1],
+        [2, 1, 0, 0, 0, 0, 1, 2],
+        [1, 2, 0, 0, 0, 0, 2, 1],
+        [1, 1, 0, 1, 1, 0, 1, 1]
+    ];
+    const creeperColors = { 0: '#111111', 1: '#55FF55', 2: '#22AA22' };
+
+    const player = {
+        x: Math.min(canvas.width * 0.2, 100),
+        y: canvas.height / 2,
+        width: 32,
+        height: 32,
+        velocity: 0,
+        gravity: 0.35,
+        jump: -6.5,
+        draw: function() {
+            let pSize = this.width / 8;
+            for(let row = 0; row < 8; row++) {
+                for(let col = 0; col < 8; col++) {
+                    ctx.fillStyle = creeperColors[creeperMap[row][col]];
+                    ctx.fillRect(this.x + (col * pSize), this.y + (row * pSize), pSize, pSize);
+                }
+            }
+        },
+        update: function() {
+            this.velocity += this.gravity;
+            this.y += this.velocity;
+            
+            if (this.y + this.height >= canvas.height || this.y <= 0) {
+                gameOver();
+            }
+        },
+        flap: function() {
+            this.velocity = this.jump;
+            sfx.jump();
+        }
+    };
+
+    const pipes = {
+        items: [],
+        dx: 3.5,
+        gap: 160,
+        width: 48,
+        draw: function() {
+            for (let i = 0; i < this.items.length; i++) {
+                let p = this.items[i];
+                
+                const drawDirt = (x, y, w, h) => {
+                    ctx.fillStyle = '#866043';
+                    ctx.fillRect(x, y, w, h);
+                    ctx.fillStyle = '#5f4028';
+                    for(let px = 0; px < w; px += 16) {
+                        for(let py = 0; py < h; py += 16) {
+                            if ((px + py) % 3 === 0) ctx.fillRect(x + px + 4, y + py + 4, 8, 8);
+                        }
+                    }
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, w, h);
+                };
+
+                drawDirt(p.x, 0, this.width, p.topHeight);
+                ctx.fillStyle = '#55FF55'; 
+                ctx.fillRect(p.x, p.topHeight - 16, this.width, 16);
+
+                let bottomY = p.topHeight + this.gap;
+                let bottomH = canvas.height - bottomY;
+                drawDirt(p.x, bottomY, this.width, bottomH);
+
+                ctx.fillStyle = '#55FF55';
+                ctx.fillRect(p.x, bottomY, this.width, 16);
+                ctx.fillStyle = '#22AA22'; 
+                ctx.fillRect(p.x, bottomY + 16, this.width, 4);
+            }
+        },
+        update: function() {
+            let spawnRate = Math.max(90, Math.floor(canvas.width / 4.5)); 
+            
+            if (frames % spawnRate === 0) {
+                let minHeight = 50;
+                let maxHeight = canvas.height - this.gap - minHeight;
+                let height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+                this.items.push({ x: canvas.width, topHeight: height, passed: false });
+            }
+
+            for (let i = 0; i < this.items.length; i++) {
+                let p = this.items[i];
+                p.x -= this.dx;
+
+                if (player.x + player.width > p.x && player.x < p.x + this.width) {
+                    if (player.y < p.topHeight || player.y + player.height > p.topHeight + this.gap) {
+                        gameOver();
+                    }
+                }
+
+                if (p.x + this.width < player.x && !p.passed) {
+                    score++;
+                    p.passed = true;
+                    sfx.score();
+                }
+
+                if (p.x + this.width < 0) {
+                    this.items.shift();
+                    i--;
+                }
+            }
+        },
+        reset: function() {
+            this.items = [];
+        }
+    };
+
+    function draw() {
+        bg.draw(); 
+        clouds.draw(); 
+        pipes.draw();
+        player.draw();
+
+        if (currentState === 1) {
+            ctx.fillStyle = '#FFF';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 5;
+            let fontSize = Math.max(24, canvas.width * 0.05);
+            ctx.font = `${fontSize}px "Press Start 2P", monospace`;
+            ctx.strokeText(score, canvas.width / 2 - (fontSize/2), fontSize * 1.5);
+            ctx.fillText(score, canvas.width / 2 - (fontSize/2), fontSize * 1.5);
+        }
+    }
+
+    function update() {
+        clouds.update();
+        if (currentState === 1) {
+            player.update();
+            pipes.update();
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        frames++;
+        requestAnimationFrame(loop);
+    }
+
+    function gameOver() {
+        currentState = 2;
+        sfx.crash();
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('g55_mc_highscore', highScore);
+        }
+        title.innerHTML = "GAME OVER";
+        instruction.innerHTML = `SCORE: ${score}<br><br>BEST: ${highScore}<br><br>TAP TO RESTART`;
+        
+        ui.classList.remove('hidden');
+        moreGamesBtn.classList.remove('hidden');
+    }
+
+    function resetGame() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        player.y = canvas.height / 2;
+        player.velocity = 0;
+        pipes.reset();
+        score = 0;
+        frames = 0;
+        currentState = 1;
+        
+        ui.classList.add('hidden');
+        moreGamesBtn.classList.add('hidden');
+        sfx.jump();
+    }
+
+    function handleInput() {
+        if (currentState === 0 || currentState === 2) {
+            resetGame();
+        } else if (currentState === 1) {
+            player.flap();
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') handleInput();
+    });
+    
+    canvas.addEventListener('mousedown', handleInput);
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleInput();
+    });
+
+    loop();
+</script>
+</body>
+</html>
