@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Creeper Survival Runner</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #FFFFFF;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            touch-action: none; /* Prevents pull-to-refresh on mobile */
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas#gameCanvas {
+            background-color: #78A7FF;
+            box-shadow: 0 0 40px #000000EE;
+            image-rendering: pixelated;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px;
+            object-fit: contain;
+            aspect-ratio: 2 / 1;
+            border: 4px solid #000;
+            transition: background-color 1s ease-in-out;
+        }
+
+        /* Minecraft-styled HTML Button Overlay */
+        #moreGamesBtn {
+            position: absolute;
+            display: none;
+            top: 70%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #51B032;
+            color: #FFFFFF;
+            border: 4px solid #3E8948;
+            padding: 12px 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #000;
+            user-select: none;
+            transition: background-color 0.1s;
+            z-index: 10;
+        }
+
+        #moreGamesBtn:hover { background-color: #55FF55; }
+        #moreGamesBtn:active {
+            transform: translate(-50%, -46%);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        /* Clickable Pixel Art Logo at the bottom */
+        #logoLink {
+            position: absolute;
+            bottom: 6vh; /* Pinned to the bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Controlled by JS */
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.2s ease;
+        }
+
+        #logoLink:hover {
+            transform: translateX(-50%) scale(1.1); /* Pop out effect on hover */
+        }
+
+        #logoLink canvas {
+            display: block;
+            image-rendering: pixelated;
+            filter: drop-shadow(3px 3px 0px #000000); /* Adds a sharp drop shadow */
+        }
+
+        @media (max-width: 600px) {
+            #moreGamesBtn { font-size: 18px; padding: 10px 20px; top: 75%; }
+            #logoLink { bottom: 8vh; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <a id="moreGamesBtn" href="https://g55.co/" target="_blank">MORE GAMES</a>
+    <a id="logoLink" href="https://g55.co/" target="_blank"></a>
+</div>
+
+<script>
+    /** --- AUDIO SYNTHESIZER --- */
+    let audioCtx;
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        if (type === 'jump') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'explosion') {
+            const bufferSize = audioCtx.sampleRate * 0.5;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noise.start();
+        } else if (type === 'levelup') {
+            const notes = [440, 554, 659, 880]; 
+            notes.forEach((freq, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = 'triangle';
+                o.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+                g.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.1);
+                g.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + i * 0.1 + 0.05);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.1 + 0.1);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(audioCtx.currentTime + i * 0.1); o.stop(audioCtx.currentTime + i * 0.1 + 0.1);
+            });
+        }
+    }
+
+    /** --- LEVELS / BIOMES --- */
+    const THEMES = [
+        { name: "LEVEL 1: DAY", req: 0, speed: 6.5, gap: 55, gapVariance: 60,
+          colors: { 1: '#78A7FF', 2: '#FFFFFF', 3: '#51B032', 4: '#866043', 7: '#000000', 8: '#D93A2C', 9: '#5B3B22', 10: '#CCCCCC', 11: '#FFFFFF' } },
+        { name: "LEVEL 2: SUNSET", req: 150, speed: 8.5, gap: 45, gapVariance: 50,
+          colors: { 1: '#FD5E53', 2: '#FFB85F', 3: '#409025', 4: '#6B4C35', 7: '#000000', 8: '#007ACC', 9: '#493020', 10: '#AA8866', 11: '#FFFFFF' } },
+        { name: "LEVEL 3: NIGHT", req: 350, speed: 10.5, gap: 35, gapVariance: 40,
+          colors: { 1: '#0B1021', 2: '#2B3045', 3: '#255015', 4: '#3B2A1D', 7: '#330000', 8: '#FF2200', 9: '#251810', 10: '#444455', 11: '#FFCC00' } },
+        { name: "LEVEL 4: NETHER", req: 600, speed: 12.5, gap: 28, gapVariance: 30,
+          colors: { 1: '#440000', 2: '#661111', 3: '#880000', 4: '#550000', 7: '#FFFFFF', 8: '#111111', 9: '#330000', 10: '#882222', 11: '#FF5500' } },
+        { name: "LEVEL 5: THE END", req: 900, speed: 15.0, gap: 20, gapVariance: 20,
+          colors: { 1: '#110022', 2: '#220033', 3: '#F0E68C', 4: '#BDB76B', 7: '#FFFFFF', 8: '#4B0082', 9: '#8B864E', 10: '#DA70D6', 11: '#DA70D6' } }
+    ];
+
+    let currentThemeIndex = 0;
+    const PALETTE = { 0: null, 5: '#55FF55', 6: '#3E8948' }; 
+
+    function applyTheme(index) {
+        currentThemeIndex = index;
+        const t = THEMES[index];
+        Object.assign(PALETTE, t.colors);
+        gameSpeed = t.speed;
+        levelTextTimer = 80;
+        document.getElementById('gameCanvas').style.backgroundColor = PALETTE[1]; 
+    }
+
+    /** --- PIXEL ART SPRITES --- */
+    const CREEPER_HEAD_BODY = [
+        [5,5,5,5,5,5,5,5], [5,7,7,5,5,7,7,5], [5,7,7,5,5,7,7,5], [5,5,5,7,7,5,5,5],
+        [5,5,7,7,7,7,5,5], [5,5,7,7,7,7,5,5], [5,5,7,5,5,7,5,5], [5,5,5,5,5,5,5,5],
+        [0,0,6,5,6,5,0,0], [0,0,5,6,5,6,0,0], [0,0,6,5,6,5,0,0], [0,0,5,6,5,6,0,0]
+    ];
+
+    const SPRITES = {
+        playerRun1: [...CREEPER_HEAD_BODY, [0,5,5,0,0,5,5,0], [0,6,6,0,0,6,6,0]],
+        playerRun2: [...CREEPER_HEAD_BODY, [0,0,5,5,5,5,0,0], [0,0,6,6,6,6,0,0]],
+        playerJump: [...CREEPER_HEAD_BODY, [5,5,0,0,0,0,5,5], [6,6,0,0,0,0,6,6]],
+        tnt: [
+            [8,8,8,8,8,8,8,8,8,8,8],
+            [8,8,8,8,8,8,8,8,8,8,8],
+            [11,11,11,11,11,11,11,11,11,11,11],
+            [7,7,7,11,7,11,7,11,7,7,7], 
+            [11,7,11,11,7,7,7,11,11,7,11], 
+            [11,7,11,11,7,11,7,11,11,7,11], 
+            [11,11,11,11,11,11,11,11,11,11,11],
+            [8,8,8,8,8,8,8,8,8,8,8],
+            [8,8,8,8,8,8,8,8,8,8,8],
+            [8,8,8,8,8,8,8,8,8,8,8]
+        ],
+        spikes: [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 10,0, 0, 0, 10,0, 0, 0, 10,0],
+            [0, 10,0, 0, 0, 10,0, 0, 0, 10,0],
+            [10,10,10,0, 10,10,10,0, 10,10,10],
+            [10,10,10,0, 10,10,10,0, 10,10,10],
+            [10,10,10,10,10,10,10,10,10,10,10],
+            [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+            [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]
+        ],
+        cloud: [
+            [0,0,2,2,2,2,2,2,2,0],
+            [2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2],
+            [0,2,2,2,2,2,2,2,0,0]
+        ],
+        logo: [
+            [2,2,2, 0, 5,5,5, 0, 5,5,5, 0, 0, 0, 2,2,2, 0, 2,2,2],
+            [2,0,0, 0, 5,0,0, 0, 5,0,0, 0, 0, 0, 2,0,0, 0, 2,0,2],
+            [2,0,2, 0, 5,5,5, 0, 5,5,5, 0, 0, 0, 2,0,0, 0, 2,0,2],
+            [2,0,2, 0, 0,0,5, 0, 0,0,5, 0, 0, 0, 2,0,0, 0, 2,0,2],
+            [2,2,2, 0, 5,5,5, 0, 5,5,5, 0, 2, 0, 2,2,2, 0, 2,2,2]
+        ]
+    };
+
+    /** --- CREATE CLICKABLE PIXEL LOGO --- */
+    function renderLogoLink() {
+        const logoScale = 6;
+        const lCanvas = document.createElement('canvas');
+        lCanvas.width = SPRITES.logo[0].length * logoScale;
+        lCanvas.height = SPRITES.logo.length * logoScale;
+        const lCtx = lCanvas.getContext('2d');
+        
+        const fixedWhite = '#FFFFFF';
+        const fixedGreen = '#55FF55';
+        
+        SPRITES.logo.forEach((row, r) => {
+            row.forEach((colData, c) => {
+                if (colData !== 0) {
+                    lCtx.fillStyle = (colData === 5) ? fixedGreen : fixedWhite;
+                    lCtx.fillRect(c * logoScale, r * logoScale, logoScale, logoScale);
+                }
+            });
+        });
+        document.getElementById('logoLink').appendChild(lCanvas);
+    }
+    renderLogoLink();
+
+    /** --- GAME ENGINE --- */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const moreGamesBtn = document.getElementById('moreGamesBtn');
+    const logoLink = document.getElementById('logoLink');
+    
+    const PIXEL_SCALE = 5; 
+    const PLAYER_W = 8 * PIXEL_SCALE, PLAYER_H = 14 * PIXEL_SCALE;
+    const OBS_W = 11 * PIXEL_SCALE, OBS_H = 10 * PIXEL_SCALE;
+    const groundY = canvas.height - 80;
+
+    let state = 'START', frames = 0, score = 0;
+    let highScore = localStorage.getItem('creeperRunnerHighScore') || 0;
+    let gameSpeed = 6, levelTextTimer = 0;
+    let particles = [], explosionParticles = [], obstacles = [], clouds = [];
+    let nextObstacleFrames = 0, explosionTimer = 0;
+
+    const player = { x: 60, y: 0, vy: 0, gravity: 0.85, jumpPower: -14, grounded: false };
+
+    const dirtPixels = Array.from({length: 300}, () => ({
+        x: Math.random() * canvas.width,
+        y: groundY + 15 + Math.random() * 65
+    }));
+
+    function drawSprite(matrix, startX, startY) {
+        for (let row = 0; row < matrix.length; row++) {
+            for (let col = 0; col < matrix[row].length; col++) {
+                if (matrix[row][col] !== 0) {
+                    ctx.fillStyle = PALETTE[matrix[row][col]];
+                    ctx.fillRect(startX + (col * PIXEL_SCALE), startY + (row * PIXEL_SCALE), PIXEL_SCALE, PIXEL_SCALE);
+                }
+            }
+        }
+    }
+
+    // Input Handling
+    function handleInput(e) {
+        if(e && e.type !== 'touchstart') e.preventDefault();
+        initAudio();
+        
+        if (state === 'START' || state === 'OVER') {
+            resetGame();
+            state = 'PLAY';
+            return;
+        }
+        if (state === 'PLAY' && player.grounded) {
+            player.vy = player.jumpPower;
+            player.grounded = false;
+            playSound('jump');
+            createDust();
+        }
+    }
+
+    moreGamesBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+    moreGamesBtn.addEventListener('touchstart', (e) => e.stopPropagation());
+    logoLink.addEventListener('mousedown', (e) => e.stopPropagation());
+    logoLink.addEventListener('touchstart', (e) => e.stopPropagation());
+
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handleInput(e); });
+    window.addEventListener('touchstart', handleInput, {passive: false});
+    window.addEventListener('mousedown', handleInput);
+
+    function resetGame() {
+        moreGamesBtn.style.display = 'none';
+        logoLink.style.display = 'none';
+        player.y = groundY - PLAYER_H;
+        player.vy = 0;
+        obstacles = []; particles = []; explosionParticles = [];
+        clouds = Array.from({length: 4}, () => ({ x: Math.random() * canvas.width, y: Math.random() * 120 }));
+        score = 0; frames = 0; nextObstacleFrames = 60;
+        applyTheme(0); 
+    }
+
+    function createDust() {
+        for(let i=0; i<6; i++) {
+            particles.push({
+                x: player.x + (PLAYER_W/2) + (Math.random()*20 - 10),
+                y: groundY - 5,
+                vx: -gameSpeed * 0.5 + (Math.random()*2-1),
+                vy: -Math.random()*2 - 1,
+                life: 15 + Math.random()*10,
+                color: 10
+            });
+        }
+    }
+
+    function triggerExplosion() {
+        playSound('explosion');
+        state = 'EXPLODING';
+        explosionTimer = 45; 
+        
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('creeperRunnerHighScore', highScore);
+        }
+
+        const explosionColors = [5, 6, 8, 11, 7]; 
+        for (let i = 0; i < 120; i++) {
+            explosionParticles.push({
+                x: player.x + PLAYER_W / 2, y: player.y + PLAYER_H / 2,
+                vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20 - 5,
+                life: 30 + Math.random() * 30,
+                color: explosionColors[Math.floor(Math.random() * explosionColors.length)]
+            });
+        }
+    }
+
+    function update() {
+        if (state === 'EXPLODING') {
+            explosionTimer--;
+            explosionParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.8; p.life--; });
+            explosionParticles = explosionParticles.filter(p => p.life > 0);
+            
+            if (explosionTimer <= 0) { 
+                state = 'OVER'; 
+                moreGamesBtn.style.display = 'block'; 
+            }
+            return; 
+        }
+
+        if (state !== 'PLAY') return;
+
+        frames++;
+        
+        if (currentThemeIndex < THEMES.length - 1) {
+            if (score >= THEMES[currentThemeIndex + 1].req) {
+                applyTheme(currentThemeIndex + 1);
+                playSound('levelup');
+            }
+        }
+        
+        if (frames % 600 === 0) gameSpeed += 0.1;
+
+        player.vy += player.gravity;
+        player.y += player.vy;
+        if (player.y + PLAYER_H >= groundY) {
+            player.y = groundY - PLAYER_H;
+            if(!player.grounded) createDust();
+            player.grounded = true;
+            player.vy = 0;
+        }
+
+        if (frames % 10 === 0) score++;
+
+        if (frames % 120 === 0) clouds.push({ x: canvas.width, y: Math.random() * 120 });
+        clouds.forEach(c => c.x -= gameSpeed * 0.3);
+        clouds = clouds.filter(c => c.x > -100);
+        dirtPixels.forEach(dp => { dp.x -= gameSpeed; if (dp.x < 0) dp.x = canvas.width; });
+
+        // Obstacle Spawner (Mixes TNT and Spikes)
+        nextObstacleFrames--;
+        if (nextObstacleFrames <= 0) {
+            let type = Math.random() > 0.5 ? 'tnt' : 'spikes';
+            obstacles.push({ 
+                x: canvas.width, 
+                y: groundY - OBS_H, 
+                width: OBS_W, 
+                height: OBS_H,
+                type: type
+            });
+            let t = THEMES[currentThemeIndex];
+            nextObstacleFrames = t.gap + Math.random() * t.gapVariance;
+        }
+
+        obstacles.forEach(obs => {
+            obs.x -= gameSpeed;
+            
+            // AABB Collision (Forgiving hitbox logic)
+            let pX = player.x + 8;
+            let pW = player.x + PLAYER_W - 8;
+            let pY = player.y + 8;
+            let pH = player.y + PLAYER_H - 8;
+            
+            let oX = obs.x + 4;
+            let oW = obs.x + obs.width - 4;
+            // Spikes are visually shorter (empty pixels on top), adjust hitbox top
+            let hitTopOffset = (obs.type === 'spikes') ? 15 : 4; 
+            let oY = obs.y + hitTopOffset;
+            let oH = obs.y + obs.height;
+
+            if (pX < oW && pW > oX && pY < oH && pH > oY) {
+                triggerExplosion();
+            }
+        });
+
+        obstacles = obstacles.filter(obs => obs.x > -150);
+        particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
+        particles = particles.filter(p => p.life > 0);
+    }
+
+    function draw() {
+        ctx.save();
+        if (state === 'EXPLODING') {
+            const intensity = explosionTimer * 0.3;
+            ctx.translate((Math.random() - 0.5) * intensity, (Math.random() - 0.5) * intensity);
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        clouds.forEach(c => drawSprite(SPRITES.cloud, c.x, c.y));
+        ctx.fillStyle = PALETTE[4]; ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+        ctx.fillStyle = PALETTE[9]; dirtPixels.forEach(dp => ctx.fillRect(dp.x, dp.y, PIXEL_SCALE, PIXEL_SCALE));
+        ctx.fillStyle = PALETTE[3]; ctx.fillRect(0, groundY, canvas.width, 15);
+        ctx.fillStyle = PALETTE[6]; ctx.fillRect(0, groundY + 15, canvas.width, 4);
+
+        // Draw correct obstacle type
+        obstacles.forEach(obs => {
+            let spr = (obs.type === 'tnt') ? SPRITES.tnt : SPRITES.spikes;
+            drawSprite(spr, obs.x, obs.y);
+        });
+
+        particles.forEach(p => { ctx.fillStyle = PALETTE[p.color]; ctx.fillRect(p.x, p.y, PIXEL_SCALE, PIXEL_SCALE); });
+
+        if (state === 'EXPLODING' || state === 'OVER') {
+            explosionParticles.forEach(p => {
+                ctx.fillStyle = PALETTE[p.color];
+                const size = PIXEL_SCALE * (0.5 + Math.random() * 1.5);
+                ctx.fillRect(p.x, p.y, size, size);
+            });
+        } else {
+            let currentSprite = !player.grounded ? SPRITES.playerJump : 
+                ((Math.floor(frames / 8) % 2 === 0) ? SPRITES.playerRun1 : SPRITES.playerRun2);
+            drawSprite(currentSprite, player.x, player.y);
+        }
+
+        ctx.restore();
+
+        if (levelTextTimer > 0 && state === 'PLAY') {
+            ctx.fillStyle = PALETTE[2];
+            ctx.font = 'bold 44px "Courier New", Courier, monospace';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = "#000"; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
+            ctx.globalAlpha = Math.min(1, levelTextTimer / 20);
+            ctx.fillText(THEMES[currentThemeIndex].name, canvas.width / 2, canvas.height / 3);
+            ctx.globalAlpha = 1;
+            levelTextTimer--;
+        }
+
+        ctx.fillStyle = PALETTE[2];
+        ctx.font = '24px "Courier New", Courier, monospace';
+        ctx.fontWeight = 'bold';
+        ctx.shadowColor = "#000"; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
+        ctx.textAlign = 'left';
+        ctx.fillText(`SCORE: ${score}`, 20, 40);
+        ctx.textAlign = 'right';
+        ctx.fillText(`HIGH: ${highScore}`, canvas.width - 20, 40);
+
+        if (state === 'START' || state === 'OVER') {
+            ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 4;
+            ctx.textAlign = 'center';
+            
+            if (state === 'START') {
+                // Main Title - Split into two nicely formatted lines
+                ctx.fillStyle = PALETTE[5];
+                ctx.font = 'bold 42px "Courier New", Courier, monospace';
+                ctx.fillText('MINECRAFT CREEPER', canvas.width/2, canvas.height/2 - 45);
+                
+                ctx.fillStyle = PALETTE[2];
+                ctx.font = 'bold 36px "Courier New", Courier, monospace';
+                ctx.fillText('SURVIVAL RUNNER', canvas.width/2, canvas.height/2 + 5);
+                
+                logoLink.style.display = 'block'; // Show pinned HTML Logo
+            } else {
+                ctx.fillStyle = '#D93A2C';
+                ctx.font = 'bold 42px "Courier New", Courier, monospace';
+                ctx.fillText('KABOOM! GAME OVER', canvas.width/2, canvas.height/2 - 20);
+                logoLink.style.display = 'none'; 
+            }
+            
+            ctx.fillStyle = PALETTE[10];
+            ctx.font = '20px "Courier New", Courier, monospace';
+            ctx.fillText('Press SPACE or TAP to Jump', canvas.width/2, canvas.height/2 + 50);
+        }
+
+        ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    applyTheme(0);
+    resetGame();
+    state = 'START';
+    loop();
+
+</script>
+</body>
+</html>
