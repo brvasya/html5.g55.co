@@ -18,12 +18,53 @@
             justify-content: center; align-items: center; text-align: center;
         }
         .hidden { display: none !important; }
-        h1 { color: #00ffcc; text-shadow: 2px 2px #ff0055; font-size: 4rem; margin: 0; text-transform: uppercase;}
-        p { color: #fff; font-size: 1.2rem; }
-        .blink { animation: blink 1s infinite; color: #ffdd00; font-weight: bold; }
+        
+        #startScreen, #gameOverScreen {
+            display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            width: 100%; height: 100%;
+        }
+
+        h1 { 
+            color: #00ffcc; 
+            text-shadow: 2px 2px #ff0055; 
+            font-size: 3.5rem; 
+            margin: 0 0 10px 0; 
+            text-transform: uppercase;
+            max-width: 900px;
+            line-height: 1.1;
+        }
+        p { color: #fff; font-size: 1.2rem; margin: 10px 0; }
+        .blink { animation: blink 1s infinite; color: #ffdd00; font-weight: bold; margin-top: 20px;}
         @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
         
-        /* Retro Button Styling */
+        /* G55.CO Main Menu Logo - Anchored to Bottom */
+        .logo-g55 {
+            position: absolute;
+            bottom: 40px; /* Sticks logo to the bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ffffff;
+            text-decoration: none;
+            background: #ff0055;
+            padding: 5px 20px;
+            border: 3px solid #ffffff;
+            pointer-events: auto; /* Makes it clickable */
+            box-shadow: 0 0 15px #ff0055, inset 0 0 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s, border-color 0.2s;
+            letter-spacing: 3px;
+        }
+        .logo-g55:hover {
+            transform: translateX(-50%) scale(1.1); /* Scales up while keeping centered */
+            box-shadow: 0 0 25px #00ffcc;
+            background: #00ffcc;
+            color: #000;
+            border-color: #000;
+        }
+
+        /* Game Over Button Styling */
         .btn {
             display: inline-block;
             margin-top: 25px;
@@ -34,7 +75,7 @@
             font-size: 1.5rem;
             text-transform: uppercase;
             font-weight: bold;
-            pointer-events: auto; /* Makes button clickable */
+            pointer-events: auto; 
             transition: all 0.2s;
             background: rgba(255, 0, 85, 0.1);
             text-shadow: 0 0 5px #ff0055;
@@ -61,10 +102,14 @@
     <div id="crt"></div>
     <div id="ui">
         <div id="startScreen">
-            <h1>Pixel Space Shooter Survival</h1>
+            <h1>PIXEL SPACE<br>SHOOTER SURVIVAL</h1>
             <p>WASD to Move | Mouse to Aim | Hold Click to Shoot</p>
             <p class="blink">CLICK ANYWHERE TO LAUNCH</p>
+            
+            <!-- G55 Logo Anchored at Bottom -->
+            <a href="http://g55.co/" target="_blank" class="logo-g55">G55.CO</a>
         </div>
+        
         <div id="gameOverScreen" class="hidden">
             <h1>HULL BREACH</h1>
             <p>Final Level: <span id="finalLevel">1</span></p>
@@ -72,7 +117,7 @@
             <p>High Score: <span id="highScore">0</span></p>
             
             <a href="http://g55.co/" target="_blank" class="btn">MORE GAMES</a>
-            <p class="blink" style="margin-top: 30px;">CLICK ANYWHERE ELSE TO REBOOT</p>
+            <p class="blink">CLICK ANYWHERE ELSE TO REBOOT</p>
         </div>
     </div>
 
@@ -234,7 +279,7 @@ window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
 window.addEventListener('mousedown', e => { 
-    // Do not capture clicks if the user is clicking an HTML Link (More Games button)
+    // Do not capture clicks if the user is clicking an HTML Link (More Games button or Logo)
     if (e.target.tagName.toLowerCase() === 'a') return;
     
     mouse.down = true; 
