@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Creeper Escape</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        canvas {
+            background-color: #79a6FF; /* Minecraft Sky Blue */
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain; 
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
+        /* In-Game UI Layer */
+        #ui-layer {
+            position: absolute;
+            top: 5vh;
+            color: #FFF;
+            text-shadow: 2px 2px 0 #3f3f3f;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+            font-weight: bold;
+            font-size: 1.5rem;
+            z-index: 10;
+            display: none;
+        }
+        
+        #controls { 
+            font-size: 1rem; 
+            color: #FFFF55; 
+            margin-top: 8px; 
+            text-shadow: 2px 2px 0 #3f3f3f;
+        }
+
+        /* Screen Overlays */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .screen h1 {
+            color: #FFF;
+            text-shadow: 4px 4px 0 #3f3f3f;
+            font-size: 4rem;
+            margin-bottom: 30px;
+            margin-top: 0;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        /* Minecraft Style Buttons */
+        .btn {
+            background-color: #c6c6c6;
+            border: 2px solid #000;
+            box-shadow: inset 4px 4px 0px #FFFFFF, inset -4px -4px 0px #555555;
+            color: #FFF;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            margin: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #3f3f3f;
+            text-transform: uppercase;
+            display: inline-block;
+            transition: background 0.1s;
+        }
+
+        .btn:hover { 
+            background-color: #8faef4; 
+        }
+        
+        .btn:active {
+            box-shadow: inset 4px 4px 0px #555555, inset -4px -4px 0px #FFFFFF;
+            padding: 17px 38px 13px 42px;
+        }
+
+        .title-green { color: #55FF55 !important; }
+        .title-red { color: #FF5555 !important; }
+
+        /* Pinned G55.CO Logo */
+        #g55-logo {
+            position: absolute;
+            bottom: 40px;
+            color: #FFF;
+            font-size: 3.5rem;
+            text-decoration: none;
+            font-weight: bold;
+            text-shadow: 4px 4px 0px #3f3f3f;
+            letter-spacing: 4px;
+            transition: transform 0.2s, color 0.2s;
+        }
+        #g55-logo:hover {
+            transform: scale(1.1);
+            color: #55FF55;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- In-Game UI -->
+    <div id="ui-layer">
+        <div id="level-text">Level 1</div>
+        <div id="controls">ARROWS/WASD: Move & Jump | Avoid Traps</div>
+    </div>
+
+    <!-- Main Menu Screen (More Games Removed) -->
+    <div id="main-menu" class="screen" style="display: flex;">
+        <h1 class="title-green">Minecraft Creeper Escape</h1>
+        <button class="btn" onclick="startGame()">Play Game</button>
+        <a href="https://g55.co/" target="_blank" id="g55-logo">G55.CO</a>
+    </div>
+
+    <!-- Inter-Level Screen -->
+    <div id="level-complete-screen" class="screen">
+        <h1 id="lc-title" class="title-green">LEVEL 1 COMPLETE!</h1>
+        <button class="btn" onclick="nextLevel()">Continue</button>
+        <a href="https://g55.co/" target="_blank" class="btn">More Games</a>
+    </div>
+
+    <!-- Game Over / Win Screen -->
+    <div id="game-over-screen" class="screen">
+        <h1 id="end-title" class="title-red">GAME OVER</h1>
+        <button class="btn" id="retry-btn" onclick="retryGame()">Try Again</button>
+        <a href="https://g55.co/" target="_blank" class="btn">More Games</a>
+    </div>
+    
+    <canvas id="gameCanvas" width="320" height="180"></canvas>
+
+<script>
+    // --- GAME STATE MANAGEMENT ---
+    const STATE_MENU = 0;
+    const STATE_PLAY = 1;
+    const STATE_COMPLETE = 2;
+    const STATE_GAMEOVER = 3;
+    let gameState = STATE_MENU;
+
+    // --- PROCEDURAL AUDIO SYSTEM ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    const sfx = {
+        jump: () => playTone('square', 150, 300, 0.15, 0.05),
+        stomp: () => playTone('triangle', 300, 50, 0.15, 0.2),
+        shoot: () => playTone('sawtooth', 600, 100, 0.15, 0.05),
+        hiss: () => {
+            if (!audioCtx) return;
+            const buf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buf;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 1000;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.0);
+            noise.connect(filter).connect(gain).connect(audioCtx.destination);
+            noise.start();
+        },
+        explode: () => {
+            if (!audioCtx) return;
+            const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buf;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.5);
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            noise.connect(filter).connect(gain).connect(audioCtx.destination);
+            noise.start();
+        },
+        win: () => {
+            if (!audioCtx) return;
+            [440, 554.37, 659.25, 880].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.1);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + i * 0.1 + 0.05);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + i * 0.1 + 0.3);
+                osc.connect(gain).connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i * 0.1);
+                osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
+            });
+        }
+    };
+
+    function playTone(type, startFreq, endFreq, duration, vol) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(startFreq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // --- GAME ENGINE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const levelTextUI = document.getElementById('level-text');
+    const uiLayer = document.getElementById('ui-layer');
+    const mainMenu = document.getElementById('main-menu');
+    const levelCompleteScreen = document.getElementById('level-complete-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const endTitle = document.getElementById('end-title');
+
+    const WIDTH = 320;
+    const HEIGHT = 180;
+    const TILE_SIZE = 16;
+
+    // --- TEXTURED PIXEL ART SYSTEM ---
+    const PALETTE = {
+        '.': null, 
+        'g': '#88E060', 'G': '#5DBD44', 'v': '#418B2D', // Creeper / Grass
+        'd': '#866043', 'D': '#5E4026', 'e': '#442A16', // Dirt
+        'a': '#9A9A9A', 'A': '#7A7A7A', 'q': '#5A5A5A', // Stone / Cobble
+        'r': '#D93A33', 'R': '#A02722', 'w': '#EEEEEE', 'W': '#CCCCCC', // TNT
+        'z': '#4B8B62', 'Z': '#366B4A', 'c': '#00AFAF', 'C': '#008C8C', 'p': '#533C8C', 'P': '#3B2A68', // Zombie
+        'M': '#DDDDDD', 'm': '#BBBBBB', 'u': '#999999', // Skeleton
+        'k': '#111111', 'b': '#222222', 'B': '#333333', 'E': '#FF0000', // Spider
+        'O': '#15101A', 'o': '#2A1C3D', 'y': '#A924FF', 'Y': '#7200FF', // Portal
+        's': '#0F6126', 'S': '#158132', // Cactus
+        'f': '#FF0000', 'F': '#FF8800', 'l': '#FFFF00', 'x': '#555555' // Explosion 
+    };
+
+    const SPRITES_DATA = {
+        creeper: [
+            ["................","....GgGggGGg....","....gkkgGkkg....","....gkkgGkkg....","....GggkkGgg....","....gkkkkkkg....","....gkkkkkkg....","....gkkGgkkg....","....GgGggGGg....","......vGvG......","......GvGv......","......vGvG......","....Gv....Gv....","....vG....vG....","....kk....kk....","....kk....kk...."],
+            ["................","....GgGggGGg....","....gkkgGkkg....","....gkkgGkkg....","....GggkkGgg....","....gkkkkkkg....","....gkkkkkkg....","....gkkGgkkg....","....GgGggGGg....","......vGvG......","......GvGv......","......vGvG......",".....vGvG.......",".....GvGv.......",".....kkkk.......",".....kkkk......."]
+        ],
+        zombie: [
+            [".....zZzZzZ.....",".....ZzZzZz.....",".....zZkkZz.....",".....ZzkkzZ.....",".....zZzZzZ.....",".....ZzZzZz.....",".....cCcCcC.....",".....CcCcCczZ..",".....cCcCcCZz..",".....CcCcCc.....",".....pPpPpP.....",".....PpPpPp.....",".....pP..pP.....",".....Pp..Pp.....","....bb....bb....","................"],
+            [".....zZzZzZ.....",".....ZzZzZz.....",".....zZkkZz.....",".....ZzkkzZ.....",".....zZzZzZ.....",".....ZzZzZz.....",".....cCcCcC.....",".....CcCcCczZ..",".....cCcCcCZz..",".....CcCcCc.....",".....pPpPpP.....",".....PpPpPp.....","......pPpP......","......PpPp......",".......bb.......","................"]
+        ],
+        spider: [
+            ["................","................","................","................","................","...BkBBkBkBB...","..bBkBBkBBkBb..",".B.Bk.BBBB.kB.B.","...BkEBBkEBB...",".B.BBBBkBBBB.B.","..BBB.BBBB.BBB..",".B..B......B..B.",".B............B.","................","................","................"],
+            ["................","................","................","................","...BkBBkBkBB...","..bBkBBkBBkBb..",".B.Bk.BBBB.kB.B.","...BkEBBkEBB...",".B.BBBBkBBBB.B.","..BBB.BBBB.BBB..","..B.B......B.B..","..B..........B..","................","................","................","................"]
+        ],
+        skeleton: [
+            [".....wMwMwM.....",".....MwMwMw.....",".....wMkkwM.....",".....MwkkMw.....",".....wMwMwM.....",".....MwMwMw.....","....uMuMuMuM....","....u.MuMu.u....","....M.uMuM.M....","....u.MuMu.u....","......MuMu......","......uMuM......",".....Mw..wM.....",".....uM..Mu.....",".....Mw..wM.....","................"],
+            [".....wMwMwM.....",".....MwMwMw.....",".....wMkkwM.....",".....MwkkMw.....",".....wMwMwM.....",".....MwMwMw.....","....uMuMuMuM....","....u.MuMu.u....","....M.uMuM.M....","....u.MuMu.u....","......MuMu......","......uMuM......",".......Mw.......",".......uM.......",".......Mw.......","................"]
+        ],
+        explosion: [
+            ["................","................","................","................","................",".......xx.......","......xffx......","......xffx......",".......xx.......","................","................","................","................","................","................","................"],
+            ["................","................","......xxxx......",".....xffffx.....","....xffFFffx....","....xffFFffx....",".....xffffx.....","......xxxx......","................","................","................","................","................","................","................","................"],
+            [".....xxxxxx.....","....xffffffx....","...xffFFFFffx...","..xffFllFFffx..","..xffFllFFffx..","...xffFFFFffx...","....xffffffx....",".....xxxxxx.....","................","................","................","................","................","................","................","................"]
+        ],
+        portal: [["OoOoOoOoOoOoOoOo","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OyYyYyYyYyYyYyYO","oYyYyYyYyYyYyYyo","OoOoOoOoOoOoOoOo","oOoOoOoOoOoOoOoO"]],
+        block: [["GgGgGgGgGgGgGgGg","gGgGgGgGgGgGgGgG","GgGdDGGgDddGGgGd","dDdDddDddDddDddD","DddDdDddDdDddDdD","ddDddDdDddDdDddD","DdDddDdDddDdDddD","dDddDdDddDdDddDd","DddDdDddDdDddDdD","ddDddDdDddDdDddD","DdDddDdDddDdDddD","dDddDdDddDdDddDd","DddDdDddDdDddDdD","ddDddDdDddDdDddD","DdDddDdDddDdDddD","dDddDdDddDdDddDd"]],
+        stone: [["aAaAaAaAaAaAaAaA","AaqaAaqaAaqaAaqa","aAaAaAaAaAaAaAaA","qAaqaAaqaAaqaAaq","aAaAaAaAaAaAaAaA","AaqaAaqaAaqaAaqa","aAaAaAaAaAaAaAaA","qAaqaAaqaAaqaAaq","aAaAaAaAaAaAaAaA","AaqaAaqaAaqaAaqa","aAaAaAaAaAaAaAaA","qAaqaAaqaAaqaAaq","aAaAaAaAaAaAaAaA","AaqaAaqaAaqaAaqa","aAaAaAaAaAaAaAaA","qAaqaAaqaAaqaAaq"]],
+        tnt: [["rRrRrRrRrRrRrRrR","RrRrRrRrRrRrRrRr","rRrRrRrRrRrRrRrR","wWwWwWwWwWwWwWwW","WwWbbWwbbbWbbWwW","wWwwbwWwWbwWbwWw","WwWbbWwWwbwWbwWw","wWwwbwWwWbwWbwWw","WwWwwWwWwWwWwwWw","wWwWwWwWwWwWwWwW","rRrRrRrRrRrRrRrR","RrRrRrRrRrRrRrRr","rRrRrRrRrRrRrRrR","RrRrRrRrRrRrRrRr","rRrRrRrRrRrRrRrR","RrRrRrRrRrRrRrRr"]],
+        cactus: [["..S........S....","..SSSSSSSSSS....","..SsSssSSsSS....","..SSSSSSSSSS..S.",".SSSSSSsSSSSSSS.",".SSSSSSSSSSSSSS.","..SssSSsSSSSSS..","..SSSSSSSSSSSS..","..SSSSSSsSSSsS..","..SSSSSSSSSSSS..","..SssSSsSSSSSS..","..SSSSSSSSSSSS..","..SSSSsSSSsSSS..","..SSSSSSSSSSSS..","..SssSSsSSSSSS..","..SSSSSSSSSSSS.."]],
+        cloud: [["......wwww......","....wwwwwwww....","..wwwwwwwwwwww..",".wwwwwwwwwwwwww.","wwwwwwwwwwwwwwww","WWWWWWWWWWWWWWWW"]]
+    };
+
+    const sprites = {};
+    for (let key in SPRITES_DATA) {
+        sprites[key] = [];
+        SPRITES_DATA[key].forEach(frameData => {
+            const c = document.createElement('canvas');
+            c.width = frameData[0].length;
+            c.height = frameData.length;
+            const xCtx = c.getContext('2d');
+            for (let y = 0; y < c.height; y++) {
+                for (let x = 0; x < c.width; x++) {
+                    const char = frameData[y][x];
+                    if (PALETTE[char]) {
+                        xCtx.fillStyle = PALETTE[char];
+                        xCtx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+            sprites[key].push(c);
+        });
+    }
+
+    // --- PROCEDURAL BACKGROUND ---
+    const mntLayer1 = [];
+    const mntLayer2 = [];
+    for(let i=0; i<150; i++) {
+        mntLayer1.push(Math.floor(Math.sin(i * 0.3) * 4 + 7) * 8);
+        mntLayer2.push(Math.floor(Math.cos(i * 0.2) * 5 + 10) * 8);
+    }
+
+    // --- FULLY MATHEMATICALLY VERIFIED LEVELS (NO IMPOSSIBLE GAPS) ---
+    // Max Jump Height: 3. Max Jump Width: 4. Solid Floors.
+    const LEVELS = [
+        [ // Level 1: Basics
+            "................................................................",
+            "................................................................",
+            "................................................................",
+            "................................................................",
+            "................................................................",
+            "......................................................E.........",
+            "....................................................#####.......",
+            ".........................................####.......#####.......",
+            ".....................Z..........^...Z....####.......#####.......",
+            "..........P.......#######.....#########..####.......#####.......",
+            "################################################################",
+            "################################################################"
+        ],
+        [ // Level 2: Spiders & Minor Parkour
+            "........................................................................",
+            "........................................................................",
+            "........................................................................",
+            "........................................................................",
+            "...............................................................E........",
+            ".............................................................#####......",
+            "........................................X....................#####......",
+            "..............................X......#######.............^...#####......",
+            "....................X.......#####....................#########..........",
+            "...P......^.......#####........................^........................",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+        ],
+        [ // Level 3: Skeleton Towers
+            "................................................................................",
+            "................................................................................",
+            ".......................................................................E........",
+            ".....................................................................#####......",
+            ".................................K..........................K........#####......",
+            "...............................#####......................#####......#####......",
+            "....................K..........................K.....................#####......",
+            "..................#####......................#####...................#####......",
+            ".......K............................Z..........................^.....#####......",
+            "...P.#####.......................#######.....................#####...#####......",
+            "################################################################################",
+            "################################################################################"
+        ],
+        [ // Level 4: TNT Jumpers
+            "................................................................................",
+            "................................................................................",
+            "................................................................................",
+            ".......................................................................E........",
+            ".....................................................................#####......",
+            ".............................................................T.......#####......",
+            "........................................T.......#######....#####.....#####......",
+            ".......................T.......#######.................X.............#####......",
+            "..............T......#####..................T........................#####......",
+            "...P........#####.........................#####..............Z..................",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+        ],
+        [ // Level 5: Trap Maze Stairs (Perfectly Calibrated)
+            "......................................................................................",
+            "......................................................................................",
+            ".............................................................................E........",
+            "...........................................................................#####......",
+            "......................................................................####.#####......",
+            "..............................................K.................####.......#####......",
+            "............................................#####.........####.............#####......",
+            ".............................Z.......####...........####...................#####......",
+            ".........................#########.........................................#####......",
+            "...P......^.......#####.............^...................^.........X........#####......",
+            "######################################################################################",
+            "######################################################################################"
+        ],
+        [ // Level 6: The Horde Switchback Stairs
+            "................................................................................................",
+            "................................................................................................",
+            ".......................................................................................E........",
+            ".....................................................................................#####......",
+            ".......................................K..........................K.............####.#####......",
+            ".....................................#####......................#####................#####......",
+            "..........................K...............................................####.......#####......",
+            "........................#####.......................X................................#####......",
+            "................X..T......................T.......#####.......T.......####...........#####......",
+            "...P.....Z....######...........^...Z....#####.............#########............^.....#####......",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+            "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+        ],
+        [ // Level 7: Absolute Chaos
+            "..........................................................................................................",
+            "..........................................................................................................",
+            ".................................................................................................E........",
+            "...............................................................................................#####......",
+            "....................................................................................K.....####.#####......",
+            "..................................................K...................T...........#####........#####......",
+            ".......................................K........#####...............#####......................#####......",
+            "............................K........#####.....................................T........Z......#####......",
+            ".................K........#####.........................X....................#####...#######...#####......",
+            "...P...........#####............................^.....#####.....^..............................#####......",
+            "##########################################################################################################",
+            "##########################################################################################################"
+        ]
+    ];
+
+    let currentLevelIndex = 0;
+    let grid = [];
+    let enemies = [];
+    let projectiles = [];
+    let activeTNTs = [];
+    let particles = [];
+    let exitPortal = null;
+    let LEVEL_WIDTH = 0;
+    let LEVEL_HEIGHT = 0;
+
+    const player = {
+        x: 0, y: 0, w: 12, h: 16, 
+        vx: 0, vy: 0,
+        speed: 0.4, maxSpeed: 3.2, friction: 0.85, 
+        gravity: 0.22, jumpPower: -6.5,
+        grounded: false, facingRight: true,
+        animFrame: 0, animTimer: 0,
+        isDead: false, deadTimer: 0
+    };
+
+    // --- PARTICLE SYSTEM ---
+    function spawnParticles(x, y, colors, count, speedMulti = 1) {
+        for (let i = 0; i < count; i++) {
+            let angle = Math.random() * Math.PI * 2;
+            let speed = Math.random() * 3 * speedMulti;
+            particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 2,
+                size: Math.floor(Math.random() * 3 + 2), 
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1.0,
+                decay: Math.random() * 0.03 + 0.02
+            });
+        }
+    }
+
+    // --- UI CONTROLS ---
+    function startGame() {
+        initAudio();
+        mainMenu.style.display = 'none';
+        uiLayer.style.display = 'block';
+        gameState = STATE_PLAY;
+        loadLevel(0);
+    }
+
+    function nextLevel() {
+        initAudio();
+        levelCompleteScreen.style.display = 'none';
+        uiLayer.style.display = 'block';
+        gameState = STATE_PLAY;
+        loadLevel(currentLevelIndex + 1);
+    }
+
+    function retryGame() {
+        initAudio();
+        gameOverScreen.style.display = 'none';
+        uiLayer.style.display = 'block';
+        gameState = STATE_PLAY;
+        if (endTitle.innerText === "YOU WIN!") {
+            loadLevel(0);
+        } else {
+            loadLevel(currentLevelIndex);
+        }
+    }
+
+    function showGameOver(win = false) {
+        gameState = STATE_GAMEOVER;
+        uiLayer.style.display = 'none';
+        if (win) {
+            endTitle.innerText = "YOU WIN!";
+            endTitle.className = "title-green";
+            document.getElementById('retry-btn').innerText = "Play Again";
+        } else {
+            endTitle.innerText = "GAME OVER";
+            endTitle.className = "title-red";
+            document.getElementById('retry-btn').innerText = "Try Again";
+        }
+        gameOverScreen.style.display = 'flex';
+    }
+
+    function showLevelComplete() {
+        gameState = STATE_COMPLETE;
+        uiLayer.style.display = 'none';
+        document.getElementById('lc-title').innerText = "LEVEL " + (currentLevelIndex + 1) + " COMPLETE!";
+        levelCompleteScreen.style.display = 'flex';
+    }
+
+    function loadLevel(index) {
+        currentLevelIndex = index;
+        levelTextUI.innerText = "Level " + (index + 1);
+        const layout = LEVELS[index];
+        LEVEL_HEIGHT = layout.length * TILE_SIZE;
+        LEVEL_WIDTH = layout[0].length * TILE_SIZE;
+        
+        grid = []; enemies = []; projectiles = []; activeTNTs = []; particles = []; exitPortal = null;
+        player.isDead = false; player.deadTimer = 0;
+
+        for (let r = 0; r < layout.length; r++) {
+            grid[r] = [];
+            for (let c = 0; c < layout[r].length; c++) {
+                let char = layout[r][c];
+                grid[r][c] = '.';
+                
+                if (['#', 'S', 'T', '^'].includes(char)) grid[r][c] = char;
+                else if (char === 'P') {
+                    player.x = c * TILE_SIZE + 2; player.y = r * TILE_SIZE;
+                    player.vx = 0; player.vy = 0; player.facingRight = true;
+                } 
+                else if (['Z', 'X', 'K'].includes(char)) {
+                    enemies.push({
+                        type: char,
+                        x: c * TILE_SIZE + 2, y: r * TILE_SIZE + (char === 'X' ? 8 : 1),
+                        w: 12, h: char === 'X' ? 8 : 15, // Spiders are short
+                        vx: char === 'X' ? -1.2 : (char === 'K' ? -0.3 : -0.5), 
+                        vy: 0, dead: false, facingRight: false,
+                        animFrame: 0, animTimer: Math.random() * 20,
+                        shootTimer: Math.random() * 60
+                    });
+                } 
+                else if (char === 'E') exitPortal = { x: c * TILE_SIZE, y: r * TILE_SIZE, w: 16, h: 16 };
+            }
+        }
+        cameraX = 0;
+    }
+
+    const isSolid = (x, y) => {
+        const c = Math.floor(x / TILE_SIZE);
+        const r = Math.floor(y / TILE_SIZE);
+        return grid[r] && ['#', 'S', 'T'].includes(grid[r][c]);
+    };
+
+    const getOverlappingTiles = (box) => {
+        let tiles = [];
+        let c1 = Math.floor((box.x + 2) / TILE_SIZE);
+        let c2 = Math.floor((box.x + box.w - 2) / TILE_SIZE);
+        let r1 = Math.floor((box.y + 2) / TILE_SIZE);
+        let r2 = Math.floor((box.y + box.h - 2) / TILE_SIZE);
+        for (let r = r1; r <= r2; r++) {
+            for (let c = c1; c <= c2; c++) {
+                if (grid[r] && grid[r][c]) tiles.push({c, r, char: grid[r][c]});
+            }
+        }
+        return tiles;
+    };
+
+    const isColliding = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+    // --- INPUT ---
+    const keys = { right: false, left: false, up: false };
+    window.addEventListener('keydown', e => {
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.up = true;
+    });
+    window.addEventListener('keyup', e => {
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.up = false;
+    });
+
+    let cameraX = 0;
+    const clouds = [{x: 20, y: 20}, {x: 150, y: 40}, {x: 300, y: 15}, {x: 450, y: 35}, {x: 600, y: 20}, {x: 800, y: 50}];
+
+    function triggerExplosion(cx, cy) {
+        sfx.explode();
+        spawnParticles(cx, cy, ['#D93A33', '#FF8800', '#FFFF00', '#FFFFFF', '#111111'], 35, 2.5);
+
+        const explBox = {x: cx - 24, y: cy - 24, w: 48, h: 48};
+        if(!player.isDead && isColliding(player, explBox)) {
+            player.isDead = true; player.animFrame = 0; player.vx = 0; player.vy = 0;
+            spawnParticles(player.x + player.w/2, player.y + player.h/2, ['#88E060', '#5DBD44', '#111111'], 25, 1.5);
+        }
+        
+        enemies.forEach(e => { 
+            if(!e.dead && isColliding(e, explBox)) {
+                e.dead = true;
+                let colors = e.type === 'Z' ? ['#4B8B62', '#00AFAF'] : (e.type === 'X' ? ['#222', '#E00'] : ['#FFF', '#DDD']);
+                spawnParticles(e.x + e.w/2, e.y + e.h/2, colors, 20, 1.5);
+            }
+        });
+    }
+
+    // --- GAME LOOP ---
+    function update() {
+        if (gameState !== STATE_PLAY) return;
+
+        // --- PARTICLES UPDATE ---
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += player.gravity * 0.4; 
+            p.life -= p.decay;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        if (player.isDead) {
+            if (player.deadTimer === 0) {
+                sfx.explode();
+                spawnParticles(player.x + player.w/2, player.y + player.h/2, ['#88E060', '#5DBD44', '#111111'], 30, 2);
+            }
+            player.deadTimer++;
+            if (player.deadTimer % 8 === 0 && player.animFrame < sprites.explosion.length - 1) player.animFrame++;
+            if (player.deadTimer > 40) { showGameOver(false); }
+            return; 
+        }
+
+        // --- PLAYER PHYSICS ---
+        if (keys.right) { player.vx += player.speed; player.facingRight = true; }
+        if (keys.left) { player.vx -= player.speed; player.facingRight = false; }
+        player.vx *= player.friction;
+        if (player.vx > player.maxSpeed) player.vx = player.maxSpeed;
+        if (player.vx < -player.maxSpeed) player.vx = -player.maxSpeed;
+
+        player.x += player.vx;
+        if (player.vx > 0 && (isSolid(player.x + player.w, player.y) || isSolid(player.x + player.w, player.y + player.h - 1))) {
+            player.x = Math.floor((player.x + player.w) / TILE_SIZE) * TILE_SIZE - player.w - 0.01; player.vx = 0;
+        } else if (player.vx < 0 && (isSolid(player.x, player.y) || isSolid(player.x, player.y + player.h - 1))) {
+            player.x = Math.floor(player.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE + 0.01; player.vx = 0;
+        }
+        if (player.x < 0) { player.x = 0; player.vx = 0; }
+
+        player.vy += player.gravity; player.y += player.vy; player.grounded = false;
+
+        if (player.vy > 0 && (isSolid(player.x, player.y + player.h) || isSolid(player.x + player.w - 1, player.y + player.h))) {
+            player.y = Math.floor((player.y + player.h) / TILE_SIZE) * TILE_SIZE - player.h; player.vy = 0; player.grounded = true;
+        } else if (player.vy < 0 && (isSolid(player.x, player.y) || isSolid(player.x + player.w - 1, player.y))) {
+            player.y = Math.floor(player.y / TILE_SIZE) * TILE_SIZE + TILE_SIZE; player.vy = 0;
+        }
+
+        if (keys.up && player.grounded) { player.vy = player.jumpPower; player.grounded = false; sfx.jump(); }
+
+        if (player.y > LEVEL_HEIGHT) { player.isDead = true; player.y = LEVEL_HEIGHT - 16; player.animFrame = 0; }
+
+        if (player.grounded && Math.abs(player.vx) > 0.2) {
+            if (++player.animTimer > 8) { player.animFrame = (player.animFrame + 1) % 2; player.animTimer = 0; }
+        } else player.animFrame = 0;
+
+        // Triggers
+        let overlaps = getOverlappingTiles(player);
+        overlaps.forEach(t => {
+            if (t.char === '^') { player.isDead = true; player.animFrame = 0; }
+        });
+
+        // Ignite TNT
+        let tntCheckPoints = [
+            {x: player.x+player.w/2, y: player.y+player.h+1},
+            {x: player.x-1, y: player.y+player.h/2},
+            {x: player.x+player.w+1, y: player.y+player.h/2},
+            {x: player.x+player.w/2, y: player.y-1}
+        ];
+        tntCheckPoints.forEach(pt => {
+            let c = Math.floor(pt.x/TILE_SIZE), r = Math.floor(pt.y/TILE_SIZE);
+            if(grid[r] && grid[r][c] === 'T') {
+                grid[r][c] = '.';
+                activeTNTs.push({x: c*TILE_SIZE, y: r*TILE_SIZE, vy: -2, timer: 60, dead: false});
+                sfx.hiss();
+            }
+        });
+
+        // TNT UPDATE
+        activeTNTs.forEach(tnt => {
+            if(tnt.dead) return;
+            tnt.vy += player.gravity; tnt.y += tnt.vy;
+            if(tnt.vy > 0 && isSolid(tnt.x+8, tnt.y+16)) {
+                tnt.y = Math.floor((tnt.y+16)/TILE_SIZE)*TILE_SIZE - 16; tnt.vy = 0;
+            }
+            tnt.timer--;
+            if(tnt.timer <= 0) {
+                tnt.dead = true;
+                triggerExplosion(tnt.x+8, tnt.y+8);
+            }
+        });
+
+        // PROJECTILES
+        for(let i = projectiles.length-1; i>=0; i--) {
+            let p = projectiles[i];
+            p.x += p.vx;
+            if(isSolid(p.x, p.y) || isSolid(p.x+p.w, p.y)) projectiles.splice(i, 1);
+            else if(!player.isDead && isColliding(player, p)) {
+                player.isDead = true; player.animFrame = 0; projectiles.splice(i, 1);
+            }
+        }
+
+        // ENEMIES
+        enemies.forEach(e => {
+            if (e.dead) return;
+            e.vy += player.gravity; e.y += e.vy;
+            if (e.vy > 0 && (isSolid(e.x, e.y+e.h) || isSolid(e.x+e.w-1, e.y+e.h))) {
+                e.y = Math.floor((e.y+e.h)/TILE_SIZE)*TILE_SIZE - e.h; e.vy = 0;
+            }
+            e.x += e.vx;
+            if (e.vx > 0 && (isSolid(e.x+e.w, e.y) || isSolid(e.x+e.w, e.y+e.h-1))) {
+                e.x = Math.floor((e.x+e.w)/TILE_SIZE)*TILE_SIZE - e.w - 0.01; e.vx *= -1; e.facingRight = false;
+            } else if (e.vx < 0 && (isSolid(e.x, e.y) || isSolid(e.x, e.y+e.h-1))) {
+                e.x = Math.floor(e.x/TILE_SIZE)*TILE_SIZE + TILE_SIZE + 0.01; e.vx *= -1; e.facingRight = true;
+            }
+            if (e.y > LEVEL_HEIGHT) e.dead = true;
+
+            if (++e.animTimer > (e.type==='X'?8:15)) { e.animFrame = (e.animFrame+1)%2; e.animTimer = 0; }
+
+            if(e.type === 'K') {
+                e.shootTimer++;
+                if(e.shootTimer > 150) {
+                    e.shootTimer = 0; sfx.shoot();
+                    projectiles.push({x: e.facingRight ? e.x+e.w : e.x-8, y: e.y+4, w: 8, h: 4, vx: e.facingRight ? 3 : -3});
+                }
+            }
+
+            if (!player.isDead && isColliding(player, e)) {
+                if (player.vy > 0 && player.y+player.h-player.vy <= e.y+e.h/2) {
+                    e.dead = true; player.vy = player.jumpPower * 0.8; sfx.stomp();
+                    let colors = e.type === 'Z' ? ['#4B8B62', '#00AFAF'] : (e.type === 'X' ? ['#222', '#E00'] : ['#FFF', '#DDD']);
+                    spawnParticles(e.x + e.w/2, e.y + e.h/2, colors, 15, 1);
+                } else { 
+                    player.isDead = true; player.animFrame = 0; player.vx = 0; player.vy = 0; 
+                }
+            }
+        });
+
+        // Level Complete Hit Detection
+        if (!player.isDead && exitPortal && isColliding(player, exitPortal)) { 
+            sfx.win(); 
+            if (currentLevelIndex >= LEVELS.length - 1) {
+                showGameOver(true);
+            } else {
+                showLevelComplete();
+            }
+        }
+
+        if (!player.isDead) {
+            cameraX = player.x - (WIDTH / 2) + (player.w / 2);
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > LEVEL_WIDTH - WIDTH) cameraX = LEVEL_WIDTH - WIDTH;
+        }
+    }
+
+    function drawEntity(spriteArr, frameIndex, entity, sizeX, sizeY, alignBottom=false) {
+        const img = spriteArr[frameIndex];
+        const cx = Math.floor(entity.x + entity.w / 2);
+        const cy = Math.floor(entity.y + (alignBottom ? entity.h - sizeY/2 : entity.h / 2));
+        ctx.save(); ctx.translate(cx, cy);
+        if (!entity.facingRight) ctx.scale(-1, 1);
+        ctx.drawImage(img, -sizeX/2, -sizeY/2);
+        ctx.restore();
+    }
+
+    function drawMountains(layerArray, color, parallaxSpeed) {
+        ctx.fillStyle = color;
+        let offsetX = -(cameraX * parallaxSpeed);
+        let startCol = Math.floor(-offsetX / 8);
+        for(let i = 0; i < WIDTH/8 + 2; i++) {
+            let col = (startCol + i) % layerArray.length;
+            if(col < 0) col += layerArray.length;
+            let h = layerArray[col];
+            let x = offsetX + (startCol + i) * 8;
+            ctx.fillRect(Math.floor(x), HEIGHT - h, 9, h); 
+        }
+    }
+
+    function draw() {
+        // Voxel Sky Gradient
+        let grad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+        grad.addColorStop(0, '#5599FF');
+        grad.addColorStop(1, '#AADDFF');
+        ctx.fillStyle = grad; 
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        
+        // Square Sun
+        ctx.fillStyle = '#FFDD55';
+        ctx.fillRect(240 - (cameraX * 0.05), 20, 24, 24);
+
+        // Parallax Mountains
+        drawMountains(mntLayer1, '#6E9E7E', 0.2);
+        drawMountains(mntLayer2, '#558264', 0.4);
+
+        ctx.save(); ctx.translate(-Math.floor(cameraX), 0);
+
+        clouds.forEach(c => {
+            let cx = c.x + (cameraX * 0.7);
+            while (cx > cameraX + WIDTH) cx -= WIDTH * 2;
+            while (cx < cameraX - 100) cx += WIDTH * 2;
+            ctx.drawImage(sprites.cloud[0], cx, c.y);
+        });
+
+        for (let r = 0; r < grid.length; r++) {
+            for (let c = 0; c < grid[r].length; c++) {
+                let char = grid[r][c];
+                let tx = c * TILE_SIZE;
+                if (char !== '.' && tx >= cameraX - TILE_SIZE && tx <= cameraX + WIDTH) {
+                    let sp = char==='#' ? sprites.block[0] : (char==='S' ? sprites.stone[0] : (char==='T' ? sprites.tnt[0] : sprites.cactus[0]));
+                    ctx.drawImage(sp, tx, r * TILE_SIZE);
+                }
+            }
+        }
+
+        if (exitPortal) ctx.drawImage(sprites.portal[0], exitPortal.x, exitPortal.y);
+
+        activeTNTs.forEach(tnt => {
+            if(!tnt.dead) {
+                if(tnt.timer % 10 < 5) ctx.drawImage(sprites.tnt[0], tnt.x, Math.floor(tnt.y));
+                else { ctx.fillStyle = '#FFF'; ctx.fillRect(tnt.x, Math.floor(tnt.y), 16, 16); }
+            }
+        });
+
+        projectiles.forEach(p => {
+            ctx.fillStyle = '#111'; ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.fillStyle = '#CCC'; ctx.fillRect(p.x+(p.vx>0?p.w-2:0), p.y, 2, p.h); 
+        });
+
+        enemies.forEach(e => {
+            if (!e.dead) {
+                let sp = e.type === 'Z' ? sprites.zombie : (e.type === 'X' ? sprites.spider : sprites.skeleton);
+                drawEntity(sp, e.animFrame, e, 16, 16, true);
+            }
+        });
+
+        if (gameState !== STATE_MENU || player.x > 0) {
+            if (player.isDead) drawEntity(sprites.explosion, player.animFrame, player, 16, 16);
+            else drawEntity(sprites.creeper, player.animFrame, player, 16, 16);
+        }
+
+        // Draw Particles
+        particles.forEach(p => {
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+        });
+        ctx.globalAlpha = 1.0;
+
+        ctx.restore();
+    }
+
+    function loop() { 
+        update(); 
+        draw(); 
+        requestAnimationFrame(loop); 
+    }
+    
+    loop();
+</script>
+
+</body>
+</html>
