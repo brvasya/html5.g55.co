@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>Mineblock Zombie Survival - Free Pixel Defense Game | g55.co</title>
+    <meta name="description" content="Play Mineblock Zombie Survival, a free HTML5 browser game. Defend yourself against endless waves of pixel zombies, mutants, creepers, and skeletons. Play now on g55.co!">
+    <meta name="keywords" content="minecraft 2d, blockcraft, zombie defense, pixel survival, browser game, html5 game, unblocked games, mineblock">
+
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #111; overflow: hidden;
+            font-family: 'VT323', 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+        canvas {
+            display: block; width: 100vw; height: 100vh;
+            image-rendering: pixelated; image-rendering: crisp-edges; 
+            cursor: none; 
+        }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 10;
+        }
+
+        .panel {
+            background: rgba(18, 18, 18, 0.85); 
+            border: 6px solid #444; border-top-color: #777; border-left-color: #777;
+            box-shadow: inset 0 0 0 4px #111, 0 15px 30px rgba(0,0,0,0.9);
+            padding: 40px; text-align: center; pointer-events: auto;
+            display: none; flex-direction: column; align-items: center; gap: 25px;
+            image-rendering: pixelated;
+            cursor: default; 
+        }
+
+        .mc-logo {
+            display: flex; flex-direction: column; align-items: center;
+            transform: rotate(-2deg); 
+            margin-bottom: 10px;
+            line-height: 0.85;
+        }
+
+        .mc-title-top {
+            font-size: 80px; color: #c6c6c6; 
+            letter-spacing: 2px;
+            text-shadow: 
+                -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000,
+                0px 6px 0 #555, 
+                -3px 9px 0 #000, 3px 9px 0 #000, 0px 9px 0 #000, 
+                0 15px 15px rgba(0,0,0,0.8); 
+        }
+
+        .mc-title-bot {
+            font-size: 60px; color: #55ff55; 
+            letter-spacing: 1px;
+            text-shadow: 
+                -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000,
+                0px 5px 0 #117711, 
+                -3px 8px 0 #000, 3px 8px 0 #000, 0px 8px 0 #000, 
+                0 15px 15px rgba(0,0,0,0.8); 
+        }
+
+        h2 { color: #fff; margin: 0; text-shadow: 3px 3px #000; font-size: 40px; }
+        p { color: #aaa; font-size: 24px; margin: 0; text-shadow: 2px 2px #000; }
+
+        button, .btn {
+            background-color: #777; border: 4px solid #000;
+            border-top-color: #aaa; border-left-color: #aaa;
+            color: white; font-family: 'VT323', monospace;
+            font-size: 32px; padding: 10px 40px; text-shadow: 2px 2px #000;
+            cursor: pointer; text-decoration: none; display: inline-block;
+            transition: background 0.1s;
+        }
+        button:hover, .btn:hover { background-color: #559944; border-top-color: #77cc55; border-left-color: #77cc55; }
+        button:active, .btn:active { border: 4px solid #000; border-bottom-color: #aaa; border-right-color: #aaa; }
+        
+        .btn-link { background-color: #0088cc; border-top-color: #33bbff; border-left-color: #33bbff; }
+        .btn-link:hover { background-color: #0066aa; }
+
+        .logo-link { text-decoration: none; display: block; margin-top: 15px; transition: transform 0.2s; cursor: pointer; }
+        .logo-link:hover { transform: scale(1.1); }
+        .logo {
+            background-color: #885533; 
+            border: 4px solid #000;
+            border-top: 16px solid #559944; 
+            padding: 10px 20px;
+            color: #fff; font-size: 40px; letter-spacing: 2px;
+            text-shadow: 3px 3px 0 #000; display: inline-block;
+            box-shadow: inset -4px -4px 0 rgba(0,0,0,0.4), inset 4px 0 0 rgba(255,255,255,0.2), 0 10px 20px rgba(0,0,0,0.6);
+        }
+        .logo span { color: #ffff55; } 
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <!-- Main Menu -->
+        <div id="panel-menu" class="panel">
+            <div class="mc-logo">
+                <span class="mc-title-top">MINEBLOCK</span>
+                <span class="mc-title-bot">ZOMBIE SURVIVAL</span>
+            </div>
+            <p style="color:#fff;">WASD to Move | Mouse to Aim & Shoot</p>
+            <button onclick="startGame()">PLAY GAME</button>
+            <a href="https://g55.co/" target="_blank" class="logo-link" title="Play More Free Games at g55.co">
+                <div class="logo">g55<span>.co</span></div>
+            </a>
+        </div>
+
+        <!-- Inter-level Screen -->
+        <div id="panel-inter" class="panel">
+            <h2 id="wave-title" style="color: #ffff55; font-size: 60px;">WAVE COMPLETE</h2>
+            <p id="wave-stats">Zombies Defeated!</p>
+            <button onclick="startNextWave()">START NEXT WAVE</button>
+            <a href="https://g55.co/" target="_blank" class="btn btn-link">MORE GAMES</a>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="panel-gameover" class="panel">
+            <div class="mc-logo" style="transform: rotate(0deg); margin-top: 20px;">
+                <span class="mc-title-top" style="color:#ff5555; text-shadow:-3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0px 6px 0 #770000, -3px 9px 0 #000, 3px 9px 0 #000, 0px 9px 0 #000;">YOU DIED</span>
+            </div>
+            <h2 id="final-score">Score: 0</h2>
+            <button onclick="returnToMenu()">MAIN MENU</button>
+            <a href="https://g55.co/" target="_blank" class="btn btn-link">MORE GAMES</a>
+        </div>
+    </div>
+
+<script>
+// --- PROCEDURAL AUDIO SYSTEM ---
+let audioCtx;
+const SFX = {
+    init: function() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    },
+    playTone: function(freq, type, duration, vol, slideDown=false) {
+        if (!audioCtx) return;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type; osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        if (slideDown) osc.frequency.exponentialRampToValueAtTime(freq*0.1, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    },
+    playNoise: function(duration, vol, isDeep=false) {
+        if (!audioCtx) return;
+        let bufferSize = audioCtx.sampleRate * duration;
+        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (isDeep ? Math.sin(i*0.1) : 1);
+        let noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+        let gain = audioCtx.createGain(); gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        noise.connect(gain); gain.connect(audioCtx.destination); noise.start();
+    },
+    shoot: (wType) => {
+        if (wType === 2) { SFX.playNoise(0.15, 0.2); SFX.playTone(200, 'sawtooth', 0.15, 0.1, true); } 
+        else if (wType === 3) { SFX.playTone(150, 'square', 0.2, 0.15, true); } 
+        else { SFX.playTone(300 + (Math.random()*50), 'triangle', 0.15, 0.1, true); } 
+    },
+    hit: () => SFX.playNoise(0.1, 0.15),
+    playerHit: () => SFX.playNoise(0.3, 0.3, true),
+    explosion: () => { SFX.playNoise(0.5, 0.4, true); SFX.playTone(100, 'square', 0.5, 0.2, true); },
+    powerup: () => { SFX.playTone(600, 'sine', 0.1, 0.1); setTimeout(()=>SFX.playTone(800, 'sine', 0.15, 0.1), 100); },
+    heal: () => {
+        SFX.playTone(400, 'sine', 0.1, 0.1); 
+        setTimeout(()=>SFX.playTone(600, 'sine', 0.15, 0.1), 100);
+        setTimeout(()=>SFX.playTone(800, 'sine', 0.2, 0.1), 200);
+    }
+};
+
+// --- CORE ENGINE ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const PIXEL_SCALE = 3; 
+
+let gameState = 'MENU'; 
+
+function resize() {
+    canvas.width = Math.floor(window.innerWidth / PIXEL_SCALE);
+    canvas.height = Math.floor(window.innerHeight / PIXEL_SCALE);
+    if(floorPixels.length === 0) generateFloor();
+}
+window.addEventListener('resize', resize);
+
+const PALETTE = {
+    grass: '#559944', darkGrass: '#447733', dirt: '#886644',
+    steveSkin: '#ffcc99', steveShirt: '#00aaff', stevePants: '#0000aa', steveHair: '#442200',
+    zombieSkin: '#00aa00', zombieShirt: '#00aaaa', zombiePants: '#5555cc', skeletonBone: '#dddddd',
+    creeperSkin: '#55cc55',
+    arrowWood: '#885522', arrowTip: '#cccccc', blood: '#aa0000',
+    powerupRapid: '#ffff55', powerupShotgun: '#ffaa00', powerupExplosive: '#ff5555', powerupHealth: '#ff1111',
+    smoke: '#555555', fire: '#ffaa00'
+};
+
+const WEAPONS = {
+    0: { name: 'PISTOL', cd: 15, ammo: Infinity, color: '#fff' },
+    1: { name: 'SMG', cd: 5, ammo: 50, color: PALETTE.powerupRapid },
+    2: { name: 'SHOTGUN', cd: 25, ammo: 20, color: PALETTE.powerupShotgun },
+    3: { name: 'BAZOOKA', cd: 30, ammo: 10, color: PALETTE.powerupExplosive }
+};
+
+const keys = { w: false, a: false, s: false, d: false };
+const mouse = { x: 0, y: 0, pressed: false };
+
+window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - rect.left) / (rect.width / canvas.width);
+    mouse.y = (e.clientY - rect.top) / (rect.height / canvas.height);
+});
+canvas.addEventListener('mousedown', () => mouse.pressed = true);
+canvas.addEventListener('mouseup', () => mouse.pressed = false);
+
+// Game State Variables
+let frame = 0, score = 0, wave = 1, enemiesToSpawn = 0, spawnDelay = 60;
+let floorPixels = [];
+let entities = { zombies: [], arrows: [], particles: [], powerups: [] };
+let player = { x: 0, y: 0, width: 12, height: 16, speed: 1.5, hp: 100, maxHp: 100, shootCooldown: 0, weapon: 0, ammo: Infinity };
+
+function showPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    if(id) document.getElementById(id).style.display = 'flex';
+}
+
+function startGame() {
+    SFX.init(); resize();
+    player.x = canvas.width / 2; player.y = canvas.height / 2;
+    player.hp = player.maxHp; player.weapon = 0; score = 0; wave = 1; 
+    entities = { zombies: [], arrows: [], particles: [], powerups: [] };
+    showPanel(null); setupWave(); gameState = 'PLAYING';
+}
+
+function showInterLevel() {
+    gameState = 'INTER';
+    document.getElementById('wave-title').innerText = `WAVE ${wave} CLEARED!`;
+    document.getElementById('wave-stats').innerText = `Total Score: ${score}`;
+    showPanel('panel-inter');
+}
+
+function startNextWave() {
+    wave++; player.hp = Math.min(player.maxHp, player.hp + 20);
+    player.x = canvas.width / 2; player.y = canvas.height / 2;
+    entities.arrows = []; entities.powerups = [];
+    showPanel(null); setupWave(); gameState = 'PLAYING';
+}
+
+function triggerGameOver() {
+    gameState = 'GAMEOVER';
+    document.getElementById('final-score').innerText = `Final Score: ${score} | Reached Wave: ${wave}`;
+    showPanel('panel-gameover');
+}
+
+function returnToMenu() { gameState = 'MENU'; showPanel('panel-menu'); }
+
+function setupWave() {
+    enemiesToSpawn = 5 + (wave * 5);
+    spawnDelay = Math.max(15, 60 - (wave * 3));
+}
+
+function generateFloor() {
+    floorPixels = []; let count = Math.floor((canvas.width * canvas.height) / 400);
+    for(let i=0; i<count; i++) floorPixels.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, color: Math.random() > 0.5 ? PALETTE.darkGrass : PALETTE.dirt });
+}
+
+function spawnEnemy() {
+    if (enemiesToSpawn <= 0) return;
+    enemiesToSpawn--;
+    let side = Math.floor(Math.random() * 4);
+    let zx = side===0 ? Math.random()*canvas.width : side===1 ? canvas.width+20 : side===2 ? Math.random()*canvas.width : -20;
+    let zy = side===0 ? -20 : side===1 ? Math.random()*canvas.height : side===2 ? canvas.height+20 : Math.random()*canvas.height;
+    
+    let type = 'zombie', rand = Math.random();
+    
+    // Enemy Spawn Probabilities
+    if (wave >= 4 && rand > 0.85) type = 'tank';        // 15%
+    else if (wave >= 3 && rand > 0.70) type = 'skeleton'; // 15%
+    else if (wave >= 3 && rand > 0.55) type = 'creeper';  // 15%
+    else if (wave >= 2 && rand > 0.35) type = 'baby';     // 20%
+    
+    let enemy = { x: zx, y: zy, width: 12, height: 16, type: type, stateTimer: 0 };
+    switch(type) {
+        case 'zombie': enemy.hp = 3 + wave; enemy.speed = 0.5 + (wave*0.02); enemy.scale = 1; break;
+        case 'baby': enemy.hp = 1 + wave*0.5; enemy.speed = 1.2 + (wave*0.02); enemy.scale = 0.6; break;
+        case 'creeper': enemy.hp = 4 + wave; enemy.speed = 0.8 + (wave*0.02); enemy.scale = 1; break;
+        case 'tank': enemy.hp = 15 + wave*2; enemy.speed = 0.25; enemy.scale = 1.5; break;
+        case 'skeleton': enemy.hp = 2 + wave; enemy.speed = 0.4; enemy.scale = 1; break;
+    }
+    enemy.width *= enemy.scale; enemy.height *= enemy.scale;
+    entities.zombies.push(enemy);
+}
+
+function spawnParticles(x, y, color, count=8, speed=4) {
+    for(let i=0; i<count; i++) entities.particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * speed, vy: (Math.random() - 0.5) * speed, life: 20 + Math.random() * 10, color: color });
+}
+
+function rectIntersect(r1, r2) { return !(r2.x - r2.width/2 > r1.x + r1.width/2 || r2.x + r2.width/2 < r1.x - r1.width/2 || r2.y - r2.height/2 > r1.y + r1.height/2 || r2.y + r2.height/2 < r1.y - r1.height/2); }
+
+function fireArrow(x, y, tx, ty, isEnemy, wType = 0) {
+    let angle = Math.atan2(ty - y, tx - x);
+    let createA = (off) => entities.arrows.push({ x: x, y: y-4, vx: Math.cos(angle+off)*(isEnemy?3:5), vy: Math.sin(angle+off)*(isEnemy?3:5), width: 4, height: 4, isEnemy: isEnemy, explosive: wType === 3 });
+    if (wType === 2 && !isEnemy) { createA(-0.2); createA(0); createA(0.2); } else createA(0);
+    SFX.shoot(wType);
+}
+
+function explode(x, y) {
+    SFX.explosion();
+    spawnParticles(x, y, PALETTE.fire, 20, 8); spawnParticles(x, y, PALETTE.smoke, 20, 6);
+    entities.zombies.forEach(z => { if (Math.hypot(z.x - x, z.y - y) < 50) { z.hp -= 10; spawnParticles(z.x, z.y, PALETTE.blood); } });
+    if (Math.hypot(player.x - x, player.y - y) < 40) { player.hp -= 15; spawnParticles(player.x, player.y, PALETTE.blood); SFX.playerHit(); }
+}
+
+function drawCharacter(c) {
+    ctx.save(); 
+    ctx.translate(c.x, c.y); 
+    ctx.scale(c.scale||1, c.scale||1);
+    
+    let bounce = (frame % 20 < 10 && (c.speed > 0 || c === player && (keys.w||keys.a||keys.s||keys.d))) ? 1 : 0;
+    
+    // --- DRAW CREEPER ---
+    if (c.type === 'creeper') {
+        let dist = Math.hypot(player.x - c.x, player.y - c.y);
+        let isFlashing = dist < 45 && (frame % 10 < 5); // Flashes white when close
+        
+        ctx.fillStyle = isFlashing ? '#ffffff' : '#008800'; // Legs
+        ctx.fillRect(-4, 4 - bounce, 3, 4); // Front L
+        ctx.fillRect(1, 4 + bounce, 3, 4);  // Front R
+        ctx.fillStyle = isFlashing ? '#dddddd' : '#006600'; 
+        ctx.fillRect(-6, 2 + bounce, 3, 4); // Back L
+        ctx.fillRect(3, 2 - bounce, 3, 4);  // Back R
+
+        ctx.fillStyle = isFlashing ? '#ffffff' : PALETTE.creeperSkin;
+        ctx.fillRect(-4, -4, 8, 8); // Body
+        ctx.fillRect(-4, -12, 8, 8); // Head
+        
+        // Creeper Face
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-3, -10, 2, 2); // Eye L
+        ctx.fillRect(1, -10, 2, 2);  // Eye R
+        ctx.fillRect(-1, -8, 2, 3);  // Nose
+        ctx.fillRect(-2, -6, 1, 2);  // Mouth L
+        ctx.fillRect(1, -6, 1, 2);   // Mouth R
+        
+        ctx.restore();
+        return; // Early return for creeper
+    }
+
+    let isZ = c.type==='zombie'||c.type==='baby'||c.type==='tank', isS = c.type==='skeleton';
+    
+    // Pants
+    ctx.fillStyle = isZ ? PALETTE.zombiePants : (isS ? PALETTE.skeletonBone : PALETTE.stevePants);
+    ctx.fillRect(-4, 2 - bounce, 4, 6); 
+    ctx.fillRect(0, 2 + bounce, 4, 6); 
+    
+    // Shirt / Body
+    ctx.fillStyle = isZ ? PALETTE.zombieShirt : (isS ? PALETTE.skeletonBone : PALETTE.steveShirt);
+    ctx.fillRect(-4, -6, 8, 8);
+    if(isS){ ctx.fillStyle='#000'; ctx.fillRect(-2,-4,4,1); ctx.fillRect(-2,-2,4,1); }
+    
+    // Player Aiming Arm & Gun
+    if (c === player) {
+        let angle = Math.atan2(mouse.y - c.y, mouse.x - c.x);
+        ctx.save();
+        ctx.translate(0, -4 - bounce);
+        ctx.rotate(angle);
+        if (Math.abs(angle) > Math.PI / 2) { ctx.scale(1, -1); }
+        
+        ctx.fillStyle = PALETTE.steveShirt; ctx.fillRect(-2, -2, 6, 4); 
+        ctx.fillStyle = PALETTE.steveSkin; ctx.fillRect(4, -1.5, 4, 3); 
+
+        if (player.weapon === 0 || player.weapon === 1) { 
+            ctx.fillStyle = '#444'; ctx.fillRect(8, -2, 6, 3); 
+            if(player.weapon === 1) { ctx.fillStyle = '#222'; ctx.fillRect(10, 1, 2, 3); } 
+            ctx.fillStyle = '#222'; ctx.fillRect(6, 0, 2, 3); 
+        } else if (player.weapon === 2) {
+            ctx.fillStyle = '#333'; ctx.fillRect(8, -2, 9, 2); 
+            ctx.fillStyle = '#531'; ctx.fillRect(6, -1, 3, 3); 
+            ctx.fillStyle = '#531'; ctx.fillRect(11, 0, 4, 2); 
+        } else if (player.weapon === 3) {
+            ctx.fillStyle = '#252'; ctx.fillRect(2, -3, 14, 5); 
+            ctx.fillStyle = '#000'; ctx.fillRect(16, -2, 2, 3); 
+            ctx.fillStyle = '#111'; ctx.fillRect(8, 2, 2, 3); 
+        }
+        ctx.restore();
+    } else if (isZ || isS) {
+        ctx.fillStyle = isS ? PALETTE.skeletonBone : PALETTE.zombieSkin; 
+        ctx.fillRect(-6, -6, 2, 6); ctx.fillRect(4, -6, 2, 6); 
+    }
+
+    // Head
+    ctx.fillStyle = isZ ? PALETTE.zombieSkin : (isS ? PALETTE.skeletonBone : PALETTE.steveSkin); 
+    ctx.fillRect(-4, -14, 8, 8);
+    
+    // Face
+    if (c === player) { 
+        ctx.fillStyle = PALETTE.steveHair; 
+        ctx.fillRect(-4, -14, 8, 2); ctx.fillRect(-4, -12, 1, 2); ctx.fillRect(3, -12, 1, 2); ctx.fillRect(-2, -8, 4, 1); 
+        ctx.fillStyle = '#fff'; ctx.fillRect(-3, -11, 2, 1); ctx.fillRect(1, -11, 2, 1);
+        ctx.fillStyle = '#3333ff'; 
+        if (mouse.x < c.x) { ctx.fillRect(-3, -11, 1, 1); ctx.fillRect(1, -11, 1, 1); } 
+        else { ctx.fillRect(-2, -11, 1, 1); ctx.fillRect(2, -11, 1, 1); }
+        ctx.fillStyle = '#c89a74'; ctx.fillRect(-1, -9, 2, 1);
+    } else { 
+        ctx.fillStyle = '#000'; ctx.fillRect(-2, -12, 1, isS?2:1); ctx.fillRect(1, -12, 1, isS?2:1); 
+    }
+    
+    ctx.restore();
+}
+
+function update() {
+    if (gameState !== 'PLAYING') return;
+    frame++;
+
+    let dx = 0; let dy = 0;
+    if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
+    if (dx !== 0 && dy !== 0) { let len = Math.sqrt(dx*dx + dy*dy); dx /= len; dy /= len; }
+    player.x = Math.max(8, Math.min(canvas.width - 8, player.x + dx * player.speed));
+    player.y = Math.max(16, Math.min(canvas.height - 8, player.y + dy * player.speed));
+
+    if (player.shootCooldown > 0) player.shootCooldown--;
+    if (mouse.pressed && player.shootCooldown === 0) {
+        fireArrow(player.x, player.y, mouse.x, mouse.y, false, player.weapon);
+        player.shootCooldown = WEAPONS[player.weapon].cd;
+        if (player.weapon !== 0 && --player.ammo <= 0) player.weapon = 0;
+    }
+
+    if (enemiesToSpawn > 0 && frame % spawnDelay === 0) spawnEnemy();
+    else if (enemiesToSpawn <= 0 && entities.zombies.length === 0) showInterLevel();
+
+    for (let i = entities.arrows.length - 1; i >= 0; i--) {
+        let a = entities.arrows[i], hit = false;
+        a.x += a.vx; a.y += a.vy;
+        if (a.x < 0 || a.x > canvas.width || a.y < 0 || a.y > canvas.height) { entities.arrows.splice(i, 1); continue; }
+        
+        if (a.isEnemy && rectIntersect(a, player)) { player.hp -= 5; SFX.playerHit(); spawnParticles(player.x, player.y, PALETTE.blood); hit = true; } 
+        else if (!a.isEnemy) {
+            for (let z of entities.zombies) {
+                if (rectIntersect(a, z)) {
+                    z.hp -= (player.weapon===3 ? 0 : player.weapon===2 ? 1 : 2);
+                    SFX.hit(); 
+                    let bloodColor = (z.type === 'creeper' || z.type === 'skeleton') ? '#cccccc' : PALETTE.blood;
+                    spawnParticles(z.x, z.y, bloodColor); hit = true; break;
+                }
+            }
+        }
+        if (hit) { if(a.explosive) explode(a.x, a.y); entities.arrows.splice(i, 1); }
+    }
+
+    for (let i = entities.powerups.length - 1; i >= 0; i--) {
+        let p = entities.powerups[i]; p.life--; p.y += Math.sin(frame * 0.1) * 0.2;
+        if (rectIntersect({x:p.x, y:p.y, width:8, height:8}, player)) {
+            if (p.type === 4) { 
+                player.hp = Math.min(player.maxHp, player.hp + 30); SFX.heal(); spawnParticles(p.x, p.y, PALETTE.powerupHealth);
+            } else { 
+                player.weapon = p.type; player.ammo = WEAPONS[p.type].ammo; SFX.powerup(); spawnParticles(p.x, p.y, WEAPONS[p.type].color); 
+            }
+            entities.powerups.splice(i, 1); continue;
+        }
+        if (p.life <= 0) entities.powerups.splice(i, 1);
+    }
+
+    for (let i = entities.zombies.length - 1; i >= 0; i--) {
+        let z = entities.zombies[i];
+        if (z.hp <= 0) {
+            score += (z.type==='tank'?5 : z.type==='creeper'?4 : z.type==='skeleton'?3:1);
+            let pColor = z.type === 'creeper' ? PALETTE.creeperSkin : (z.type === 'skeleton' ? PALETTE.skeletonBone : PALETTE.zombieSkin);
+            spawnParticles(z.x, z.y, pColor, 10);
+            
+            if (Math.random() < 0.20) {
+                let lootType = Math.floor(Math.random() * 4) + 1; 
+                entities.powerups.push({ x: z.x, y: z.y, type: lootType, life: 600 });
+            }
+            entities.zombies.splice(i, 1); continue;
+        }
+
+        let dist = Math.hypot(player.x - z.x, player.y - z.y);
+        if (z.type === 'skeleton') {
+            z.stateTimer++;
+            if (dist > 80) { let ang = Math.atan2(player.y-z.y, player.x-z.x); z.x += Math.cos(ang)*z.speed; z.y += Math.sin(ang)*z.speed; } 
+            else if (z.stateTimer > 90) { fireArrow(z.x, z.y, player.x, player.y, true); z.stateTimer = 0; }
+        } else {
+            let ang = Math.atan2(player.y-z.y, player.x-z.x); z.x += Math.cos(ang)*z.speed; z.y += Math.sin(ang)*z.speed;
+        }
+
+        // --- ENEMY COLLISION WITH PLAYER ---
+        if (rectIntersect(z, player)) {
+            if (z.type === 'creeper') {
+                explode(z.x, z.y);
+                z.hp = 0; // Kills creeper
+            } else {
+                player.hp -= (z.type==='tank'?1:0.5);
+                if(frame%10===0) SFX.playerHit();
+                spawnParticles(player.x, player.y, PALETTE.blood, 2);
+            }
+        }
+    }
+
+    for (let i = entities.particles.length - 1; i >= 0; i--) {
+        let p = entities.particles[i]; p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) entities.particles.splice(i, 1);
+    }
+
+    if (player.hp <= 0) triggerGameOver();
+}
+
+function draw() {
+    ctx.fillStyle = PALETTE.grass; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    floorPixels.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); });
+
+    if (gameState === 'MENU') return; 
+
+    entities.powerups.forEach(p => { 
+        if (p.type === 4) {
+            ctx.fillStyle = PALETTE.powerupHealth; ctx.fillRect(p.x-3, p.y-3, 6, 6); 
+            ctx.fillStyle = '#fff'; ctx.fillRect(p.x-1, p.y-2, 2, 4); ctx.fillRect(p.x-2, p.y-1, 4, 2); 
+        } else { 
+            ctx.fillStyle = WEAPONS[p.type].color; ctx.fillRect(p.x-3, p.y-3, 6, 6); 
+            ctx.fillStyle = '#fff'; ctx.fillRect(p.x-1, p.y-1, 2, 2); 
+        }
+    });
+    
+    entities.particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); });
+
+    let drawList = [ { obj: player, y: player.y } ];
+    entities.zombies.forEach(z => drawList.push({ obj: z, y: z.y }));
+    drawList.sort((a, b) => a.y - b.y).forEach(item => drawCharacter(item.obj));
+
+    entities.arrows.forEach(a => {
+        if (a.explosive) {
+            ctx.fillStyle = '#222'; ctx.fillRect(a.x-2, a.y-2, 4, 4);
+            ctx.fillStyle = '#f00'; ctx.fillRect(a.x-a.vx, a.y-a.vy, 2, 2);
+        } else if (a.isEnemy) {
+            ctx.fillStyle = PALETTE.arrowTip; ctx.fillRect(a.x-1, a.y-1, 2, 2);
+            ctx.fillStyle = PALETTE.arrowWood; ctx.fillRect(a.x-a.vx, a.y-a.vy, 2, 2);
+        } else {
+            ctx.fillStyle = '#ffff00'; ctx.fillRect(a.x-1, a.y-1, 2, 2);
+            ctx.fillStyle = '#ff8800'; ctx.fillRect(a.x-a.vx*0.5, a.y-a.vy*0.5, 2, 2);
+        }
+    });
+
+    if (gameState === 'PLAYING') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, 18); ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        ctx.fillStyle = 'white'; ctx.font = '14px VT323, monospace'; ctx.textAlign='left';
+        ctx.fillText(`SCORE: ${score}`, 5, 14);
+        ctx.textAlign = 'center'; ctx.fillText(`WAVE: ${wave} (${entities.zombies.length + enemiesToSpawn} LEFT)`, canvas.width/2, 14);
+        
+        ctx.fillStyle = '#333'; ctx.fillRect(canvas.width - 65, 4, 60, 10);
+        ctx.fillStyle = PALETTE.blood; ctx.fillRect(canvas.width - 65, 4, Math.max(0, (player.hp/player.maxHp)*60), 10);
+        ctx.textAlign = 'right'; ctx.fillStyle='white'; ctx.fillText('HP', canvas.width - 70, 14);
+        
+        ctx.textAlign = 'left'; ctx.fillStyle = WEAPONS[player.weapon].color;
+        ctx.fillText(`WEAPON: ${WEAPONS[player.weapon].name} [${player.weapon === 0 ? "INF" : player.ammo}]`, 5, canvas.height - 6);
+
+        let cx = Math.floor(mouse.x); let cy = Math.floor(mouse.y);
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(cx-1, cy-5, 3, 4); ctx.fillRect(cx-1, cy+2, 3, 4); ctx.fillRect(cx-5, cy-1, 4, 3); ctx.fillRect(cx+2, cy-1, 4, 3); ctx.fillRect(cx-1, cy-1, 3, 3); 
+        ctx.fillStyle = 'white';
+        ctx.fillRect(cx, cy-4, 1, 2); ctx.fillRect(cx, cy+3, 1, 2); ctx.fillRect(cx-4, cy, 2, 1); ctx.fillRect(cx+3, cy, 2, 1); ctx.fillRect(cx, cy, 1, 1);   
+    }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+resize(); showPanel('panel-menu'); loop();
+</script>
+
+</body>
+</html>
