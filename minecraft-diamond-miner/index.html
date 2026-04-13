@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Diamond Miner</title>
+    <style>
+        /* Base Reset & Fullscreen setup */
+        html, body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            background-color: #111;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none;
+            user-select: none; -webkit-user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%; height: 100%;
+        }
+
+        canvas { display: block; }
+
+        /* UI Overlays */
+        #ui-bar {
+            position: absolute; top: 0; left: 0; width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px; box-sizing: border-box;
+            display: none; justify-content: space-between;
+            color: #fff; font-size: 20px; font-weight: bold;
+            text-shadow: 2px 2px 0 #000; z-index: 10;
+        }
+        .ui-group { display: flex; gap: 20px; }
+
+        #notification {
+            position: absolute; top: 30%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px; font-weight: bold; color: #55FF55;
+            text-shadow: 3px 3px 0 #000, 0 0 15px #00FF00;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.5s ease; z-index: 15; white-space: nowrap;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute; bottom: 30px; left: 0; width: 100%;
+            display: none; justify-content: center; gap: 30px;
+            padding: 0 20px; box-sizing: border-box; z-index: 10;
+        }
+        .control-btn {
+            width: 70px; height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 15px; color: #fff; font-size: 35px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 5px 10px rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0.95) translateY(2px);
+        }
+        @media (min-width: 768px) { #mobile-controls { display: none !important; } }
+
+        /* Menus (Start & Game Over) */
+        .menu-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 20; color: #fff; text-align: center;
+        }
+
+        h1 { 
+            color: #55FFFF; 
+            font-size: clamp(28px, 6vw, 48px); 
+            margin: 0 0 10px 0; 
+            text-shadow: 4px 4px 0 #005555; 
+            line-height: 1.2;
+            padding: 0 10px;
+        }
+        
+        .controls-info {
+            font-size: clamp(14px, 3vw, 18px);
+            color: #DDDDDD;
+            margin: 0 0 30px 0;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .game-over-title { color: #FF5555; text-shadow: 4px 4px 0 #550000; }
+        .stats-text { font-size: 24px; margin: 10px 0; color: #AAAAAA; }
+        .stats-highlight { color: #55FFFF; font-weight: bold; }
+
+        /* Buttons */
+        .btn {
+            margin-top: 20px; padding: 15px 40px; font-size: 22px;
+            font-family: 'Courier New', Courier, monospace; font-weight: bold;
+            border: 4px solid #000; border-radius: 0; cursor: pointer;
+            box-shadow: 0 6px 0 #000; transition: transform 0.1s, box-shadow 0.1s;
+            text-decoration: none; display: inline-block;
+        }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #000; }
+        
+        .btn-start { background: #55FF55; color: #000; }
+        .btn-start:hover { background: #AAFFAA; }
+
+        .btn-more { background: #FFAA00; color: #000; }
+        .btn-more:hover { background: #FFFF55; }
+
+        /* G55 Logo */
+        .g55-logo-container {
+            position: absolute; bottom: 30px; text-align: center; width: 100%;
+        }
+        .g55-logo {
+            font-size: 28px; font-weight: bold; color: #fff;
+            text-decoration: none; text-shadow: 2px 2px 0 #FF00FF, -2px -2px 0 #00FFFF;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-bar">
+        <div class="ui-group">
+            <div>🏆 Lvl <span id="ui-level">1</span></div>
+            <div>💎 <span id="ui-score">0</span></div>
+        </div>
+        <div class="ui-group">
+            <div>▼ <span id="ui-depth">0</span>/<span id="ui-target-depth">15</span></div>
+            <div style="color: #FFFF55;">⏱ <span id="ui-time">60</span>s</div>
+        </div>
+    </div>
+
+    <div id="notification">LEVEL UP!</div>
+
+    <div id="mobile-controls">
+        <div class="control-btn" id="btn-left">◀</div>
+        <div class="control-btn" id="btn-down">▼</div>
+        <div class="control-btn" id="btn-right">▶</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-menu" class="menu-screen">
+        <h1>MINECRAFT DIAMOND MINER</h1>
+        <p class="controls-info">Controls: Arrow Keys / WASD or Touch buttons to move & dig</p>
+        <button class="btn btn-start" onclick="startGame()">START GAME</button>
+        <div class="g55-logo-container">
+            <a href="https://g55.co/" target="_blank" class="g55-logo">g55.co</a>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="menu-screen" style="display: none;">
+        <h1 class="game-over-title">GAME OVER</h1>
+        <p class="stats-text" id="game-over-reason"></p>
+        <p class="stats-text">Level Reached: <span class="stats-highlight" id="final-level">1</span></p>
+        <p class="stats-text">Total Diamonds: <span class="stats-highlight" id="final-score">0</span></p>
+        <button class="btn btn-start" onclick="startGame()">PLAY AGAIN</button>
+        <a href="https://g55.co/" target="_blank" class="btn btn-more">MORE GAMES</a>
+    </div>
+</div>
+
+<script>
+    // --- Audio Synthesis (Web Audio API) ---
+    let audioCtx;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, type, duration, vol=0.1) {
+        if(!audioCtx) return;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function sndDig() { playTone(150, 'square', 0.1, 0.05); }
+    function sndDiamond() { 
+        playTone(900, 'sine', 0.1, 0.1); 
+        setTimeout(() => playTone(1200, 'sine', 0.3, 0.1), 100); 
+    }
+    function sndExplosion() {
+        playTone(100, 'sawtooth', 0.5, 0.3);
+        setTimeout(() => playTone(50, 'sawtooth', 0.5, 0.3), 100);
+    }
+    function sndLevelUp() {
+        [440, 554, 659, 880].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.2, 0.1), i * 150));
+    }
+    function sndGameOver() {
+        [300, 250, 200, 150].forEach((f, i) => setTimeout(() => playTone(f, 'sawtooth', 0.3, 0.2), i * 300));
+    }
+
+    // --- Core System & Responsive Canvas ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const TILE_SIZE = 40;
+    let COLS = 0, ROWS = 0;
+
+    const EMPTY = 0, DIRT = 1, STONE = 2, DIAMOND = 3, LAVA = 4, PORTAL = 5;
+
+    let grid = {}, cameraY = 0, score = 0, timeLeft = 60;
+    let lastTime = 0, lastLavaTick = 0;
+    let state = 'MENU'; 
+    let level = 1, targetDepth = 15;
+
+    let mobs = [];
+    let particles = [];
+    let keys = { left: false, right: false, down: false };
+
+    let player = {
+        gx: 0, gy: 0, x: 0, y: 0,
+        targetX: 0, targetY: 0,
+        speed: 8, facing: 1, swingAnim: 0, dead: false
+    };
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        COLS = Math.ceil(canvas.width / TILE_SIZE);
+        ROWS = Math.ceil(canvas.height / TILE_SIZE);
+        if (player.gx >= COLS) {
+            player.gx = Math.max(0, COLS - 1);
+            player.targetX = player.gx * TILE_SIZE;
+            player.x = player.targetX;
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- Input Management ---
+    window.addEventListener('keydown', e => {
+        if (state !== 'PLAYING') return;
+        if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+        if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+        if (e.key === 'ArrowDown' || e.key === 's') keys.down = true;
+    });
+    window.addEventListener('keyup', e => {
+        if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+        if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+        if (e.key === 'ArrowDown' || e.key === 's') keys.down = false;
+    });
+
+    function bindTouch(id, key) {
+        const btn = document.getElementById(id);
+        const press = (e) => { e.preventDefault(); if(state==='PLAYING') keys[key] = true; };
+        const release = (e) => { e.preventDefault(); keys[key] = false; };
+        btn.addEventListener('touchstart', press, {passive: false});
+        btn.addEventListener('touchend', release, {passive: false});
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+    }
+    bindTouch('btn-left', 'left');
+    bindTouch('btn-right', 'right');
+    bindTouch('btn-down', 'down');
+
+    // --- Dynamic Grid & Mob Generation ---
+    function getBlock(gx, gy) {
+        if (gx < 0 || gx >= COLS) return STONE; 
+        if (gy < 0) return EMPTY;               
+        if (!grid[gy]) grid[gy] = [];
+        
+        if (grid[gy][gx] === undefined) {
+            if (gy === 0) grid[gy][gx] = EMPTY;
+            else if (gy === 1 || gy === 2) grid[gy][gx] = DIRT;
+            else if (gy >= targetDepth) grid[gy][gx] = PORTAL; 
+            else {
+                let r = Math.random();
+                let lavaChance = 0.05 + (level * 0.015);
+                let diamondChance = 0.12;
+                let mobChance = 0.02 + (level * 0.01);
+                let stoneChance = 0.35 + (level * 0.02);
+                
+                if (r < lavaChance) grid[gy][gx] = LAVA;
+                else if (r < lavaChance + diamondChance) grid[gy][gx] = DIAMOND;
+                else if (r < lavaChance + diamondChance + mobChance) {
+                    grid[gy][gx] = EMPTY; 
+                    mobs.push({
+                        gx: gx, gy: gy,
+                        x: gx * TILE_SIZE, y: gy * TILE_SIZE,
+                        tx: gx * TILE_SIZE, ty: gy * TILE_SIZE,
+                        dir: Math.random() > 0.5 ? 1 : -1,
+                        speed: 2 + (level * 0.3) 
+                    });
+                }
+                else if (r < lavaChance + diamondChance + mobChance + stoneChance) grid[gy][gx] = STONE;
+                else grid[gy][gx] = DIRT;
+            }
+        }
+        return grid[gy][gx];
+    }
+    function setBlock(gx, gy, type) {
+        if (!grid[gy]) grid[gy] = [];
+        grid[gy][gx] = type;
+    }
+
+    // --- Visual Effects ---
+    function createExplosion(cx, cy, type) {
+        let colors = [];
+        if (type === 'creeper') colors = ['#FFFFFF', '#FF5555', '#FFAA00', '#555555', '#000000', '#0DA540'];
+        else if (type === 'lava') colors = ['#FF5500', '#FFAA00', '#555555'];
+        
+        for (let i = 0; i < 40; i++) {
+            particles.push({
+                x: cx, y: cy,
+                vx: (Math.random() - 0.5) * 16,
+                vy: (Math.random() - 0.5) * 16,
+                size: Math.random() * 15 + 5,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1.0
+            });
+        }
+    }
+
+    function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.025;
+            p.size *= 0.95;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+    }
+
+    function drawParticles() {
+        particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+        });
+        ctx.globalAlpha = 1.0;
+    }
+
+    // --- Logic ---
+    function showNotification(msg, color="#55FF55") {
+        let el = document.getElementById('notification');
+        el.innerText = msg;
+        el.style.color = color;
+        el.style.opacity = 1;
+        setTimeout(() => el.style.opacity = 0, 2000);
+    }
+
+    function processLevelUp() {
+        sndLevelUp();
+        level++; score += 5; timeLeft += 30;
+        targetDepth = 15 + (level * 5);
+        showNotification(`LEVEL ${level}! +30s`);
+        
+        grid = {}; mobs = []; particles = [];
+        player.gx = Math.floor(COLS / 2); player.gy = 0;
+        player.x = player.gx * TILE_SIZE; player.y = player.gy * TILE_SIZE;
+        player.targetX = player.x; player.targetY = player.y;
+        cameraY = 0;
+        updateUI();
+    }
+
+    function tryMove(dx, dy) {
+        let tgx = player.gx + dx;
+        let tgy = player.gy + dy;
+        
+        if (tgx < 0 || tgx >= COLS) return;
+        let targetBlock = getBlock(tgx, tgy);
+
+        if (targetBlock === PORTAL) {
+            processLevelUp(); return;
+        }
+
+        if (targetBlock === LAVA) {
+            createExplosion(tgx * TILE_SIZE + TILE_SIZE/2, tgy * TILE_SIZE + TILE_SIZE/2, 'lava');
+            player.dead = true;
+            triggerGameOver("Melted in Lava!");
+        } else {
+            if (targetBlock === DIAMOND) {
+                sndDiamond();
+                score++;
+            } else if (targetBlock !== EMPTY) {
+                sndDig();
+            }
+            
+            setBlock(tgx, tgy, EMPTY);
+            player.gx = tgx; player.gy = tgy;
+            player.targetX = tgx * TILE_SIZE; player.targetY = tgy * TILE_SIZE;
+            if (dx > 0) player.facing = 1;
+            if (dx < 0) player.facing = -1;
+            player.swingAnim = 10;
+            
+            updateUI();
+        }
+    }
+
+    function updateLogic() {
+        let now = Date.now();
+
+        // 1. Lava Gravity Mechanics (Every 250ms)
+        if (now - lastLavaTick >= 250) {
+            lastLavaTick = now;
+            let rows = Object.keys(grid).map(Number).sort((a,b) => b - a); // Bottom-up processing
+            for (let r of rows) {
+                for (let c = 0; c < COLS; c++) {
+                    if (grid[r][c] === LAVA) {
+                        let blockBelow = getBlock(c, r + 1); 
+                        if (blockBelow === EMPTY) {
+                            grid[r][c] = EMPTY;
+                            setBlock(c, r + 1, LAVA);
+                            
+                            // Check if falling lava crushes the player
+                            if (player.gx === c && player.gy === r + 1 && !player.dead) {
+                                sndExplosion();
+                                createExplosion(player.x + TILE_SIZE/2, player.y + TILE_SIZE/2, 'lava');
+                                player.dead = true;
+                                triggerGameOver("Crushed by falling Lava!");
+                                return; 
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Mobs Update
+        let viewTop = cameraY - TILE_SIZE * 5;
+        let viewBottom = cameraY + canvas.height + TILE_SIZE * 5;
+
+        for (let i = mobs.length - 1; i >= 0; i--) {
+            let m = mobs[i];
+            
+            if (m.y < viewTop || m.y > viewBottom) continue;
+
+            if (m.x < m.tx) m.x = Math.min(m.tx, m.x + m.speed);
+            if (m.x > m.tx) m.x = Math.max(m.tx, m.x - m.speed);
+            if (m.y < m.ty) m.y = Math.min(m.ty, m.y + m.speed);
+            if (m.y > m.ty) m.y = Math.max(m.ty, m.y - m.speed);
+
+            if (m.x === m.tx && m.y === m.ty) {
+                if (getBlock(m.gx, m.gy) === LAVA) {
+                    mobs.splice(i, 1);
+                    continue;
+                }
+
+                let blockBelow = getBlock(m.gx, m.gy + 1);
+                if (blockBelow === EMPTY || blockBelow === PORTAL) {
+                    m.gy++;
+                    m.ty = m.gy * TILE_SIZE;
+                } else {
+                    let frontBlock = getBlock(m.gx + m.dir, m.gy);
+                    if (frontBlock === EMPTY || frontBlock === PORTAL) {
+                        m.gx += m.dir;
+                        m.tx = m.gx * TILE_SIZE;
+                    } else {
+                        m.dir *= -1; 
+                    }
+                }
+            }
+
+            // Player Collision Check (Creeper Explosion)
+            if (!player.dead) {
+                let dist = Math.hypot(player.x - m.x, player.y - m.y);
+                if (dist < TILE_SIZE * 0.7) { 
+                    sndExplosion();
+                    createExplosion(m.x + TILE_SIZE/2, m.y + TILE_SIZE/2, 'creeper');
+                    mobs.splice(i, 1);
+                    player.dead = true;
+                    triggerGameOver("Sssssss... BOOM! (Creeper)");
+                    return;
+                }
+            }
+        }
+
+        // 3. Player Update
+        if (!player.dead) {
+            if (player.swingAnim > 0) player.swingAnim--;
+
+            if (player.x < player.targetX) player.x = Math.min(player.targetX, player.x + player.speed);
+            if (player.x > player.targetX) player.x = Math.max(player.targetX, player.x - player.speed);
+            if (player.y < player.targetY) player.y = Math.min(player.targetY, player.y + player.speed);
+            if (player.y > player.targetY) player.y = Math.max(player.targetY, player.y - player.speed);
+
+            if (player.x === player.targetX && player.y === player.targetY) {
+                let blockBelow = getBlock(player.gx, player.gy + 1);
+                if (blockBelow === EMPTY || blockBelow === PORTAL) {
+                    tryMove(0, 1);
+                } else {
+                    if (keys.down) tryMove(0, 1);
+                    else if (keys.left) tryMove(-1, 0);
+                    else if (keys.right) tryMove(1, 0);
+                }
+            }
+        }
+
+        // Camera Tracking
+        let targetCamY = Math.max(0, player.y - (canvas.height / 3));
+        cameraY += (targetCamY - cameraY) * 0.1;
+
+        // Timer
+        if (now - lastTime >= 1000) {
+            timeLeft--; lastTime = now;
+            updateUI();
+            if (timeLeft <= 0 && !player.dead) triggerGameOver("Time's Up!");
+        }
+    }
+
+    // --- Rendering ---
+    function drawBlock(x, y, type) {
+        if (type === EMPTY) return;
+        
+        ctx.fillStyle = (type === DIRT) ? '#8B5A2B' : (type === STONE || type === DIAMOND) ? '#7D7D7D' : '';
+        if (type === DIRT || type === STONE || type === DIAMOND) {
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(x, y+TILE_SIZE-4, TILE_SIZE, 4);
+            ctx.fillRect(x+TILE_SIZE-4, y, 4, TILE_SIZE);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(x, y, TILE_SIZE, 4);
+            ctx.fillRect(x, y, 4, TILE_SIZE);
+        }
+
+        if (type === DIAMOND) {
+            ctx.fillStyle = '#55FFFF';
+            ctx.fillRect(x+12, y+12, 16, 16);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(x+14, y+14, 6, 6);
+        } else if (type === LAVA) {
+            ctx.fillStyle = '#FF5500';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#FFAA00';
+            let anim = (Date.now() / 200) % 10;
+            let off = anim > 5 ? 10 - anim : anim;
+            ctx.fillRect(x+4, y+4+off, 12, 12);
+            ctx.fillRect(x+20, y+16-off, 12, 12);
+        } else if (type === PORTAL) {
+            ctx.fillStyle = '#AA00AA';
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#550055';
+            ctx.fillRect(x+4, y+4, TILE_SIZE-8, TILE_SIZE-8);
+            ctx.fillStyle = Math.sin(Date.now()/200)>0 ? '#FF55FF' : '#AA00AA';
+            ctx.fillRect(x+12, y+12, 16, 16);
+        }
+    }
+
+    function drawMob(m) {
+        let px = m.x, py = m.y;
+        ctx.save();
+        ctx.translate(px + TILE_SIZE/2, py + TILE_SIZE/2);
+        ctx.scale(m.dir, 1);
+        ctx.translate(-(px + TILE_SIZE/2), -(py + TILE_SIZE/2));
+        
+        ctx.fillStyle = '#0DA540';
+        ctx.fillRect(px + 8, py + 8, 24, 24); 
+        ctx.fillRect(px + 12, py + 32, 16, 8); 
+        
+        ctx.fillStyle = '#000';
+        ctx.fillRect(px + 12, py + 14, 4, 4); 
+        ctx.fillRect(px + 24, py + 14, 4, 4); 
+        ctx.fillRect(px + 18, py + 18, 4, 6); 
+        ctx.fillRect(px + 14, py + 24, 4, 4); 
+        ctx.fillRect(px + 22, py + 24, 4, 4); 
+        
+        ctx.restore();
+    }
+
+    function drawSteve() {
+        if (player.dead) return;
+        let px = player.x; let py = player.y;
+
+        ctx.save();
+        ctx.translate(px + TILE_SIZE/2, py + TILE_SIZE/2);
+        ctx.scale(player.facing, 1);
+        ctx.translate(-(px + TILE_SIZE/2), -(py + TILE_SIZE/2));
+
+        const cSkin = '#BCA37F', cHair = '#331C13', cShirt = '#00AFAF', cPants = '#48489D', cShoes = '#6C6C6C';
+
+        ctx.fillStyle = cSkin; ctx.fillRect(px+13, py+4, 14, 14);
+        ctx.fillStyle = cHair; ctx.fillRect(px+13, py+4, 14, 4); 
+        ctx.fillRect(px+13, py+8, 4, 4);
+        ctx.fillStyle = '#FFF'; ctx.fillRect(px+21, py+10, 4, 4);
+        ctx.fillStyle = '#444'; ctx.fillRect(px+23, py+10, 2, 4);
+        ctx.fillStyle = '#A08060'; ctx.fillRect(px+21, py+14, 4, 2);
+
+        ctx.fillStyle = cShirt; ctx.fillRect(px+15, py+18, 10, 12);
+        ctx.fillStyle = cPants; ctx.fillRect(px+15, py+30, 10, 8);
+        ctx.fillStyle = cShoes; ctx.fillRect(px+15, py+38, 10, 2);
+
+        ctx.save();
+        ctx.translate(px+18, py+20); 
+        if (player.swingAnim > 0) ctx.rotate(Math.PI / 3); 
+        ctx.fillStyle = cShirt; ctx.fillRect(-2, 0, 4, 6); 
+        ctx.fillStyle = cSkin; ctx.fillRect(-2, 6, 4, 6);  
+        ctx.fillStyle = '#5C4033'; ctx.fillRect(0, 8, 2, 14); 
+        ctx.fillStyle = '#55FFFF'; ctx.fillRect(-6, 8, 14, 4); 
+        ctx.restore();
+
+        ctx.restore();
+    }
+
+    function render() {
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(0, -cameraY);
+
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, canvas.width, Math.max(cameraY + canvas.height + TILE_SIZE*2, canvas.height));
+
+        let startRow = Math.max(0, Math.floor(cameraY / TILE_SIZE));
+        let endRow = startRow + Math.ceil(canvas.height / TILE_SIZE) + 1;
+
+        for (let r = startRow; r <= endRow; r++) {
+            for (let c = 0; c < COLS; c++) {
+                drawBlock(c * TILE_SIZE, r * TILE_SIZE, getBlock(c, r));
+            }
+        }
+        
+        mobs.forEach(m => drawMob(m));
+        drawSteve();
+        drawParticles();
+        
+        ctx.restore();
+    }
+
+    function gameLoop() {
+        if (state === 'PLAYING') updateLogic();
+        updateParticles(); // Always update particles even during Game Over screen
+        if (state === 'PLAYING' || state === 'GAMEOVER') render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- State Management ---
+    function updateUI() {
+        document.getElementById('ui-level').innerText = level;
+        document.getElementById('ui-score').innerText = score;
+        document.getElementById('ui-depth').innerText = player.gy;
+        document.getElementById('ui-target-depth').innerText = targetDepth;
+        document.getElementById('ui-time').innerText = timeLeft;
+    }
+
+    window.startGame = function() {
+        initAudio(); 
+        resizeCanvas();
+        grid = {}; mobs = []; particles = []; level = 1; score = 0; timeLeft = 60; targetDepth = 15; cameraY = 0;
+        keys = { left: false, right: false, down: false };
+
+        player.gx = Math.floor(COLS / 2); player.gy = 0;
+        player.x = player.gx * TILE_SIZE; player.y = player.gy * TILE_SIZE;
+        player.targetX = player.x; player.targetY = player.y; 
+        player.facing = 1; player.dead = false;
+
+        document.getElementById('start-menu').style.display = 'none';
+        document.getElementById('game-over').style.display = 'none';
+        
+        let hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (hasTouch && window.innerWidth < 768) {
+            document.getElementById('mobile-controls').style.display = 'flex';
+        }
+        document.getElementById('ui-bar').style.display = 'flex';
+
+        updateUI();
+        state = 'PLAYING';
+        
+        let now = Date.now();
+        lastTime = now;
+        lastLavaTick = now;
+    }
+
+    function triggerGameOver(reasonText) {
+        state = 'GAMEOVER';
+        sndGameOver();
+        document.getElementById('game-over-reason').innerText = reasonText;
+        document.getElementById('final-level').innerText = level;
+        document.getElementById('final-score').innerText = score;
+        
+        document.getElementById('mobile-controls').style.display = 'none';
+        document.getElementById('ui-bar').style.display = 'none';
+        
+        // Slight delay so the player can see the explosion happen before the menu overlays
+        setTimeout(() => {
+            document.getElementById('game-over').style.display = 'flex';
+        }, 500);
+    }
+
+    // Init
+    resizeCanvas();
+    render(); 
+    requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>
