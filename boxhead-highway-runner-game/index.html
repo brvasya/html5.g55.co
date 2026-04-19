@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boxhead Highway Runner Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="hud">
+    <div class="hud__left">
+      <div class="status" id="status">Run the highway.</div>
+    </div>
+    <div class="hud__right">
+      <div class="score-card">
+        <span class="score-card__label">Coins</span>
+        <span class="score-card__value" id="coin-count">0</span>
+      </div>
+      <div class="score-card">
+        <span class="score-card__label">Score</span>
+        <span class="score-card__value" id="score">0</span>
+      </div>
+      <div class="score-card">
+        <span class="score-card__label">Best</span>
+        <span class="score-card__value" id="best-score">0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <h1>Boxhead Highway Runner Game</h1>
+      <p class="panel__copy" id="panel-copy">
+        Dodge highway obstacles, switch lanes, and survive as the city speeds up.
+      </p>
+      <div class="panel__game-over" id="game-over-stats" hidden>
+        <div class="panel__stat">
+          <span class="panel__stat-label">Score</span>
+          <span class="panel__stat-value" id="final-score">0</span>
+        </div>
+        <div class="panel__stat">
+          <span class="panel__stat-label">Distance</span>
+          <span class="panel__stat-value" id="final-distance">0m</span>
+        </div>
+        <div class="panel__stat">
+          <span class="panel__stat-label">Level</span>
+          <span class="panel__stat-value" id="final-level">1</span>
+        </div>
+      </div>
+      <div class="panel__controls">
+        <span>`A` / `D` or arrow keys to move</span>
+        <span>`W`, `Space`, or up arrow to jump</span>
+        <span>`S` or down arrow to fast drop</span>
+      </div>
+      <div class="panel__actions">
+        <button id="start-button" class="start-button">Start Run</button>
+        <a class="more-games-button" href="https://g55.co/" target="_blank" rel="noreferrer">More Games</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="touch-controls" aria-label="Touch controls">
+    <button class="touch-controls__button" data-action="left" aria-label="Move left">Left</button>
+    <button class="touch-controls__button" data-action="jump" aria-label="Jump">Jump</button>
+    <button class="touch-controls__button" data-action="right" aria-label="Move right">Right</button>
+    <button class="touch-controls__button" data-action="drop" aria-label="Drop down">Drop</button>
+  </div>
+
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
