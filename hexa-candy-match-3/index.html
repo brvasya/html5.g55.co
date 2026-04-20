@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexa Candy Match 3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; overflow: hidden; 
+            background: radial-gradient(circle, #c2e9fb 0%, #a1c4fd 100%);
+            font-family: 'Fredoka One', cursive; 
+            user-select: none; 
+        }
+        
+        /* Game HUD */
+        #ui { 
+            position: absolute; top: 15px; left: 20px; color: white; 
+            pointer-events: none; z-index: 10;
+        }
+        .panel {
+            background: rgba(255, 255, 255, 0.3); padding: 10px 20px;
+            border-radius: 20px; border: 3px solid white;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.1);
+        }
+        p { margin: 5px 0; font-size: 24px; color: #fff; text-shadow: 2px 2px 0px #333; }
+        
+        /* Full Screen Menus */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; transition: opacity 0.3s ease;
+        }
+        .modal {
+            background: white; padding: 40px 60px; border-radius: 30px; text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3); border: 8px solid #ffde00;
+            transform: scale(0); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn { to { transform: scale(1); } }
+        
+        .modal-title { color: #ff0055; font-size: 48px; margin: 0 0 10px 0; text-shadow: 2px 2px 0px #ffd0e0; }
+        .modal-text { color: #555; font-size: 24px; margin: 0 0 30px 0; font-family: sans-serif; font-weight: bold; }
+        
+        /* Buttons & Links */
+        .btn {
+            background: #00d2ff; color: white; border: none; padding: 15px 40px; font-size: 28px;
+            border-radius: 50px; cursor: pointer; font-family: 'Fredoka One'; 
+            box-shadow: 0 6px 0 #0096b8; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #0096b8; }
+        .btn-green { background: #00e676; box-shadow: 0 6px 0 #00b35c; }
+        .btn-green:active { box-shadow: 0 0 0 #00b35c; }
+
+        .more-games {
+            display: inline-block; margin-top: 25px; color: #ff6b6b; font-size: 20px;
+            text-decoration: none; border: 2px dashed #ff6b6b; padding: 10px 20px;
+            border-radius: 15px; transition: background 0.2s;
+        }
+        .more-games:hover { background: #ffe0e0; }
+        
+        /* Hide utility */
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Game HUD -->
+    <div id="ui" class="hidden">
+        <div class="panel">
+            <p>⭐ Level: <span id="levelDisplay">1</span></p>
+            <p>🍬 Score: <span id="scoreDisplay">0</span> / <span id="targetDisplay">100</span></p>
+        </div>
+    </div>
+
+    <!-- Start Menu Screen -->
+    <div id="startScreen" class="overlay">
+        <div class="modal">
+            <h2 class="modal-title">Hexa Candy</h2>
+            <p class="modal-text">Match 3 candies to score points!</p>
+            <button class="btn" onclick="startGame()">PLAY NOW</button>
+            <br>
+            <a href="https://g55.co/" target="_blank" class="more-games">🎮 More Games</a>
+        </div>
+    </div>
+
+    <!-- Interlevel Screen -->
+    <div id="levelScreen" class="overlay hidden">
+        <div class="modal" id="levelModal">
+            <h2 class="modal-title" style="color: #ffde00; text-shadow: 2px 2px 0px #e0c200;">Level Up! 🎉</h2>
+            <p class="modal-text">Great job! Get ready for the next level.</p>
+            <button class="btn btn-green" onclick="nextLevel()">NEXT LEVEL</button>
+            <br>
+            <a href="https://g55.co/" target="_blank" class="more-games">🎮 More Games</a>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- WEB AUDIO API (SOUND EFFECTS) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        const SFX = {
+            playTone(freq, type, duration, slideFreq = null) {
+                if (audioCtx.state === 'suspended') return; 
+                
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                if (slideFreq) {
+                    osc.frequency.exponentialRampToValueAtTime(slideFreq, audioCtx.currentTime + duration);
+                }
+
+                gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime); 
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            },
+            select() { this.playTone(600, 'sine', 0.15, 800); },
+            deselect() { this.playTone(500, 'sine', 0.15, 300); },
+            slide() { this.playTone(300, 'sine', 0.2, 450); },
+            error() { this.playTone(200, 'triangle', 0.3, 100); },
+            match() {
+                setTimeout(() => this.playTone(523.25, 'sine', 0.15), 0);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.15), 50);
+                setTimeout(() => this.playTone(783.99, 'sine', 0.15), 100);
+                setTimeout(() => this.playTone(1046.50, 'sine', 0.4), 150);
+            },
+            levelUp() {
+                setTimeout(() => this.playTone(440, 'square', 0.15), 0);
+                setTimeout(() => this.playTone(440, 'square', 0.15), 150);
+                setTimeout(() => this.playTone(554.37, 'square', 0.15), 300);
+                setTimeout(() => this.playTone(659.25, 'square', 0.6), 450);
+            }
+        };
+
+        // --- GAME VARIABLES & STATE ---
+        let GAME_STATE = 'START_MENU'; 
+        let score = 0;
+        let level = 1;
+        let targetScore = 100;
+        let isAnimating = false;
+        let selectedHex = null;
+        
+        const allColors = [0xff0055, 0x00d2ff, 0xffde00, 0x00e676, 0xaa00ff];
+        let activeColorCount = 3;
+
+        // --- UI CONTROL FUNCTIONS ---
+        function startGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            SFX.select();
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('ui').classList.remove('hidden');
+            GAME_STATE = 'PLAYING';
+        }
+
+        function showLevelScreen() {
+            GAME_STATE = 'LEVEL_SCREEN';
+            const levelScreen = document.getElementById('levelScreen');
+            levelScreen.classList.remove('hidden');
+            const modal = document.getElementById('levelModal');
+            modal.style.animation = 'none';
+            modal.offsetHeight; 
+            modal.style.animation = null; 
+        }
+
+        function nextLevel() {
+            SFX.select();
+            document.getElementById('levelScreen').classList.add('hidden');
+            createGrid(); 
+            GAME_STATE = 'PLAYING';
+        }
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, -1, 15);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 0.8);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(5, 10, 10);
+        scene.add(dirLight);
+
+        // --- BEVELED GEM GEOMETRY ---
+        const hexRadius = 1;
+        const gap = 1.05;
+        const gridRadius = 3;
+        
+        const shape = new THREE.Shape();
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i + Math.PI / 6;
+            const x = hexRadius * Math.cos(angle);
+            const y = hexRadius * Math.sin(angle);
+            if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+        }
+
+        const geometry = new THREE.ExtrudeGeometry(shape, {
+            depth: 0.3, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 0.1, bevelThickness: 0.15
+        });
+        geometry.center();
+
+        const hexes = [];
+        const gridMap = new Map();
+
+        function getGridKey(q, r) { return `${q},${r}`; }
+
+        function getCartesian(q, r) {
+            return {
+                x: gap * hexRadius * Math.sqrt(3) * (q + r / 2),
+                y: gap * hexRadius * (3 / 2) * r
+            };
+        }
+
+        function createGrid() {
+            hexes.forEach(h => scene.remove(h));
+            hexes.length = 0;
+            gridMap.clear();
+
+            for (let q = -gridRadius; q <= gridRadius; q++) {
+                let r1 = Math.max(-gridRadius, -q - gridRadius);
+                let r2 = Math.min(gridRadius, -q + gridRadius);
+                for (let r = r1; r <= r2; r++) {
+                    let color = getRandomColor();
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: color, roughness: 0.1, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.1
+                    });
+                    
+                    const hexMesh = new THREE.Mesh(geometry, material);
+                    const pos = getCartesian(q, r);
+                    hexMesh.position.set(pos.x, pos.y, 0);
+                    hexMesh.userData = { q, r, color };
+
+                    scene.add(hexMesh);
+                    hexes.push(hexMesh);
+                    gridMap.set(getGridKey(q, r), hexMesh);
+                    
+                    hexMesh.scale.set(0,0,0);
+                    setTimeout(() => {
+                        tween(hexMesh.scale, new THREE.Vector3(1,1,1), 600, easeOutElastic);
+                    }, Math.random() * 500);
+                }
+            }
+            clearInitialMatches();
+        }
+
+        function getRandomColor() {
+            return allColors[Math.floor(Math.random() * activeColorCount)];
+        }
+
+        function clearInitialMatches() {
+            let matches = findMatches();
+            while (matches.length > 0) {
+                matches.forEach(hex => {
+                    hex.userData.color = getRandomColor();
+                    hex.material.color.setHex(hex.userData.color);
+                });
+                matches = findMatches();
+            }
+        }
+
+        // --- MATCHING LOGIC ---
+        const directions = [ [1, 0], [0, 1], [1, -1] ];
+
+        function findMatches() {
+            const matchedSet = new Set();
+            hexes.forEach(hex => {
+                const q = hex.userData.q;
+                const r = hex.userData.r;
+                const color = hex.userData.color;
+
+                directions.forEach(dir => {
+                    const h2 = gridMap.get(getGridKey(q + dir[0], r + dir[1]));
+                    const h3 = gridMap.get(getGridKey(q + dir[0]*2, r + dir[1]*2));
+
+                    if (h2 && h3 && h2.userData.color === color && h3.userData.color === color) {
+                        matchedSet.add(hex);
+                        matchedSet.add(h2);
+                        matchedSet.add(h3);
+                    }
+                });
+            });
+            return Array.from(matchedSet);
+        }
+
+        function processMatches(matches, onComplete) {
+            if (matches.length === 0) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            isAnimating = true;
+            score += matches.length * 10;
+            document.getElementById('scoreDisplay').innerText = score;
+            SFX.match(); 
+
+            matches.forEach(hex => {
+                createConfetti(hex.position, hex.userData.color);
+                tween(hex.scale, new THREE.Vector3(0,0,0), 300, easeInBack);
+            });
+
+            setTimeout(() => {
+                matches.forEach(hex => {
+                    const newColor = getRandomColor();
+                    hex.userData.color = newColor;
+                    hex.material.color.setHex(newColor);
+                    tween(hex.scale, new THREE.Vector3(1,1,1), 500, easeOutElastic);
+                });
+
+                setTimeout(() => {
+                    const newMatches = findMatches();
+                    if (newMatches.length > 0) {
+                        processMatches(newMatches, onComplete);
+                    } else {
+                        isAnimating = false;
+                        checkLevelUp(); 
+                        if (onComplete) onComplete();
+                    }
+                }, 600);
+            }, 350);
+        }
+
+        // --- LEVEL PROGRESSION ---
+        function checkLevelUp() {
+            if (score >= targetScore) {
+                level++;
+                targetScore += 250; 
+                
+                if (level === 2) activeColorCount = 4;
+                if (level >= 3) activeColorCount = 5;
+                
+                document.getElementById('levelDisplay').innerText = level;
+                document.getElementById('targetDisplay').innerText = targetScore;
+
+                SFX.levelUp();
+                
+                for(let i=0; i<6; i++){
+                    setTimeout(() => {
+                        createConfetti(new THREE.Vector3(Math.random()*8-4, Math.random()*8-4, 0), getRandomColor(), 25);
+                    }, i * 200);
+                }
+
+                setTimeout(() => {
+                    showLevelScreen();
+                }, 1500);
+            }
+        }
+
+        // --- INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('pointerdown', (event) => {
+            if (GAME_STATE !== 'PLAYING' || isAnimating) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(hexes);
+            if (intersects.length > 0) {
+                const clickedHex = intersects[0].object;
+
+                if (!selectedHex) {
+                    selectHex(clickedHex);
+                } else if (selectedHex === clickedHex) {
+                    deselectHex();
+                } else {
+                    if (isAdjacent(selectedHex, clickedHex)) {
+                        attemptSwap(selectedHex, clickedHex);
+                    } else {
+                        deselectHex();
+                        selectHex(clickedHex);
+                    }
+                }
+            }
+        });
+
+        function selectHex(hex) {
+            selectedHex = hex;
+            SFX.select(); 
+            tween(hex.scale, new THREE.Vector3(1.2, 1.2, 1.2), 200, easeOutBack);
+        }
+
+        function deselectHex() {
+            if (selectedHex) {
+                SFX.deselect(); 
+                tween(selectedHex.scale, new THREE.Vector3(1, 1, 1), 200, easeOutBack);
+                selectedHex.rotation.y = 0;
+                selectedHex = null;
+            }
+        }
+
+        function isAdjacent(h1, h2) {
+            const dq = h1.userData.q - h2.userData.q;
+            const dr = h1.userData.r - h2.userData.r;
+            return ((Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2) === 1;
+        }
+
+        function attemptSwap(h1, h2) {
+            isAnimating = true;
+            deselectHex();
+            SFX.slide();
+
+            swapData(h1, h2);
+
+            const pos1 = h1.position.clone();
+            const pos2 = h2.position.clone();
+
+            tween(h1.position, pos2, 400, easeOutBack);
+            tween(h2.position, pos1, 400, easeOutBack);
+
+            setTimeout(() => {
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    processMatches(matches);
+                } else {
+                    SFX.error(); 
+                    swapData(h1, h2);
+                    tween(h1.position, pos1, 400, easeOutBack);
+                    tween(h2.position, pos2, 400, easeOutBack);
+                    setTimeout(() => { isAnimating = false; }, 400);
+                }
+            }, 450);
+        }
+
+        function swapData(h1, h2) {
+            const tempQ = h1.userData.q;
+            const tempR = h1.userData.r;
+            h1.userData.q = h2.userData.q;
+            h1.userData.r = h2.userData.r;
+            h2.userData.q = tempQ;
+            h2.userData.r = tempR;
+            gridMap.set(getGridKey(h1.userData.q, h1.userData.r), h1);
+            gridMap.set(getGridKey(h2.userData.q, h2.userData.r), h2);
+        }
+
+        // --- PARTICLE SYSTEM (CONFETTI) ---
+        const particles = [];
+        const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        
+        function createConfetti(position, color, amount = 10) {
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            for(let i=0; i < amount; i++) {
+                const mesh = new THREE.Mesh(particleGeo, mat);
+                mesh.position.copy(position);
+                mesh.position.z += 0.5;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 0.15 + 0.05;
+                mesh.userData = { vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, vz: Math.random() * 0.2, life: 1.0 };
+                scene.add(mesh);
+                particles.push(mesh);
+            }
+        }
+
+        function updateParticles() {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.position.x += p.userData.vx;
+                p.position.y += p.userData.vy;
+                p.position.z += p.userData.vz;
+                p.rotation.x += 0.1; p.rotation.y += 0.1;
+                p.userData.life -= 0.02;
+                p.scale.setScalar(Math.max(0, p.userData.life));
+
+                if(p.userData.life <= 0) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // --- BOUNCY TWEEN ENGINE ---
+        const tweens = [];
+        function easeLinear(t) { return t; }
+        function easeOutBack(t) { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+        function easeInBack(t) { const c1 = 1.70158; const c3 = c1 + 1; return c3 * t * t * t - c1 * t * t; }
+        function easeOutElastic(t) {
+            const c4 = (2 * Math.PI) / 3;
+            return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+        }
+
+        function tween(obj, target, duration, easingFunc = easeLinear) {
+            tweens.push({
+                obj: obj, start: obj.clone(), target: target.clone(), startTime: performance.now(), duration: duration, easing: easingFunc
+            });
+        }
+
+        function updateTweens(time) {
+            for (let i = tweens.length - 1; i >= 0; i--) {
+                const t = tweens[i];
+                let progress = (time - t.startTime) / t.duration;
+                if (progress > 1) progress = 1;
+                t.obj.lerpVectors(t.start, t.target, t.easing(progress));
+                if (progress === 1) tweens.splice(i, 1);
+            }
+        }
+
+        // --- RESIZE & RENDER LOOP ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            updateTweens(time);
+            updateParticles();
+
+            if (selectedHex) {
+                selectedHex.rotation.y += 0.05;
+                selectedHex.rotation.z = Math.sin(time * 0.01) * 0.1; 
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        createGrid();
+        animate(performance.now());
+    </script>
+</body>
+</html>
