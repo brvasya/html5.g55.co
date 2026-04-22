@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Hole IO</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #78A7FF; font-family: 'Courier New', Courier, monospace; user-select: none; }
+        
+        #ui { position: absolute; top: 20px; left: 20px; color: white; text-shadow: 2px 2px 0px #3f3f3f; pointer-events: none; z-index: 10; display: none; }
+        p { margin: 0 0 5px 0; font-size: 22px; font-weight: bold; }
+        #biome-ui { color: #55ff55; font-size: 18px; }
+        #controls { font-size: 16px; opacity: 0.9; margin-top: 10px; color: #ffff55; }
+        
+        #top-right-ui { position: absolute; top: 20px; right: 20px; z-index: 10; display: none; }
+        
+        .overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.75); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        
+        .overlay h1 { font-size: min(8vw, 80px); color: #ffff55; font-weight: bold; text-shadow: 6px 6px 0px #3f3f3f; margin: 0 0 10px 0; text-align: center; }
+        .overlay h2 { font-size: 54px; color: #ffff55; font-weight: bold; text-shadow: 4px 4px 0px #3f3f3f; margin-bottom: 10px; text-align: center; }
+        .overlay h3 { font-size: 28px; color: #ff5555; text-shadow: 2px 2px 0px #000; margin-bottom: 30px; }
+        .overlay p { color: white; font-size: 24px; margin-bottom: 40px; text-align: center; text-shadow: 2px 2px 0px #000; }
+        
+        .mc-btn { background-color: #727272; border: 4px solid #3f3f3f; border-top-color: #ababab; border-left-color: #ababab; color: white; font-size: 26px; font-family: 'Courier New', Courier, monospace; font-weight: bold; padding: 15px 40px; cursor: pointer; text-shadow: 2px 2px 0px #3f3f3f; transition: background-color 0.1s; margin: 10px; }
+        .mc-btn:hover { background-color: #828282; }
+        .mc-btn:active { border-bottom-color: #ababab; border-right-color: #ababab; border-top-color: #3f3f3f; border-left-color: #3f3f3f; }
+        
+        .sm-btn { font-size: 18px; padding: 10px 20px; border-width: 3px; margin: 0; }
+
+        .g55-logo { font-size: 36px; color: #ffffff; background-color: #ffaa00; padding: 5px 20px; border: 4px solid #000000; text-decoration: none; font-weight: bold; box-shadow: 4px 4px 0px #3f3f3f; margin-bottom: 20px; transform: rotate(-3deg); display: inline-block; transition: transform 0.2s; }
+        .g55-logo:hover { transform: rotate(0deg) scale(1.1); }
+
+        #inter-level { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="overlay">
+        <a href="https://g55.co/" target="_blank" class="g55-logo">G55.CO</a>
+        <h1>MINECRAFT HOLE IO</h1>
+        <p>Eat smaller mobs to grow.<br>Beware of explosive TNT!</p>
+        <button id="play-btn" class="mc-btn">Play Game</button>
+    </div>
+
+    <!-- Gameplay HUD Left -->
+    <div id="ui">
+        <p>Level: <span id="level-ui">1</span></p>
+        <p id="biome-ui">Biome: Overworld</p>
+        <p>Mobs Left: <span id="left">0</span></p>
+        <p>Hole Size: <span id="size">1.0</span></p>
+        <p id="controls">Eat mobs. Avoid TNT!</p>
+    </div>
+
+    <!-- Gameplay HUD Right -->
+    <div id="top-right-ui">
+        <button id="restart-btn" class="mc-btn sm-btn">Restart Level</button>
+    </div>
+
+    <!-- Level Cleared Screen -->
+    <div id="inter-level" class="overlay">
+        <h2 id="level-title">Level 1 Cleared!</h2>
+        <h3 id="next-biome-title">Next: The Nether</h3>
+        <div>
+            <button id="next-btn" class="mc-btn">Next Level</button>
+            <button id="more-games-btn" class="mc-btn">More Games</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import * as CANNON from 'cannon-es';
+
+        // --- PROCEDURAL AUDIO ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let lastPopTime = 0;
+
+        function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+
+        function playPopSound() {
+            if (!audioCtx || audioCtx.currentTime - lastPopTime < 0.05) return; 
+            lastPopTime = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine'; const startFreq = 300 + Math.random() * 100;
+            osc.frequency.setValueAtTime(startFreq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(startFreq * 2, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playLevelUpSound() {
+            if (!audioCtx) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = 'square'; const startTime = audioCtx.currentTime + (index * 0.1);
+                osc.frequency.setValueAtTime(freq, startTime);
+                gain.gain.setValueAtTime(0.1, startTime); gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+                osc.start(startTime); osc.stop(startTime + 0.3);
+            });
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'square'; 
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function playClickSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // --- PROCEDURAL TEXTURES ---
+        function createPixelTexture(pixelArray, palette) {
+            const canvas = document.createElement('canvas'); canvas.width = 8; canvas.height = 8; const ctx = canvas.getContext('2d');
+            for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { ctx.fillStyle = palette[pixelArray[y * 8 + x]]; ctx.fillRect(x, y, 1, 1); }
+            const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace; return tex;
+        }
+
+        function createGroundTexture(biome) {
+            const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16; const ctx = canvas.getContext('2d');
+            for(let i=0; i<256; i++) {
+                const shade = Math.random() * biome.variance;
+                ctx.fillStyle = `rgb(${biome.r + shade}, ${biome.g + shade}, ${biome.b + shade})`;
+                ctx.fillRect(i%16, Math.floor(i/16), 1, 1);
+            }
+            const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(30, 30); return tex;
+        }
+
+        // --- BIOMES DATA ---
+        const biomes = [
+            { name: "The Overworld", sky: 0x78A7FF, floor: {r: 60, g: 120, b: 40, variance: 40}, gravity: -20 },
+            { name: "The Nether", sky: 0x4a0000, floor: {r: 100, g: 20, b: 20, variance: 30}, gravity: -25 }, 
+            { name: "The End", sky: 0x080011, floor: {r: 200, g: 200, b: 150, variance: 30}, gravity: -8 }   
+        ];
+
+        // --- BLOCK DATA (Mobs + Hazards) ---
+        const mobsData = [
+            { palette: ['#55cc55', '#000000'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0, 0,0,0,1,1,0,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,0,0,1,0,0] },
+            { palette: ['#ffaadd', '#ff88cc', '#ffffff', '#000000'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,2,3,0,0,3,2,0, 0,0,0,1,1,0,0,0, 0,0,0,1,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#228822', '#115511', '#000000'], pixels: [1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,2,2,0,0,2,2,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#111111', '#cc00ff', '#ffbbee'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,2,1,0,0,1,2,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#dddddd', '#000000', '#999999'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0, 0,0,0,2,2,0,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#55cc55', '#228822'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,0,0,0,1,0, 0,1,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,1,1,1,1,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#222222', '#ff0000', '#444444'], pixels: [2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,1,0,0,1,0,0, 0,1,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] },
+            { palette: ['#4a3320', '#ffffff', '#000000', '#222222'], pixels: [0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,2,1,0,0,1,2,0, 0,0,0,0,0,0,0,0, 0,0,1,1,1,1,0,0, 0,0,1,3,3,1,0,0, 0,0,1,3,3,1,0,0, 0,0,1,1,1,1,0,0] }
+        ];
+
+        // Store color explicitly for particles
+        const mobs = mobsData.map(data => ({
+            mat: new THREE.MeshLambertMaterial({ map: createPixelTexture(data.pixels, data.palette) }),
+            color: data.palette[0] // Dominant color
+        }));
+
+        const tntData = { palette: ['#ff3333', '#ffffff', '#000000'], pixels: [0,0,0,0,0,0,0,0, 0,1,1,1,1,1,1,0, 0,1,2,1,2,1,2,0, 0,1,1,1,1,1,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0] };
+        const tntType = { mat: new THREE.MeshLambertMaterial({ map: createPixelTexture(tntData.pixels, tntData.palette) }), color: tntData.palette[0] };
+        const sharedBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+
+        // --- GAME CORE ---
+        const worldSize = 70; 
+        let objects = [];
+        let particles = []; 
+        let objectsLeft = 0;
+        let holeRadius = 1.0; 
+        let currentLevel = 1;
+        let isTransitioning = false;
+        let gameStarted = false; 
+        let currentBiome = biomes[0];
+        let cameraShake = 0; 
+
+        const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        world.allowSleep = true;
+
+        const GROUP_GROUND = 1;
+        const GROUP_OBJ = 2;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(currentBiome.sky);
+
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 150);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight.position.set(20, 40, 20); dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -worldSize/2; dirLight.shadow.camera.right = worldSize/2; dirLight.shadow.camera.top = worldSize/2; dirLight.shadow.camera.bottom = -worldSize/2;
+        scene.add(dirLight);
+
+        // Ground 
+        const groundMat = new THREE.MeshLambertMaterial({ map: createGroundTexture(currentBiome.floor) });
+        const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(worldSize, worldSize), groundMat);
+        groundMesh.rotation.x = -Math.PI / 2; groundMesh.receiveShadow = true; scene.add(groundMesh);
+
+        const groundShape = new CANNON.Box(new CANNON.Vec3(worldSize/2, 5, worldSize/2));
+        const groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: groundShape, collisionFilterGroup: GROUP_GROUND, collisionFilterMask: GROUP_OBJ });
+        groundBody.position.set(0, -5, 0); world.addBody(groundBody);
+
+        // Walls
+        const wallShape = new CANNON.Box(new CANNON.Vec3(worldSize/2, 100, 2)); 
+        const wallOffsets = [{ x: 0, z: worldSize/2, rot: 0 }, { x: 0, z: -worldSize/2, rot: 0 }, { x: worldSize/2, z: 0, rot: Math.PI/2 }, { x: -worldSize/2, z: 0, rot: Math.PI/2 }];
+        wallOffsets.forEach(pos => {
+            const wallBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: wallShape, collisionFilterGroup: GROUP_GROUND, collisionFilterMask: GROUP_OBJ });
+            wallBody.position.set(pos.x, 100, pos.z); wallBody.quaternion.setFromEuler(0, pos.rot, 0); world.addBody(wallBody);
+        });
+
+        // The Hole & Dynamic Lighting
+        const holeGroup = new THREE.Group(); scene.add(holeGroup);
+        const holeMesh = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: false }));
+        holeMesh.rotation.x = -Math.PI / 2; holeMesh.position.y = 0.01; holeGroup.add(holeMesh);
+        
+        // Dynamic Glowing Void Light
+        const holeLight = new THREE.PointLight(0x8800ff, 3, 12); 
+        holeLight.position.set(0, 1.5, 0);
+        holeGroup.add(holeLight);
+
+        // --- PARTICLE SYSTEM ---
+        const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        function spawnExplosionParticles(x, z, hexColor, count) {
+            const pMat = new THREE.MeshBasicMaterial({ color: hexColor });
+            for(let i=0; i<count; i++) {
+                const p = new THREE.Mesh(particleGeo, pMat);
+                p.position.set(x, 0.5, z);
+                const vx = (Math.random() - 0.5) * 15;
+                const vy = Math.random() * 10 + 5;
+                const vz = (Math.random() - 0.5) * 15;
+                scene.add(p);
+                particles.push({ mesh: p, vx, vy, vz, life: 1.0 });
+            }
+        }
+
+        // --- SPAWNER ---
+        function spawnBlock(type, sizeMultiplier) {
+            const size = Math.random() * 0.4 + 0.3 + sizeMultiplier; 
+            
+            let objData;
+            let isEdible = true;
+            let isTNT = false;
+
+            if (type === 'tnt') { objData = tntType; isTNT = true; } 
+            else { objData = mobs[Math.floor(Math.random() * mobs.length)]; }
+            
+            const mesh = new THREE.Mesh(sharedBoxGeo, objData.mat);
+            mesh.scale.set(size, size, size);
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            const mass = size * 2;
+            const body = new CANNON.Body({
+                mass: mass, shape: new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2)),
+                collisionFilterGroup: GROUP_OBJ, collisionFilterMask: GROUP_GROUND | GROUP_OBJ,
+                allowSleep: true, sleepSpeedLimit: 0.5, sleepTimeLimit: 1.0 
+            });
+
+            body.position.set( (Math.random() - 0.5) * (worldSize - 16), size + 5 + Math.random() * 20, (Math.random() - 0.5) * (worldSize - 16) );
+            body.quaternion.setFromEuler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+            world.addBody(body);
+
+            objects.push({ mesh, body, radius: size * 0.8, isFalling: false, isEdible, isTNT, type, color: objData.color });
+        }
+
+        function triggerExplosion(epicenter) {
+            playExplosionSound();
+            cameraShake = 0.5; 
+            spawnExplosionParticles(epicenter.x, epicenter.z, tntType.color, 30); 
+            
+            const blastCenter = new CANNON.Vec3(epicenter.x, epicenter.y - 0.5, epicenter.z);
+            objects.forEach(obj => {
+                if(obj.isFalling) return;
+                const forceDir = obj.body.position.vsub(blastCenter);
+                const distance = forceDir.length();
+                
+                // NERFED BLAST PHYSICS
+                if (distance < 12) { // Smaller radius
+                    forceDir.normalize(); 
+                    forceDir.y += 0.8; // Reduced upward pop
+                    forceDir.normalize();
+                    const blastForce = (60 / Math.max(1, distance)) * obj.body.mass; // Dramatically reduced force
+                    
+                    obj.body.wakeUp();
+                    obj.body.collisionFilterMask = GROUP_GROUND | GROUP_OBJ;
+                    obj.body.applyImpulse(forceDir.scale(blastForce), obj.body.position);
+                }
+            });
+        }
+
+        // --- LEVEL LOGIC ---
+        function clearMap() {
+            objects.forEach(obj => { scene.remove(obj.mesh); world.removeBody(obj.body); });
+            objects = [];
+            particles.forEach(p => scene.remove(p.mesh));
+            particles = [];
+        }
+
+        function loadLevel(level) {
+            isTransitioning = false;
+            document.getElementById('inter-level').style.display = 'none';
+            clearMap();
+
+            const biomeIndex = Math.min(level - 1, biomes.length - 1);
+            currentBiome = biomes[biomeIndex];
+            
+            scene.background.setHex(currentBiome.sky);
+            groundMat.map = createGroundTexture(currentBiome.floor);
+            world.gravity.set(0, currentBiome.gravity, 0);
+
+            holeRadius = 1.0;
+            holeMesh.scale.set(holeRadius, holeRadius, 1);
+            holeGroup.position.set(0, 0, 0); targetPos.set(0, 0, 0); 
+
+            const numSmall = 50; const numMed = 30; const numLarge = 20;
+            const numTNT = Math.min(level * 2, 10); 
+            
+            objectsLeft = numSmall + numMed + numLarge; 
+
+            document.getElementById('level-ui').innerText = currentLevel;
+            document.getElementById('biome-ui').innerText = `Biome: ${currentBiome.name}`;
+            document.getElementById('biome-ui').style.color = biomeIndex === 1 ? '#ff5555' : biomeIndex === 2 ? '#ff55ff' : '#55ff55';
+            document.getElementById('left').innerText = objectsLeft;
+            document.getElementById('size').innerText = holeRadius.toFixed(1);
+
+            for(let i=0; i<numSmall; i++) spawnBlock('mob', 0);
+            for(let i=0; i<numMed; i++) spawnBlock('mob', 0.6);
+            for(let i=0; i<numLarge; i++) spawnBlock('mob', 1.5);
+            for(let i=0; i<numTNT; i++) spawnBlock('tnt', 0.5);
+        }
+
+        // --- INPUT & EVENTS ---
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        const targetPos = new THREE.Vector3(); const invisiblePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        document.getElementById('play-btn').addEventListener('click', () => {
+            initAudio(); playClickSound();
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('top-right-ui').style.display = 'block';
+            gameStarted = true; loadLevel(currentLevel);
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            initAudio(); playClickSound();
+            loadLevel(currentLevel);
+        });
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            initAudio(); playClickSound();
+            currentLevel++; loadLevel(currentLevel);
+        });
+
+        document.getElementById('more-games-btn').addEventListener('click', () => {
+            initAudio(); playClickSound(); window.open('https://g55.co/', '_blank');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!gameStarted || isTransitioning) return; 
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera); raycaster.ray.intersectPlane(invisiblePlane, targetPos);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        camera.position.set(0, 20, 20); camera.lookAt(0, 0, 0);
+
+        // --- GAME LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1); 
+
+            // Animate Light Pulsing
+            holeLight.intensity = 2 + Math.sin(clock.elapsedTime * 4) * 1.5;
+
+            if (gameStarted && !isTransitioning) {
+                const limit = worldSize / 2 - holeRadius;
+                targetPos.x = Math.max(-limit, Math.min(limit, targetPos.x));
+                targetPos.z = Math.max(-limit, Math.min(limit, targetPos.z));
+                holeGroup.position.lerp(targetPos, 8 * delta);
+            }
+
+            // Base Camera Follow
+            let camX = 0, camY = 20, camZ = 20;
+            if (gameStarted) {
+                camX = holeGroup.position.x; 
+                camY = 14 + holeRadius * 1.8;
+                camZ = holeGroup.position.z + 10 + holeRadius;
+                camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 4 * delta);
+                camera.lookAt(holeGroup.position);
+            } else {
+                camera.position.x = Math.sin(clock.elapsedTime * 0.5) * 20; 
+                camera.position.z = Math.cos(clock.elapsedTime * 0.5) * 20; 
+                camera.lookAt(0,0,0);
+            }
+
+            // Apply Camera Shake
+            if (cameraShake > 0) {
+                cameraShake -= delta;
+                const shakeMag = cameraShake * 2; // Strength of shake
+                camera.position.x += (Math.random() - 0.5) * shakeMag;
+                camera.position.y += (Math.random() - 0.5) * shakeMag;
+                camera.position.z += (Math.random() - 0.5) * shakeMag;
+            }
+
+            world.step(1/60, delta, 3);
+
+            // Animate Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= delta * 1.5; // Fade speed
+                p.vy -= 20 * delta; // Gravity
+                p.mesh.position.x += p.vx * delta;
+                p.mesh.position.y += p.vy * delta;
+                p.mesh.position.z += p.vz * delta;
+                p.mesh.scale.setScalar(Math.max(0, p.life)); 
+                
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Block Logic
+            for (let i = objects.length - 1; i >= 0; i--) {
+                const obj = objects[i];
+                obj.mesh.position.copy(obj.body.position); obj.mesh.quaternion.copy(obj.body.quaternion);
+
+                const dx = obj.body.position.x - holeGroup.position.x;
+                const dz = obj.body.position.z - holeGroup.position.z;
+                const distToHole = Math.sqrt(dx * dx + dz * dz);
+
+                // Check Edible status
+                if (obj.isEdible && obj.radius < holeRadius * 0.95 && !isTransitioning && gameStarted) {
+                    
+                    if (!obj.isFalling && distToHole < holeRadius + obj.radius) {
+                        obj.body.collisionFilterMask = GROUP_GROUND; 
+                        obj.body.wakeUp(); obj.body.velocity.x *= 0.85; obj.body.velocity.z *= 0.85;
+                        obj.body.applyForce(new CANNON.Vec3(-dx * 12, -10, -dz * 12), obj.body.position);
+                    }
+
+                    if (!obj.isFalling && distToHole < holeRadius - (obj.radius * 0.2)) {
+                        obj.isFalling = true;
+                        
+                        obj.body.collisionFilterGroup = 0; obj.body.collisionFilterMask = 0; 
+                        obj.body.allowSleep = false; obj.body.wakeUp();
+                        obj.body.velocity.set(-dx * 5, -20, -dz * 5);
+                    }
+                } else if (!obj.isFalling && gameStarted) {
+                    obj.body.collisionFilterMask = GROUP_GROUND | GROUP_OBJ;
+                }
+
+                if (obj.isFalling) obj.mesh.scale.multiplyScalar(0.85);
+
+                const isOutOfBounds = obj.body.position.y < -3 || Math.abs(obj.body.position.x) > worldSize || Math.abs(obj.body.position.z) > worldSize;
+
+                if (isOutOfBounds) {
+                    
+                    if (obj.isTNT) {
+                        triggerExplosion(obj.body.position);
+                    } else if (gameStarted && obj.type === 'mob') {
+                        playPopSound();
+                        spawnExplosionParticles(obj.body.position.x, obj.body.position.z, obj.color, 8); // Satisfying burst
+                        
+                        // Impact Camera Shake for Large blocks (Radius > 1.0)
+                        if (obj.radius > 1.0) cameraShake = 0.15; 
+                    }
+
+                    scene.remove(obj.mesh); world.removeBody(obj.body);
+                    objects.splice(i, 1);
+                    
+                    if (obj.type === 'mob') {
+                        objectsLeft--;
+                        holeRadius += (3.5 / 100); 
+                        holeMesh.scale.set(holeRadius, holeRadius, 1);
+                        
+                        document.getElementById('left').innerText = Math.max(0, objectsLeft);
+                        document.getElementById('size').innerText = holeRadius.toFixed(1);
+
+                        // Win Check
+                        if (gameStarted && objectsLeft <= 0 && !isTransitioning) {
+                            isTransitioning = true;
+                            playLevelUpSound();
+                            document.getElementById('level-title').innerText = `Level ${currentLevel} Cleared!`;
+                            const nextBiome = biomes[Math.min(currentLevel, biomes.length - 1)].name;
+                            document.getElementById('next-biome-title').innerText = `Next: ${nextBiome}`;
+                            document.getElementById('inter-level').style.display = 'flex';
+                        }
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
