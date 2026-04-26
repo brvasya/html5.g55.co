@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minimal Three.js FPS Template</title>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      user-select: none;
+      touch-action: none;
+      cursor: default;
+    }
+
+    body.cursor-locked {
+      cursor: none;
+    }
+
+    body.fallback-look {
+      cursor: crosshair;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #crosshair {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+    }
+
+    #crosshair::before,
+    #crosshair::after {
+      content: "";
+      position: absolute;
+      background: white;
+      opacity: 0.9;
+    }
+
+    #crosshair::before {
+      left: 8px;
+      top: 0;
+      width: 2px;
+      height: 18px;
+    }
+
+    #crosshair::after {
+      left: 0;
+      top: 8px;
+      width: 18px;
+      height: 2px;
+    }
+
+    #stats {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 15px;
+      min-width: 160px;
+    }
+
+    #modeNote {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 12px;
+      font-size: 13px;
+      max-width: 300px;
+      line-height: 1.4;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: 10;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #panel {
+      width: min(540px, 92vw);
+      padding: 28px;
+      background: rgba(20, 20, 20, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 22px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 30px;
+    }
+
+    p {
+      margin: 8px 0;
+      color: #ddd;
+      line-height: 1.45;
+    }
+
+    button {
+      margin-top: 18px;
+      padding: 13px 22px;
+      border: 0;
+      border-radius: 999px;
+      background: white;
+      color: #111;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    #damageFlash {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 0, 0, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 6;
+      transition: opacity 120ms ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="stats">
+      Health: <span id="health">100</span><br />
+      Ammo: <span id="ammo">30</span> / <span id="reserve">90</span><br />
+      Score: <span id="score">0</span><br />
+      Wave: <span id="wave">1</span>
+    </div>
+    <div id="modeNote">Mouse look: click start first</div>
+  </div>
+
+  <div id="damageFlash"></div>
+
+  <div id="overlay">
+    <div id="panel">
+      <h1>FPS Template</h1>
+      <p>Click start, then use WASD to move, mouse to look, left click to shoot, and R to reload.</p>
+      <p>Modular Three.js FPS template with GLB weapon support.</p>
+      <button id="startButton">Start Game</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
