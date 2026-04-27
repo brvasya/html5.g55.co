@@ -294,6 +294,9 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
         enemy.userData.attackElapsed = 0;
         enemy.userData.pendingDamage = true;
         playEnemyAnimation(enemy, "attack");
+        if (enemy.userData.type.asset.attackSound) {
+          playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
+        }
       }
 
       // apply delayed damage
@@ -350,6 +353,9 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
       const deathAction = enemy.userData.actions["death"];
 
       if (deathAction) {
+        if (enemy.userData.type.asset.attackSound) {
+          playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
+        }
         deathAction.reset();
         deathAction.clampWhenFinished = true;
         deathAction.setLoop(THREE.LoopOnce, 1);
@@ -424,6 +430,15 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     material.map.magFilter = THREE.NearestFilter;
     material.map.minFilter = THREE.NearestFilter;
     material.map.needsUpdate = true;
+  }
+
+  function playAssetSound(src, volume = 1.0) {
+    if (!src) return;
+
+    const audio = new Audio(src);
+    audio.volume = volume;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
   }
 
   function reset() {
