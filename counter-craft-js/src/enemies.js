@@ -182,6 +182,20 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     model.rotation.set(assetRotation[0], assetRotation[1], assetRotation[2]);
     model.position.set(assetPosition[0], assetPosition[1], assetPosition[2]);
 
+    // Important: cloned GLB meshes can still share material instances.
+    // Clone materials per enemy so hit flash affects only this enemy.
+    model.traverse(object => {
+      if (!object.isMesh || !object.material) return;
+
+      if (Array.isArray(object.material)) {
+        object.material = object.material.map(material => material.clone());
+      } else {
+        object.material = object.material.clone();
+      }
+
+      makeMaterialCrisp(object.material);
+    });
+
     enemy.add(model);
     enemy.userData.model = model;
 
@@ -237,6 +251,16 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     enemies.forEach(enemy => {
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
 
+      if (enemy.userData.isDying) {
+        enemy.userData.deathTimer -= delta;
+
+        if (enemy.userData.deathTimer <= 0) {
+          removeEnemy(enemy);
+        }
+
+        return;
+      }
+
       if (enemy.userData.attackTimer > 0) {
         enemy.userData.attackTimer = Math.max(0, enemy.userData.attackTimer - delta);
         enemy.userData.attackElapsed += delta;
@@ -285,7 +309,8 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
   }
 
   function getHit(activeRaycaster) {
-    const hits = activeRaycaster.intersectObjects(enemies, true);
+    const activeEnemies = enemies.filter(enemy => !enemy.userData.isDying);
+    const hits = activeRaycaster.intersectObjects(activeEnemies, true);
     if (!hits.length) return null;
 
     const hit = hits[0];
@@ -307,14 +332,65 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
   function damageEnemy(enemy, damage) {
     if (!enemy || !enemies.includes(enemy)) return false;
 
+    // already dying
+    if (enemy.userData.isDying) return false;
+
     enemy.userData.health -= damage;
+    flashEnemy(enemy);
 
     if (enemy.userData.health <= 0) {
-      removeEnemy(enemy);
+      enemy.userData.isDying = true;
+
+      // stop all actions
+      if (enemy.userData.currentAction) {
+        enemy.userData.currentAction.fadeOut(0.05);
+      }
+
+      // play death animation if exists
+      const deathAction = enemy.userData.actions["death"];
+
+      if (deathAction) {
+        deathAction.reset();
+        deathAction.clampWhenFinished = true;
+        deathAction.setLoop(THREE.LoopOnce, 1);
+        deathAction.play();
+
+        enemy.userData.deathTimer = deathAction.getClip().duration;
+      } else {
+        // fallback instant remove if no animation
+        removeEnemy(enemy);
+        return true;
+      }
+
       return true;
     }
 
     return false;
+  }
+
+  function flashEnemy(enemy) {
+    enemy.traverse(object => {
+      if (!object.material) return;
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+
+      materials.forEach(material => {
+        if (!material.color) return;
+
+        if (material.userData.hitFlashColor === undefined) {
+          material.userData.hitFlashColor = material.color.getHex();
+        }
+
+        material.color.setHex(0xff3333);
+
+        clearTimeout(material.userData.hitFlashTimer);
+        material.userData.hitFlashTimer = setTimeout(() => {
+          if (material.color && material.userData.hitFlashColor !== undefined) {
+            material.color.setHex(material.userData.hitFlashColor);
+          }
+        }, 90);
+      });
+    });
   }
 
   function findEnemyRoot(object) {
@@ -361,7 +437,7 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     damageEnemy,
     reset,
     get count() {
-      return enemies.length;
+      return enemies.filter(enemy => !enemy.userData.isDying).length;
     }
   };
 }
