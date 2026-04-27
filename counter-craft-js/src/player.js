@@ -1,4 +1,21 @@
 export function createPlayer({ THREE, camera, config, colliders }) {
+  const MOVE_TUNING = {
+    maxGroundSpeed: config.playerSpeed,
+    maxWalkSpeed: config.playerSpeed * config.walkMultiplier,
+    groundAcceleration: config.groundAcceleration * 1.12,
+    airAcceleration: config.airAcceleration * 0.72,
+    friction: config.friction * 1.18,
+    stopSpeed: config.stopSpeed,
+    counterStrafeBoost: 1.45,
+    stepRunInterval: 0.34,
+    stepWalkInterval: 0.5,
+    runBobAmount: 0.007,
+    walkBobAmount: 0.0035,
+    runRollAmount: 0.0014,
+    walkRollAmount: 0.0008,
+    stepDipAmount: 0.006
+  };
+
   const keys = {
     forward: false,
     backward: false,
@@ -40,6 +57,14 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   let lastDragY = 0;
   let stepDistance = 0;
   let stepTimer = 0;
+  let bobTime = 0;
+  let cameraBobOffset = 0;
+  let cameraRollOffset = 0;
+  let cameraRollApplied = 0;
+  let cameraYawOffset = 0;
+  let cameraYawApplied = 0;
+  let stepDip = 0;
+  let baseCameraY = config.playerHeight;
 
   applyCameraRotation();
 
@@ -169,8 +194,18 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     verticalVelocity = 0;
     canJump = true;
     stepDistance = 0;
+    stepTimer = 0;
+    bobTime = 0;
+    cameraBobOffset = 0;
+    cameraRollOffset = 0;
+    cameraRollApplied = 0;
+    cameraYawOffset = 0;
+    cameraYawApplied = 0;
+    stepDip = 0;
+    baseCameraY = config.playerHeight;
     velocity.set(0, 0, 0);
     camera.position.set(0, config.playerHeight, 8);
+    cameraRollApplied = 0;
     applyCameraRotation();
     clearMovement();
   }
@@ -182,7 +217,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
     if (!isPlaying) return;
 
-    const grounded = camera.position.y <= config.playerHeight + 0.001;
+    const grounded = baseCameraY <= config.playerHeight + 0.001;
 
     if (keys.jumpQueued) {
       if (grounded && canJump) {
@@ -207,11 +242,13 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     const hasInput = wishDirection.lengthSq() > 0;
     if (hasInput) wishDirection.normalize();
 
-    const maxSpeed = config.playerSpeed * (keys.walking ? config.walkMultiplier : 1);
+    const maxSpeed = keys.walking ? MOVE_TUNING.maxWalkSpeed : MOVE_TUNING.maxGroundSpeed;
     const horizontalSpeed = Math.hypot(velocity.x, velocity.z);
 
     if (grounded) {
-      const drop = Math.max(horizontalSpeed, config.stopSpeed) * config.friction * delta;
+      const inputOpposesVelocity = hasInput && horizontalSpeed > 0.1 && velocity.dot(wishDirection) < -0.1;
+      const frictionBoost = inputOpposesVelocity ? MOVE_TUNING.counterStrafeBoost : 1;
+      const drop = Math.max(horizontalSpeed, MOVE_TUNING.stopSpeed) * MOVE_TUNING.friction * frictionBoost * delta;
       const newSpeed = Math.max(0, horizontalSpeed - drop);
 
       if (horizontalSpeed > 0) {
@@ -224,7 +261,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     }
 
     if (hasInput) {
-      const acceleration = grounded ? config.groundAcceleration : config.airAcceleration;
+      const acceleration = grounded ? MOVE_TUNING.groundAcceleration : MOVE_TUNING.airAcceleration;
       const currentSpeed = velocity.dot(wishDirection);
       const addSpeed = maxSpeed - currentSpeed;
 
@@ -247,10 +284,10 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     clampToArena();
 
     verticalVelocity -= config.gravity * delta;
-    camera.position.y += verticalVelocity * delta;
+    baseCameraY += verticalVelocity * delta;
 
-    if (camera.position.y <= config.playerHeight) {
-      camera.position.y = config.playerHeight;
+    if (baseCameraY <= config.playerHeight) {
+      baseCameraY = config.playerHeight;
       verticalVelocity = 0;
       canJump = true;
     } else {
@@ -262,23 +299,55 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     const currentMoveSpeed = Math.hypot(velocity.x, velocity.z);
     inputState.moving = hasInput && currentMoveSpeed > 0.35;
     inputState.walking = keys.walking;
-    inputState.grounded = camera.position.y <= config.playerHeight + 0.001;
+    inputState.grounded = baseCameraY <= config.playerHeight + 0.001;
     inputState.speed01 = Math.min(currentMoveSpeed / config.playerSpeed, 1);
 
     if (inputState.moving && inputState.grounded) {
       const speedFactor = Math.max(0.45, inputState.speed01);
-      const stepInterval = (keys.walking ? 0.48 : 0.32) / speedFactor;
+      const stepInterval = (keys.walking ? MOVE_TUNING.stepWalkInterval : MOVE_TUNING.stepRunInterval) / speedFactor;
 
       stepTimer -= delta;
 
       if (stepTimer <= 0) {
         stepTimer = stepInterval;
         inputState.footstep = true;
+        stepDip = MOVE_TUNING.stepDipAmount * inputState.speed01;
       }
     } else {
       stepTimer = 0;
       stepDistance = 0;
     }
+    updateCameraBob(delta);
+    camera.position.y = baseCameraY + cameraBobOffset;
+    camera.rotation.y -= cameraYawApplied;
+    camera.rotation.y += cameraYawOffset;
+    cameraYawApplied = cameraYawOffset;
+
+    camera.rotation.z -= cameraRollApplied;
+    camera.rotation.z += cameraRollOffset;
+    cameraRollApplied = cameraRollOffset;
+  }
+
+  function updateCameraBob(delta) {
+    const moving = inputState.moving && inputState.grounded;
+
+    if (moving) {
+      bobTime += delta * (keys.walking ? 7.8 : 11.2) * Math.max(0.45, inputState.speed01);
+      const bobAmount = keys.walking ? MOVE_TUNING.walkBobAmount : MOVE_TUNING.runBobAmount;
+      const rollAmount = keys.walking ? MOVE_TUNING.walkRollAmount : MOVE_TUNING.runRollAmount;
+      const yawAmount = keys.walking ? 0.0007 : 0.0011;
+      const baseBob = Math.abs(Math.sin(bobTime)) * bobAmount * inputState.speed01 - bobAmount * 0.45 * inputState.speed01;
+      const subtleVertical = Math.sin(bobTime * 2) * (bobAmount * 0.35) * inputState.speed01;
+      cameraBobOffset = baseBob + subtleVertical - stepDip;
+      cameraRollOffset = Math.sin(bobTime) * rollAmount * inputState.speed01;
+      cameraYawOffset = Math.sin(bobTime) * yawAmount * inputState.speed01;
+    } else {
+      cameraBobOffset = THREE.MathUtils.lerp(cameraBobOffset, 0, 1 - Math.exp(-16 * delta));
+      cameraRollOffset = THREE.MathUtils.lerp(cameraRollOffset, 0, 1 - Math.exp(-16 * delta));
+      cameraYawOffset = THREE.MathUtils.lerp(cameraYawOffset, 0, 1 - Math.exp(-16 * delta));
+    }
+
+    stepDip = THREE.MathUtils.lerp(stepDip, 0, 1 - Math.exp(-28 * delta));
   }
 
   function clampToArena() {
