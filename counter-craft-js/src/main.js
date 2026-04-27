@@ -6,6 +6,7 @@ import { createEnemies } from "./enemies.js";
 import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
 import { createImpactParticles } from "./impactParticles.js";
+import { createBulletHoles } from "./bulletHoles.js";
 
 const CONFIG = {
   playerHeight: 1.75,
@@ -50,6 +51,7 @@ const dom = {
 const clock = new THREE.Clock();
 const scene = new THREE.Scene();
 const weaponScene = new THREE.Scene();
+
 scene.background = new THREE.Color(0x87a7c7);
 scene.fog = new THREE.Fog(0x87a7c7, 22, 75);
 
@@ -73,6 +75,8 @@ const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.co
 const enemies = createEnemies({ THREE, scene, camera, config: CONFIG, state });
 const weapon = createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVelocity: player.velocity });
 const impacts = createImpactParticles({ THREE, scene });
+const bulletHoles = createBulletHoles({ THREE, scene });
+
 const impactRaycaster = new THREE.Raycaster();
 const impactCenter = new THREE.Vector2(0, 0);
 
@@ -148,19 +152,24 @@ function setupInput() {
 
 function startGame() {
   if (state.isGameOver) resetGame();
+
   state.isPlaying = true;
   dom.overlay.style.display = "none";
   document.body.classList.remove("fallback-look");
+
   player.lockCursor();
   updateModeNote();
 }
 
 function pauseGame() {
   if (!state.isPlaying || state.isGameOver) return;
+
   state.isPlaying = false;
   player.clearMovement();
   document.body.classList.remove("cursor-locked", "fallback-look");
+
   if (document.pointerLockElement === document.body) document.exitPointerLock();
+
   dom.overlay.style.display = "grid";
   dom.panelTitle.textContent = "Paused";
   dom.panelText.textContent = "Click continue to lock the cursor again.";
@@ -169,9 +178,14 @@ function pauseGame() {
 
 function onPointerLockChange() {
   const locked = document.pointerLockElement === document.body;
+
   player.setPointerLockActive(locked);
   document.body.classList.toggle("cursor-locked", locked);
-  if (!locked && state.isPlaying && !state.isGameOver && player.pointerLockSupported) pauseGame();
+
+  if (!locked && state.isPlaying && !state.isGameOver && player.pointerLockSupported) {
+    pauseGame();
+  }
+
   updateModeNote();
 }
 
@@ -184,6 +198,7 @@ function enableFallbackLook() {
 
 function updateModeNote() {
   const modeNote = document.getElementById("modeNote");
+
   if (player.pointerLockActive) modeNote.textContent = "Cursor locked: mouse look active";
   else if (player.pointerLockSupported) modeNote.textContent = "Cursor lock: click start to lock";
   else modeNote.textContent = "Cursor lock blocked: hold left mouse button and drag";
@@ -216,6 +231,7 @@ function shoot() {
 
   if (hit?.type === "enemy") {
     const killed = enemies.damageEnemy(hit.enemy, shot.damage);
+
     impacts.spawnBlood(hit.point, hit.normal.clone().multiplyScalar(-1));
 
     if (killed) {
@@ -237,6 +253,7 @@ function shoot() {
     }
   } else if (hit?.type === "surface") {
     impacts.spawnSurface(hit.point, hit.normal);
+    bulletHoles.spawn(hit.point, hit.normal);
   }
 
   updateHud();
@@ -283,13 +300,21 @@ function getSurfaceImpact() {
 
 function spawnTracer() {
   const direction = new THREE.Vector3();
+
   camera.getWorldDirection(direction);
+
   const start = camera.position.clone().add(direction.clone().multiplyScalar(0.8));
   const end = camera.position.clone().add(direction.clone().multiplyScalar(28));
   const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-  const material = new THREE.LineBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.85 });
+  const material = new THREE.LineBasicMaterial({
+    color: 0xfff2a0,
+    transparent: true,
+    opacity: 0.85
+  });
+
   const line = new THREE.Line(geometry, material);
   line.userData.life = 0.06;
+
   scene.add(line);
   world.tracers.push(line);
 }
@@ -297,8 +322,10 @@ function spawnTracer() {
 function updateTracers(delta) {
   for (let i = world.tracers.length - 1; i >= 0; i--) {
     const tracer = world.tracers[i];
+
     tracer.userData.life -= delta;
     tracer.material.opacity = Math.max(0, tracer.userData.life / 0.06);
+
     if (tracer.userData.life <= 0) {
       scene.remove(tracer);
       tracer.geometry.dispose();
@@ -311,19 +338,27 @@ function updateTracers(delta) {
 function takeDamage(amount) {
   state.health = Math.max(0, state.health - amount);
   cameraShake.trauma = Math.min(1, cameraShake.trauma + 0.45);
+
   dom.damageFlash.style.opacity = "1";
   setTimeout(() => (dom.damageFlash.style.opacity = "0"), 120);
+
   sounds.playPlayerHit();
+
   if (state.health <= 0) endGame();
+
   updateHud();
 }
 
 function endGame() {
   state.isGameOver = true;
   state.isPlaying = false;
+
   player.clearMovement();
+
   if (document.pointerLockElement === document.body) document.exitPointerLock();
+
   document.body.classList.remove("cursor-locked", "fallback-look");
+
   dom.overlay.style.display = "grid";
   dom.panelTitle.textContent = "Game Over";
   dom.panelText.textContent = `Final score: ${state.score}. Click restart to play again.`;
@@ -335,13 +370,17 @@ function resetGame() {
   state.score = 0;
   state.wave = 1;
   state.isGameOver = false;
+
   player.reset();
   enemies.reset();
   enemies.spawnWave(state.wave);
   weapon.resetSlots();
   impacts.clear();
+  bulletHoles.clear();
   weapon.play("idle");
+
   updateHud();
+
   dom.panelTitle.textContent = "FPS Template";
   dom.panelText.textContent = "Click start, then use WASD to move, mouse to look, left click to shoot, and R to reload.";
   dom.startButton.textContent = "Start Game";
@@ -350,8 +389,10 @@ function resetGame() {
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+
   weaponCamera.aspect = window.innerWidth / window.innerHeight;
   weaponCamera.updateProjectionMatrix();
+
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
@@ -374,11 +415,13 @@ function updateViewPunch(delta) {
 function updateCameraShake(delta) {
   cameraShake.time += delta;
   cameraShake.trauma = Math.max(0, cameraShake.trauma - cameraShake.decay * delta);
+
   cameraShake.positionOffset.set(
     Math.sin(cameraShake.time * 71.0) * cameraShake.posAmp * cameraShake.trauma,
     Math.sin(cameraShake.time * 53.0) * cameraShake.posAmp * 0.45 * cameraShake.trauma,
     0
   );
+
   cameraShake.rotationOffsetZ = Math.sin(cameraShake.time * 83.0) * cameraShake.rotAmp * cameraShake.trauma;
 }
 
@@ -387,10 +430,12 @@ function renderWithCameraShake() {
   camera.rotation.x += viewPunch.pitch;
   camera.rotation.y += viewPunch.yaw;
   camera.rotation.z += cameraShake.rotationOffsetZ;
+
   renderer.clear();
   renderer.render(scene, camera);
   renderer.clearDepth();
   renderer.render(weaponScene, weaponCamera);
+
   camera.rotation.z -= cameraShake.rotationOffsetZ;
   camera.rotation.y -= viewPunch.yaw;
   camera.rotation.x -= viewPunch.pitch;
@@ -399,19 +444,24 @@ function renderWithCameraShake() {
 
 function animate() {
   requestAnimationFrame(animate);
+
   const delta = Math.min(clock.getDelta(), 0.05);
+
   player.update(delta, state.isPlaying);
 
   if (state.isPlaying && player.inputState.footstep) {
     sounds.playFootstep(player.inputState.walking, player.inputState.speed01);
   }
 
-  if (state.isPlaying && !state.isGameOver && player.inputState.mouseDown) shoot();
+  if (state.isPlaying && !state.isGameOver && player.inputState.mouseDown) {
+    shoot();
+  }
 
   enemies.update(delta, state.isPlaying, takeDamage);
   weapon.update(delta, state.isPlaying, player.inputState);
   updateTracers(delta);
   impacts.update(delta);
+  bulletHoles.update(delta);
   updateViewPunch(delta);
   updateCameraShake(delta);
   renderWithCameraShake();
