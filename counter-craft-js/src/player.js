@@ -13,7 +13,11 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     walkBobAmount: 0.0035,
     runRollAmount: 0.0014,
     walkRollAmount: 0.0008,
-    stepDipAmount: 0.006
+    stepDipAmount: 0.006,
+    stepHeight: 0.48,
+    groundSnapDistance: 0.28,
+    groundRayExtraHeight: 0.35,
+    groundRayLength: 4
   };
 
   const keys = {
@@ -41,10 +45,15 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   const forward = new THREE.Vector3();
   const side = new THREE.Vector3();
   const oldPosition = new THREE.Vector3();
+
   const playerBox = new THREE.Box3();
   const colliderBox = new THREE.Box3();
   const playerBoxCenter = new THREE.Vector3();
   const playerBoxSize = new THREE.Vector3(0.75, config.playerHeight, 0.75);
+
+  const groundRaycaster = new THREE.Raycaster();
+  const groundRayOrigin = new THREE.Vector3();
+  const groundRayDirection = new THREE.Vector3(0, -1, 0);
 
   let yaw = 0;
   let pitch = 0;
@@ -65,6 +74,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   let cameraYawApplied = 0;
   let stepDip = 0;
   let baseCameraY = config.playerHeight;
+  let groundY = 0;
 
   applyCameraRotation();
 
@@ -202,10 +212,10 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     cameraYawOffset = 0;
     cameraYawApplied = 0;
     stepDip = 0;
+    groundY = 0;
     baseCameraY = config.playerHeight;
     velocity.set(0, 0, 0);
     camera.position.set(0, config.playerHeight, 8);
-    cameraRollApplied = 0;
     applyCameraRotation();
     clearMovement();
   }
@@ -217,13 +227,24 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
     if (!isPlaying) return;
 
-    const grounded = baseCameraY <= config.playerHeight + 0.001;
+    groundY = getGroundY();
+    const targetGroundCameraY = groundY + config.playerHeight;
+    const grounded = baseCameraY <= targetGroundCameraY + MOVE_TUNING.groundSnapDistance && verticalVelocity <= 0;
+
+    if (grounded) {
+      baseCameraY = targetGroundCameraY;
+      verticalVelocity = 0;
+      canJump = true;
+    } else {
+      canJump = false;
+    }
 
     if (keys.jumpQueued) {
       if (grounded && canJump) {
         verticalVelocity = config.jumpPower;
         canJump = false;
       }
+
       keys.jumpQueued = false;
     }
 
@@ -286,8 +307,11 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     verticalVelocity -= config.gravity * delta;
     baseCameraY += verticalVelocity * delta;
 
-    if (baseCameraY <= config.playerHeight) {
-      baseCameraY = config.playerHeight;
+    groundY = getGroundY();
+    const nextGroundCameraY = groundY + config.playerHeight;
+
+    if (baseCameraY <= nextGroundCameraY && verticalVelocity <= 0) {
+      baseCameraY = nextGroundCameraY;
       verticalVelocity = 0;
       canJump = true;
     } else {
@@ -299,7 +323,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     const currentMoveSpeed = Math.hypot(velocity.x, velocity.z);
     inputState.moving = hasInput && currentMoveSpeed > 0.35;
     inputState.walking = keys.walking;
-    inputState.grounded = baseCameraY <= config.playerHeight + 0.001;
+    inputState.grounded = canJump;
     inputState.speed01 = Math.min(currentMoveSpeed / config.playerSpeed, 1);
 
     if (inputState.moving && inputState.grounded) {
@@ -317,8 +341,11 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       stepTimer = 0;
       stepDistance = 0;
     }
+
     updateCameraBob(delta);
+
     camera.position.y = baseCameraY + cameraBobOffset;
+
     camera.rotation.y -= cameraYawApplied;
     camera.rotation.y += cameraYawOffset;
     cameraYawApplied = cameraYawOffset;
@@ -328,16 +355,45 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     cameraRollApplied = cameraRollOffset;
   }
 
+  function getGroundY() {
+    groundRayOrigin.set(
+      camera.position.x,
+      baseCameraY + MOVE_TUNING.groundRayExtraHeight,
+      camera.position.z
+    );
+
+    groundRaycaster.set(groundRayOrigin, groundRayDirection);
+    groundRaycaster.far = MOVE_TUNING.groundRayLength;
+
+    const hits = groundRaycaster.intersectObjects(colliders, true);
+
+    for (const hit of hits) {
+      if (!hit.face) continue;
+
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+
+      if (normal.y < 0.45) continue;
+      if (hit.point.y > baseCameraY + MOVE_TUNING.stepHeight) continue;
+
+      return hit.point.y;
+    }
+
+    return 0;
+  }
+
   function updateCameraBob(delta) {
     const moving = inputState.moving && inputState.grounded;
 
     if (moving) {
       bobTime += delta * (keys.walking ? 7.8 : 11.2) * Math.max(0.45, inputState.speed01);
+
       const bobAmount = keys.walking ? MOVE_TUNING.walkBobAmount : MOVE_TUNING.runBobAmount;
       const rollAmount = keys.walking ? MOVE_TUNING.walkRollAmount : MOVE_TUNING.runRollAmount;
       const yawAmount = keys.walking ? 0.0007 : 0.0011;
+
       const baseBob = Math.abs(Math.sin(bobTime)) * bobAmount * inputState.speed01 - bobAmount * 0.45 * inputState.speed01;
       const subtleVertical = Math.sin(bobTime * 2) * (bobAmount * 0.35) * inputState.speed01;
+
       cameraBobOffset = baseBob + subtleVertical - stepDip;
       cameraRollOffset = Math.sin(bobTime) * rollAmount * inputState.speed01;
       cameraYawOffset = Math.sin(bobTime) * yawAmount * inputState.speed01;
@@ -357,11 +413,17 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   }
 
   function hitsWall(position) {
-    playerBoxCenter.set(position.x, position.y - config.playerHeight / 2, position.z);
+    const feetY = baseCameraY - config.playerHeight;
+
+    playerBoxCenter.set(position.x, baseCameraY - config.playerHeight / 2, position.z);
     playerBox.setFromCenterAndSize(playerBoxCenter, playerBoxSize);
 
     return colliders.some(collider => {
       colliderBox.setFromObject(collider);
+
+      if (colliderBox.max.y <= feetY + MOVE_TUNING.stepHeight) return false;
+      if (colliderBox.min.y >= baseCameraY - 0.05) return false;
+
       return playerBox.intersectsBox(colliderBox);
     });
   }
@@ -369,12 +431,15 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   return {
     velocity,
     inputState,
+
     get pointerLockSupported() {
       return pointerLockSupported;
     },
+
     get pointerLockActive() {
       return pointerLockActive;
     },
+
     lockCursor,
     enableFallbackLook,
     setPointerLockActive,

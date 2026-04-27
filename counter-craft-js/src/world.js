@@ -13,6 +13,7 @@ export function createWorld({ THREE, scene, config }) {
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
+    colliders.push(floor);
 
     addBox(0, 1.5, -config.arenaSize / 2, config.arenaSize, 3, 1, 0x5b5b5b, true);
     addBox(0, 1.5, config.arenaSize / 2, config.arenaSize, 3, 1, 0x5b5b5b, true);
