@@ -246,8 +246,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     const config = currentModelConfig();
 
     if (!config.model) {
-      model = createPlaceholder();
-      rig.add(model);
+      clearModel();
       play("idle");
       return;
     }
@@ -277,8 +276,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       undefined,
       () => {
         clearModel();
-        model = createPlaceholder();
-        rig.add(model);
         play("idle");
       }
     );
@@ -582,28 +579,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
         }
       });
     });
-  }
-
-  function createPlaceholder() {
-    const group = new THREE.Group();
-    const dark = new THREE.MeshStandardMaterial({ color: 0x202020, roughness: 0.55, metalness: 0.55 });
-    const metal = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.35, metalness: 0.75 });
-    const grip = new THREE.MeshStandardMaterial({ color: 0x5a3217, roughness: 0.8, metalness: 0.05 });
-
-    const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.72), dark);
-    group.add(receiver);
-
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.8, 16), metal);
-    barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0.06, -0.58);
-    group.add(barrel);
-
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.34, 0.16), grip);
-    handle.position.set(0.02, -0.25, 0.22);
-    handle.rotation.x = -0.25;
-    group.add(handle);
-
-    return group;
   }
 
   return {
