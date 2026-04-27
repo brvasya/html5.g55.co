@@ -5,6 +5,7 @@ import { createWorld } from "./world.js";
 import { createEnemies } from "./enemies.js";
 import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
+import { createImpactParticles } from "./impactParticles.js";
 
 const CONFIG = {
   playerHeight: 1.75,
@@ -71,6 +72,9 @@ const world = createWorld({ THREE, scene, config: CONFIG });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
 const enemies = createEnemies({ THREE, scene, camera, config: CONFIG, state });
 const weapon = createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVelocity: player.velocity });
+const impacts = createImpactParticles({ THREE, scene });
+const impactRaycaster = new THREE.Raycaster();
+const impactCenter = new THREE.Vector2(0, 0);
 
 const cameraShake = {
   trauma: 0,
@@ -208,10 +212,12 @@ function shoot() {
   hud.setCrosshairFire?.();
   spawnTracer();
 
+  const surfaceHit = getSurfaceImpact();
   const killed = enemies.shoot(shot.damage);
 
   if (killed) {
     sounds.playEnemyDie();
+    spawnBloodImpact(surfaceHit);
     state.score += 100;
 
     if (enemies.count === 0) {
@@ -225,6 +231,7 @@ function shoot() {
     }
   } else {
     sounds.playEnemyHit();
+    if (surfaceHit) impacts.spawnSurface(surfaceHit.point, surfaceHit.normal);
   }
 
   updateHud();
@@ -240,6 +247,26 @@ function reload() {
   updateHud();
 
   setTimeout(() => updateHud(), result.duration);
+}
+
+function getSurfaceImpact() {
+  impactRaycaster.setFromCamera(impactCenter, camera);
+  const hits = impactRaycaster.intersectObjects(world.colliders, true);
+  if (!hits.length) return null;
+
+  const hit = hits[0];
+  return {
+    point: hit.point,
+    normal: hit.face?.normal?.clone()?.transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0)
+  };
+}
+
+function spawnBloodImpact(surfaceHit) {
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+  const point = surfaceHit?.point ?? camera.position.clone().add(direction.multiplyScalar(8));
+  const normal = direction.clone().multiplyScalar(-1);
+  impacts.spawnBlood(point, normal);
 }
 
 function spawnTracer() {
@@ -300,6 +327,7 @@ function resetGame() {
   enemies.reset();
   enemies.spawnWave(state.wave);
   weapon.resetSlots();
+  impacts.clear();
   weapon.play("idle");
   updateHud();
   dom.panelTitle.textContent = "FPS Template";
@@ -368,6 +396,7 @@ function animate() {
   enemies.update(delta, state.isPlaying, takeDamage);
   weapon.update(delta, state.isPlaying, player.inputState);
   updateTracers(delta);
+  impacts.update(delta);
   updateViewPunch(delta);
   updateCameraShake(delta);
   renderWithCameraShake();
