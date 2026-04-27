@@ -69,14 +69,25 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     });
   }
 
-  function shoot(damage) {
-    raycaster.setFromCamera(center, camera);
+  function getHit(activeRaycaster) {
+    const hits = activeRaycaster.intersectObjects(enemies, true);
+    if (!hits.length) return null;
 
-    const hits = raycaster.intersectObjects(enemies, true);
-    if (!hits.length) return false;
+    const hit = hits[0];
+    const enemy = findEnemyRoot(hit.object);
+    if (!enemy) return null;
 
-    const enemy = findEnemyRoot(hits[0].object);
-    if (!enemy) return false;
+    return {
+      type: "enemy",
+      enemy,
+      point: hit.point,
+      normal: hit.face?.normal?.clone()?.transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0),
+      distance: hit.distance
+    };
+  }
+
+  function damageEnemy(enemy, damage) {
+    if (!enemy || !enemies.includes(enemy)) return false;
 
     enemy.userData.health -= damage;
     flashEnemy(enemy);
@@ -87,6 +98,15 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     }
 
     return false;
+  }
+
+  function shoot(damage) {
+    raycaster.setFromCamera(center, camera);
+
+    const hit = getHit(raycaster);
+    if (!hit) return false;
+
+    return damageEnemy(hit.enemy, damage);
   }
 
   function findEnemyRoot(object) {
@@ -132,6 +152,8 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     spawnWave,
     update,
     shoot,
+    getHit,
+    damageEnemy,
     reset,
     get count() {
       return enemies.length;

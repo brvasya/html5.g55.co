@@ -212,26 +212,31 @@ function shoot() {
   hud.setCrosshairFire?.();
   spawnTracer();
 
-  const surfaceHit = getSurfaceImpact();
-  const killed = enemies.shoot(shot.damage);
+  const hit = getBulletHit();
 
-  if (killed) {
-    sounds.playEnemyDie();
-    spawnBloodImpact(surfaceHit);
-    state.score += 100;
+  if (hit?.type === "enemy") {
+    const killed = enemies.damageEnemy(hit.enemy, shot.damage);
+    impacts.spawnBlood(hit.point, hit.normal.clone().multiplyScalar(-1));
 
-    if (enemies.count === 0) {
-      state.wave += 1;
-      weapon.addReserveAmmo(30);
-      updateHud();
-      setTimeout(() => {
-        enemies.spawnWave(state.wave);
+    if (killed) {
+      sounds.playEnemyDie();
+      state.score += 100;
+
+      if (enemies.count === 0) {
+        state.wave += 1;
+        weapon.addReserveAmmo(30);
         updateHud();
-      }, 700);
+
+        setTimeout(() => {
+          enemies.spawnWave(state.wave);
+          updateHud();
+        }, 700);
+      }
+    } else {
+      sounds.playEnemyHit();
     }
-  } else {
-    sounds.playEnemyHit();
-    if (surfaceHit) impacts.spawnSurface(surfaceHit.point, surfaceHit.normal);
+  } else if (hit?.type === "surface") {
+    impacts.spawnSurface(hit.point, hit.normal);
   }
 
   updateHud();
@@ -249,24 +254,31 @@ function reload() {
   setTimeout(() => updateHud(), result.duration);
 }
 
-function getSurfaceImpact() {
+function getBulletHit() {
   impactRaycaster.setFromCamera(impactCenter, camera);
+
+  const enemyHit = enemies.getHit(impactRaycaster);
+  const surfaceHit = getSurfaceImpact();
+
+  if (enemyHit && surfaceHit) {
+    return enemyHit.distance <= surfaceHit.distance ? enemyHit : surfaceHit;
+  }
+
+  return enemyHit || surfaceHit || null;
+}
+
+function getSurfaceImpact() {
   const hits = impactRaycaster.intersectObjects(world.colliders, true);
   if (!hits.length) return null;
 
   const hit = hits[0];
-  return {
-    point: hit.point,
-    normal: hit.face?.normal?.clone()?.transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0)
-  };
-}
 
-function spawnBloodImpact(surfaceHit) {
-  const direction = new THREE.Vector3();
-  camera.getWorldDirection(direction);
-  const point = surfaceHit?.point ?? camera.position.clone().add(direction.multiplyScalar(8));
-  const normal = direction.clone().multiplyScalar(-1);
-  impacts.spawnBlood(point, normal);
+  return {
+    type: "surface",
+    point: hit.point,
+    normal: hit.face?.normal?.clone()?.transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0),
+    distance: hit.distance
+  };
 }
 
 function spawnTracer() {
@@ -389,10 +401,13 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.05);
   player.update(delta, state.isPlaying);
+
   if (state.isPlaying && player.inputState.footstep) {
     sounds.playFootstep(player.inputState.walking, player.inputState.speed01);
   }
+
   if (state.isPlaying && !state.isGameOver && player.inputState.mouseDown) shoot();
+
   enemies.update(delta, state.isPlaying, takeDamage);
   weapon.update(delta, state.isPlaying, player.inputState);
   updateTracers(delta);
