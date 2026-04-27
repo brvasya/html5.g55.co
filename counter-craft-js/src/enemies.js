@@ -1,8 +1,85 @@
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import { ZOMBIE } from "../assets/zombie.js";
+
+const ENEMY_TYPES = {
+  zombie: {
+    asset: ZOMBIE
+  }
+};
+
+const DEFAULT_ENEMY_TYPE = "zombie";
+
 export function createEnemies({ THREE, scene, camera, config, state }) {
   const enemies = [];
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0);
   const toPlayer = new THREE.Vector3();
+
+  const modelCache = new Map();
+
+  preloadEnemyType(DEFAULT_ENEMY_TYPE);
+
+  function preloadEnemyType(typeId) {
+    const type = getEnemyType(typeId);
+    const asset = type.asset;
+
+    if (!asset || !asset.model) return;
+
+    let cached = modelCache.get(typeId);
+    if (cached) return;
+
+    cached = {
+      source: null,
+      animations: [],
+      loading: true,
+      failed: false
+    };
+
+    modelCache.set(typeId, cached);
+
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+
+    loader.load(
+      asset.model,
+      gltf => {
+        cached.source = gltf.scene;
+        cached.animations = gltf.animations || [];
+        cached.loading = false;
+
+        cached.source.traverse(object => {
+          if (!object.isMesh) return;
+
+          object.castShadow = true;
+          object.receiveShadow = true;
+          object.frustumCulled = false;
+
+          if (object.material) makeMaterialCrisp(object.material);
+        });
+
+        enemies.forEach(enemy => {
+          if (enemy.userData.typeId === typeId && !enemy.userData.model) {
+            attachEnemyModel(enemy);
+          }
+        });
+      },
+      undefined,
+      () => {
+        cached.loading = false;
+        cached.failed = true;
+      }
+    );
+  }
+
+  function getEnemyType(typeId) {
+    return ENEMY_TYPES[typeId] || ENEMY_TYPES[DEFAULT_ENEMY_TYPE];
+  }
+
+  function chooseEnemyTypeForWave() {
+    return DEFAULT_ENEMY_TYPE;
+  }
 
   function spawnWave(wave) {
     const count = Math.min(4 + wave, 14);
@@ -10,46 +87,166 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const radius = 12 + Math.random() * 7;
-      createEnemy(Math.cos(angle) * radius, Math.sin(angle) * radius, wave);
+
+      createEnemy(
+        Math.cos(angle) * radius,
+        Math.sin(angle) * radius,
+        wave,
+        chooseEnemyTypeForWave(wave)
+      );
     }
   }
 
-  function createEnemy(x, z, wave) {
+  function createEnemy(x, z, wave, typeId = DEFAULT_ENEMY_TYPE) {
+    const type = getEnemyType(typeId);
+
     const group = new THREE.Group();
     group.position.set(x, 0, z);
 
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 1.3, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0xbb3333, roughness: 0.75 })
-    );
-    body.position.y = 0.85;
-    body.castShadow = true;
-    group.add(body);
-
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.62, 0.62, 0.62),
-      new THREE.MeshStandardMaterial({ color: 0xdd5555, roughness: 0.7 })
-    );
-    head.position.y = 1.65;
-    head.castShadow = true;
-    group.add(head);
+    const asset = type.asset || {};
 
     group.userData = {
-      health: config.enemyHealth + wave * 8,
-      lastAttack: 0
+      typeId: typeId,
+      type,
+      health: (config.enemyHealth + wave * 8) * (asset.healthMultiplier ?? 1),
+      speed: config.enemySpeed * (asset.speedMultiplier ?? 1),
+      damage: config.enemyDamage * (asset.damageMultiplier ?? 1),
+      attackDistance: asset.attackDistance ?? config.enemyAttackDistance,
+      attackDuration: 0,
+      attackDamageDelay: asset.attackDamageDelay,
+      lastAttack: 0,
+      mixer: null,
+      actions: {},
+      currentAction: null,
+      isAttacking: false,
+      attackTimer: 0,
+      attackElapsed: 0,
+      pendingDamage: false,
+      model: null,
+      fallback: null
     };
+
+    createFallbackEnemy(group);
 
     scene.add(group);
     enemies.push(group);
+
+    attachEnemyModel(group);
+    preloadEnemyType(typeId);
+  }
+
+  function createFallbackEnemy(group) {
+    const fallback = new THREE.Group();
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.9, 1.3, 0.55),
+      new THREE.MeshStandardMaterial({ color: 0xbb3333 })
+    );
+
+    body.position.y = 0.85;
+
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.62, 0.62),
+      new THREE.MeshStandardMaterial({ color: 0xdd5555 })
+    );
+
+    head.position.y = 1.65;
+
+    fallback.add(body);
+    fallback.add(head);
+
+    group.userData.fallback = fallback;
+    group.add(fallback);
+  }
+
+  function attachEnemyModel(enemy) {
+    const type = enemy.userData.type;
+    const cached = modelCache.get(enemy.userData.typeId);
+
+    if (!cached || !cached.source || enemy.userData.model) return;
+
+    if (enemy.userData.fallback) {
+      enemy.remove(enemy.userData.fallback);
+      disposeObject(enemy.userData.fallback);
+      enemy.userData.fallback = null;
+    }
+
+    const model = SkeletonUtils.clone(cached.source);
+
+    const assetScale = type.asset.scale || [1, 1, 1];
+    model.scale.set(assetScale[0], assetScale[1], assetScale[2]);
+
+    const assetRotation = type.asset.rotation || [0, 0, 0];
+    const assetPosition = type.asset.position || [0, 0, 0];
+
+    model.rotation.set(assetRotation[0], assetRotation[1], assetRotation[2]);
+    model.position.set(assetPosition[0], assetPosition[1], assetPosition[2]);
+
+    enemy.add(model);
+    enemy.userData.model = model;
+
+    if (cached.animations.length) {
+      setupEnemyAnimations(enemy, model, cached.animations);
+      if (!enemy.userData.isAttacking) playEnemyAnimation(enemy, "walk");
+    }
+  }
+
+  function setupEnemyAnimations(enemy, model, animations) {
+    const mixer = new THREE.AnimationMixer(model);
+    const baseClip = animations[0];
+
+    enemy.userData.mixer = mixer;
+    enemy.userData.actions = {};
+
+    Object.entries(enemy.userData.type.asset.anim || {}).forEach(([name, data]) => {
+      const fps = 30;
+      const clip = THREE.AnimationUtils.subclip(baseClip, name, data[0], data[1], fps);
+      const action = mixer.clipAction(clip);
+
+      // derive attack duration from animation clip
+      if (name === "attack") {
+        enemy.userData.attackDuration = clip.duration;
+      }
+
+      action.setLoop(data[2] ? THREE.LoopRepeat : THREE.LoopOnce, data[2] ? Infinity : 1);
+      action.clampWhenFinished = !data[2];
+
+      enemy.userData.actions[name] = action;
+    });
+  }
+
+  function playEnemyAnimation(enemy, name) {
+    const action = enemy.userData.actions[name];
+    if (!action) return;
+    if (enemy.userData.currentAction === action) return;
+
+    if (enemy.userData.currentAction) {
+      enemy.userData.currentAction.fadeOut(0.08);
+    }
+
+    action.reset().fadeIn(0.08).play();
+    enemy.userData.currentAction = action;
   }
 
   function update(delta, isPlaying, takeDamage) {
     if (!isPlaying) return;
 
-    const now = performance.now();
+    const nowTime = performance.now();
     const playerPosition = camera.position;
 
     enemies.forEach(enemy => {
+      if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
+
+      if (enemy.userData.attackTimer > 0) {
+        enemy.userData.attackTimer = Math.max(0, enemy.userData.attackTimer - delta);
+        enemy.userData.attackElapsed += delta;
+
+        if (enemy.userData.attackTimer === 0) {
+          enemy.userData.isAttacking = false;
+          playEnemyAnimation(enemy, "walk");
+        }
+      }
+
       toPlayer.set(
         playerPosition.x - enemy.position.x,
         0,
@@ -59,12 +256,30 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
       const distance = toPlayer.length();
       enemy.lookAt(playerPosition.x, enemy.position.y, playerPosition.z);
 
-      if (distance > config.enemyAttackDistance) {
-        toPlayer.normalize();
-        enemy.position.add(toPlayer.multiplyScalar((config.enemySpeed + state.wave * 0.08) * delta));
-      } else if (now - enemy.userData.lastAttack > config.enemyAttackCooldown) {
-        enemy.userData.lastAttack = now;
-        takeDamage(config.enemyDamage);
+      if (distance > enemy.userData.attackDistance) {
+        // DO NOT move while attacking
+        if (!enemy.userData.isAttacking) {
+          toPlayer.normalize();
+          enemy.position.add(toPlayer.multiplyScalar((enemy.userData.speed + state.wave * 0.08) * delta));
+          playEnemyAnimation(enemy, "walk");
+        }
+      } else if (nowTime - enemy.userData.lastAttack > config.enemyAttackCooldown && !enemy.userData.isAttacking) {
+        enemy.userData.lastAttack = nowTime;
+        enemy.userData.isAttacking = true;
+        enemy.userData.attackTimer = enemy.userData.attackDuration;
+        enemy.userData.attackElapsed = 0;
+        enemy.userData.pendingDamage = true;
+        playEnemyAnimation(enemy, "attack");
+      }
+
+      // apply delayed damage
+      if (
+        enemy.userData.isAttacking &&
+        enemy.userData.pendingDamage &&
+        enemy.userData.attackElapsed >= enemy.userData.attackDamageDelay
+      ) {
+        enemy.userData.pendingDamage = false;
+        takeDamage(enemy.userData.damage);
       }
     });
   }
@@ -75,13 +290,16 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
 
     const hit = hits[0];
     const enemy = findEnemyRoot(hit.object);
+
     if (!enemy) return null;
 
     return {
       type: "enemy",
       enemy,
       point: hit.point,
-      normal: hit.face?.normal?.clone()?.transformDirection(hit.object.matrixWorld) ?? new THREE.Vector3(0, 1, 0),
+      normal: hit.face
+        ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
+        : new THREE.Vector3(0, 1, 0),
       distance: hit.distance
     };
   }
@@ -90,7 +308,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     if (!enemy || !enemies.includes(enemy)) return false;
 
     enemy.userData.health -= damage;
-    flashEnemy(enemy);
 
     if (enemy.userData.health <= 0) {
       removeEnemy(enemy);
@@ -100,15 +317,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     return false;
   }
 
-  function shoot(damage) {
-    raycaster.setFromCamera(center, camera);
-
-    const hit = getHit(raycaster);
-    if (!hit) return false;
-
-    return damageEnemy(hit.enemy, damage);
-  }
-
   function findEnemyRoot(object) {
     let current = object;
 
@@ -116,32 +324,30 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
       current = current.parent;
     }
 
-    return current || null;
-  }
-
-  function flashEnemy(enemy) {
-    enemy.children.forEach(part => {
-      if (!part.material?.color) return;
-
-      const original = part.material.color.getHex();
-      part.material.color.setHex(0xffffff);
-      setTimeout(() => part.material.color.setHex(original), 70);
-    });
+    return current;
   }
 
   function removeEnemy(enemy) {
     scene.remove(enemy);
-
-    enemy.traverse(object => {
-      if (object.geometry) object.geometry.dispose();
-      if (object.material) {
-        if (Array.isArray(object.material)) object.material.forEach(material => material.dispose());
-        else object.material.dispose();
-      }
-    });
+    disposeObject(enemy);
 
     const index = enemies.indexOf(enemy);
     if (index !== -1) enemies.splice(index, 1);
+  }
+
+  function disposeObject(root) {
+    root.traverse(object => {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) object.material.dispose();
+    });
+  }
+
+  function makeMaterialCrisp(material) {
+    if (!material.map) return;
+
+    material.map.magFilter = THREE.NearestFilter;
+    material.map.minFilter = THREE.NearestFilter;
+    material.map.needsUpdate = true;
   }
 
   function reset() {
@@ -151,7 +357,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
   return {
     spawnWave,
     update,
-    shoot,
     getHit,
     damageEnemy,
     reset,
