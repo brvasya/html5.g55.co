@@ -449,6 +449,10 @@ function animate() {
 
   player.update(delta, state.isPlaying);
 
+  if (state.isPlaying && player.inputState.jumped) {
+    sounds.playJump();
+  }
+
   if (state.isPlaying && player.inputState.footstep) {
     sounds.playFootstep(player.inputState.walking, player.inputState.speed01);
   }

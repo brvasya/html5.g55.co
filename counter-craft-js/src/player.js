@@ -37,6 +37,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     walking: false,
     grounded: true,
     footstep: false,
+    jumped: false,
     speed01: 0
   };
 
@@ -218,10 +219,18 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     camera.position.set(0, config.playerHeight, 8);
     applyCameraRotation();
     clearMovement();
+
+    inputState.footstep = false;
+    inputState.jumped = false;
+    inputState.moving = false;
+    inputState.walking = false;
+    inputState.grounded = true;
+    inputState.speed01 = 0;
   }
 
   function update(delta, isPlaying) {
     inputState.footstep = false;
+    inputState.jumped = false;
     inputState.mouseDeltaX = THREE.MathUtils.lerp(inputState.mouseDeltaX, 0, 1 - Math.exp(-30 * delta));
     inputState.mouseDeltaY = THREE.MathUtils.lerp(inputState.mouseDeltaY, 0, 1 - Math.exp(-30 * delta));
 
@@ -243,6 +252,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       if (grounded && canJump) {
         verticalVelocity = config.jumpPower;
         canJump = false;
+        inputState.jumped = true;
       }
 
       keys.jumpQueued = false;
