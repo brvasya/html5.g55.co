@@ -82,6 +82,17 @@ const cameraShake = {
   rotationOffsetZ: 0
 };
 
+const viewPunch = {
+  pitch: 0,
+  yaw: 0,
+  pitchVelocity: 0,
+  yawVelocity: 0,
+  pitchKick: 0.008,
+  yawKick: 0.003,
+  returnSpeed: 30,
+  damping: 20
+};
+
 setupLights();
 setupInput();
 resetGame();
@@ -192,6 +203,7 @@ function shoot() {
     return;
   }
 
+  addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
   hud.setCrosshairFire?.();
   spawnTracer();
@@ -303,6 +315,22 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function addViewPunch() {
+  viewPunch.pitchVelocity += viewPunch.pitchKick;
+  viewPunch.yawVelocity += (Math.random() - 0.5) * viewPunch.yawKick;
+}
+
+function updateViewPunch(delta) {
+  viewPunch.pitchVelocity += -viewPunch.pitch * viewPunch.returnSpeed * delta;
+  viewPunch.yawVelocity += -viewPunch.yaw * viewPunch.returnSpeed * delta;
+
+  viewPunch.pitchVelocity *= Math.exp(-viewPunch.damping * delta);
+  viewPunch.yawVelocity *= Math.exp(-viewPunch.damping * delta);
+
+  viewPunch.pitch += viewPunch.pitchVelocity;
+  viewPunch.yaw += viewPunch.yawVelocity;
+}
+
 function updateCameraShake(delta) {
   cameraShake.time += delta;
   cameraShake.trauma = Math.max(0, cameraShake.trauma - cameraShake.decay * delta);
@@ -316,12 +344,16 @@ function updateCameraShake(delta) {
 
 function renderWithCameraShake() {
   camera.position.add(cameraShake.positionOffset);
+  camera.rotation.x += viewPunch.pitch;
+  camera.rotation.y += viewPunch.yaw;
   camera.rotation.z += cameraShake.rotationOffsetZ;
   renderer.clear();
   renderer.render(scene, camera);
   renderer.clearDepth();
   renderer.render(weaponScene, weaponCamera);
   camera.rotation.z -= cameraShake.rotationOffsetZ;
+  camera.rotation.y -= viewPunch.yaw;
+  camera.rotation.x -= viewPunch.pitch;
   camera.position.sub(cameraShake.positionOffset);
 }
 
@@ -329,10 +361,14 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.05);
   player.update(delta, state.isPlaying);
+  if (state.isPlaying && player.inputState.footstep) {
+    sounds.playFootstep(player.inputState.walking, player.inputState.speed01);
+  }
   if (state.isPlaying && !state.isGameOver && player.inputState.mouseDown) shoot();
   enemies.update(delta, state.isPlaying, takeDamage);
   weapon.update(delta, state.isPlaying, player.inputState);
   updateTracers(delta);
+  updateViewPunch(delta);
   updateCameraShake(delta);
   renderWithCameraShake();
 }

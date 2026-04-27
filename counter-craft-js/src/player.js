@@ -1,5 +1,4 @@
 export function createPlayer({ THREE, camera, config, colliders }) {
-  const cfg = config;
   const keys = {
     forward: false,
     backward: false,
@@ -10,12 +9,14 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   };
 
   const inputState = {
-    mouseDown: false,
     mouseDeltaX: 0,
     mouseDeltaY: 0,
+    mouseDown: false,
     moving: false,
     walking: false,
-    grounded: true
+    grounded: true,
+    footstep: false,
+    speed01: 0
   };
 
   const velocity = new THREE.Vector3();
@@ -26,7 +27,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   const playerBox = new THREE.Box3();
   const colliderBox = new THREE.Box3();
   const playerBoxCenter = new THREE.Vector3();
-  const playerBoxSize = new THREE.Vector3(0.75, cfg.playerHeight, 0.75);
+  const playerBoxSize = new THREE.Vector3(0.75, config.playerHeight, 0.75);
 
   let yaw = 0;
   let pitch = 0;
@@ -37,6 +38,8 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   let dragLookActive = false;
   let lastDragX = 0;
   let lastDragY = 0;
+  let stepDistance = 0;
+  let stepTimer = 0;
 
   applyCameraRotation();
 
@@ -104,6 +107,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
   function onMouseDown(event) {
     if (event.button === 0) inputState.mouseDown = true;
+
     if (!pointerLockActive && !pointerLockSupported && event.button === 0) {
       dragLookActive = true;
       lastDragX = event.clientX;
@@ -113,14 +117,14 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
   function onMouseUp(event) {
     if (event.button === 0) {
-      dragLookActive = false;
       inputState.mouseDown = false;
+      dragLookActive = false;
     }
   }
 
   function onMouseMove(event) {
     if (pointerLockActive) {
-      rotateView(event.movementX, event.movementY, cfg.mouseSensitivity);
+      rotateView(event.movementX, event.movementY, config.mouseSensitivity);
       return;
     }
 
@@ -129,7 +133,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       const deltaY = event.clientY - lastDragY;
       lastDragX = event.clientX;
       lastDragY = event.clientY;
-      rotateView(deltaX, deltaY, cfg.dragSensitivity);
+      rotateView(deltaX, deltaY, config.dragSensitivity);
     }
   }
 
@@ -156,6 +160,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     keys.walking = false;
     keys.jumpQueued = false;
     dragLookActive = false;
+    inputState.mouseDown = false;
   }
 
   function reset() {
@@ -163,25 +168,25 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     pitch = 0;
     verticalVelocity = 0;
     canJump = true;
+    stepDistance = 0;
     velocity.set(0, 0, 0);
-    camera.position.set(0, cfg.playerHeight, 8);
-    clampToArena();
+    camera.position.set(0, config.playerHeight, 8);
     applyCameraRotation();
     clearMovement();
   }
 
   function update(delta, isPlaying) {
-    if (!Number.isFinite(delta)) return;
+    inputState.footstep = false;
     inputState.mouseDeltaX = THREE.MathUtils.lerp(inputState.mouseDeltaX, 0, 1 - Math.exp(-30 * delta));
     inputState.mouseDeltaY = THREE.MathUtils.lerp(inputState.mouseDeltaY, 0, 1 - Math.exp(-30 * delta));
 
     if (!isPlaying) return;
 
-    const grounded = camera.position.y <= cfg.playerHeight + 0.001;
+    const grounded = camera.position.y <= config.playerHeight + 0.001;
 
     if (keys.jumpQueued) {
       if (grounded && canJump) {
-        verticalVelocity = cfg.jumpPower;
+        verticalVelocity = config.jumpPower;
         canJump = false;
       }
       keys.jumpQueued = false;
@@ -202,23 +207,24 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     const hasInput = wishDirection.lengthSq() > 0;
     if (hasInput) wishDirection.normalize();
 
-    const maxSpeed = cfg.playerSpeed * (keys.walking ? cfg.walkMultiplier : 1);
+    const maxSpeed = config.playerSpeed * (keys.walking ? config.walkMultiplier : 1);
     const horizontalSpeed = Math.hypot(velocity.x, velocity.z);
 
     if (grounded) {
-      const drop = Math.max(horizontalSpeed, cfg.stopSpeed) * cfg.friction * delta;
+      const drop = Math.max(horizontalSpeed, config.stopSpeed) * config.friction * delta;
       const newSpeed = Math.max(0, horizontalSpeed - drop);
+
       if (horizontalSpeed > 0) {
         velocity.x *= newSpeed / horizontalSpeed;
         velocity.z *= newSpeed / horizontalSpeed;
       }
     } else {
-      velocity.x *= Math.max(0, 1 - cfg.airFriction * delta);
-      velocity.z *= Math.max(0, 1 - cfg.airFriction * delta);
+      velocity.x *= Math.max(0, 1 - config.airFriction * delta);
+      velocity.z *= Math.max(0, 1 - config.airFriction * delta);
     }
 
     if (hasInput) {
-      const acceleration = grounded ? cfg.groundAcceleration : cfg.airAcceleration;
+      const acceleration = grounded ? config.groundAcceleration : config.airAcceleration;
       const currentSpeed = velocity.dot(wishDirection);
       const addSpeed = maxSpeed - currentSpeed;
 
@@ -240,11 +246,11 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
     clampToArena();
 
-    verticalVelocity -= cfg.gravity * delta;
+    verticalVelocity -= config.gravity * delta;
     camera.position.y += verticalVelocity * delta;
 
-    if (camera.position.y <= cfg.playerHeight) {
-      camera.position.y = cfg.playerHeight;
+    if (camera.position.y <= config.playerHeight) {
+      camera.position.y = config.playerHeight;
       verticalVelocity = 0;
       canJump = true;
     } else {
@@ -253,25 +259,36 @@ export function createPlayer({ THREE, camera, config, colliders }) {
 
     clampToArena();
 
-    inputState.moving = hasInput && Math.hypot(velocity.x, velocity.z) > 0.15;
+    const currentMoveSpeed = Math.hypot(velocity.x, velocity.z);
+    inputState.moving = hasInput && currentMoveSpeed > 0.35;
     inputState.walking = keys.walking;
-    inputState.grounded = camera.position.y <= cfg.playerHeight + 0.001;
+    inputState.grounded = camera.position.y <= config.playerHeight + 0.001;
+    inputState.speed01 = Math.min(currentMoveSpeed / config.playerSpeed, 1);
+
+    if (inputState.moving && inputState.grounded) {
+      const speedFactor = Math.max(0.45, inputState.speed01);
+      const stepInterval = (keys.walking ? 0.48 : 0.32) / speedFactor;
+
+      stepTimer -= delta;
+
+      if (stepTimer <= 0) {
+        stepTimer = stepInterval;
+        inputState.footstep = true;
+      }
+    } else {
+      stepTimer = 0;
+      stepDistance = 0;
+    }
   }
 
   function clampToArena() {
-    if (!cfg.arenaSize) return;
-
-    const limit = cfg.arenaSize / 2 - 0.6;
+    const limit = config.arenaSize / 2 - 0.6;
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, -limit, limit);
     camera.position.z = THREE.MathUtils.clamp(camera.position.z, -limit, limit);
   }
 
   function hitsWall(position) {
-    playerBoxCenter.set(
-      position.x,
-      position.y - cfg.playerHeight / 2,
-      position.z
-    );
+    playerBoxCenter.set(position.x, position.y - config.playerHeight / 2, position.z);
     playerBox.setFromCenterAndSize(playerBoxCenter, playerBoxSize);
 
     return colliders.some(collider => {

@@ -28,9 +28,35 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   let isReloading = false;
 
   const rig = new THREE.Group();
+  
+
+  const muzzleFlashTexture = createMuzzleFlashTexture();
+
+  const muzzleFlashMesh = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: muzzleFlashTexture,
+      color: 0xffdd66,
+      transparent: true,
+      opacity: 0,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
+    })
+  );
+  muzzleFlashMesh.renderOrder = 9999;
+  muzzleFlashMesh.scale.set(0.28, 0.28, 1);
+  rig.add(muzzleFlashMesh);
+
+  
+
   const actions = new Map();
   const targetPosition = new THREE.Vector3();
   const targetRotation = new THREE.Euler();
+  const shellGeometry = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 8);
+  const shellMaterial = new THREE.MeshBasicMaterial({ color: 0xc89b3c });
+  const shells = [];
+  const tempShellPosition = new THREE.Vector3();
 
   let model = null;
   let mixer = null;
@@ -43,12 +69,33 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   let swayY = 0;
   let currentState = "idle";
   let currentStateTime = 0;
+  let flashIntensity = 0;
+  const flashMaterials = new Set();
 
   rig.name = "FirstPersonWeaponRig";
   resetRigTransform();
   weaponScene.add(rig);
 
   loadCurrentModel();
+
+  function createMuzzleFlashTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.18, "rgba(255,230,120,0.95)");
+    gradient.addColorStop(0.45, "rgba(255,130,0,0.55)");
+    gradient.addColorStop(1, "rgba(255,130,0,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.needsUpdate = true;
+    return texture;
+  }
 
   function getNameFromConfig(config, fallback) {
     if (!config) return fallback;
@@ -136,6 +183,9 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     if (slot.ammo <= 0) return { ok: false, reason: "empty" };
 
     lastShotTime = now;
+    updateMuzzleFlashTransform();
+    flashIntensity = getMuzzleFlashConfig().intensity;
+    ejectShell();
     slot.ammo -= 1;
     play("shoot");
     addRecoil();
@@ -217,6 +267,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
           object.castShadow = false;
           object.receiveShadow = false;
           makeMaterialTexturesCrisp(object.material);
+          registerFlashMaterial(object.material);
         });
 
         rig.add(model);
@@ -239,6 +290,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     mixer = null;
     activeAction = null;
     actions.clear();
+    flashMaterials.clear();
     clearTimeout(returnTimer);
   }
 
@@ -301,6 +353,26 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function update(delta, isPlaying, inputState) {
+    if (flashIntensity > 0.01) {
+      const flash = getMuzzleFlashConfig();
+
+      applyMuzzleIllumination(flashIntensity, flash.color);
+
+      const opacity = Math.min(1, flashIntensity / 10);
+      muzzleFlashMesh.material.opacity = opacity;
+      
+      const flashScale = flash.worldScale + flashIntensity * flash.worldScaleBoost;
+      muzzleFlashMesh.scale.set(flashScale, flashScale, 1);
+      
+      flashIntensity = THREE.MathUtils.lerp(flashIntensity, 0, 1 - Math.exp(-30 * delta));
+    } else {
+      flashIntensity = 0;
+      
+      muzzleFlashMesh.material.opacity = 0;
+      applyMuzzleIllumination(0);
+      
+    }
+    updateShells(delta);
     if (mixer) mixer.update(delta);
 
     currentStateTime += delta;
@@ -368,6 +440,92 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     );
   }
 
+  function getShellEjectConfig() {
+    const config = currentModelConfig();
+    const shell = config.shellEject ?? {};
+    const isArray = Array.isArray(shell);
+
+    return {
+      offset: isArray ? shell : (shell.offset ?? [0.18, -0.02, -0.35]),
+      velocity: isArray ? [1.7, 0.75, 0.25] : (shell.velocity ?? [1.7, 0.75, 0.25]),
+      gravity: isArray ? 2.8 : (shell.gravity ?? 2.8),
+      life: isArray ? 2.2 : (shell.life ?? 2.2),
+      spin: isArray ? 18 : (shell.spin ?? 18),
+      scale: isArray ? 1 : (shell.scale ?? 1)
+    };
+  }
+
+  function ejectShell() {
+    const shellConfig = getShellEjectConfig();
+    const shell = new THREE.Mesh(shellGeometry, shellMaterial.clone());
+    shell.material.transparent = true;
+    shell.material.opacity = 1;
+
+    tempShellPosition.set(...shellConfig.offset);
+    rig.localToWorld(tempShellPosition);
+    shell.position.copy(tempShellPosition);
+    shell.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    shell.scale.setScalar(shellConfig.scale);
+    shell.userData.velocity = new THREE.Vector3(...shellConfig.velocity);
+    shell.userData.life = shellConfig.life;
+    shell.userData.maxLife = shellConfig.life;
+    shell.userData.gravity = shellConfig.gravity;
+    shell.userData.spin = shellConfig.spin;
+
+    weaponScene.add(shell);
+    shells.push(shell);
+  }
+
+  function updateShells(delta) {
+    for (let i = shells.length - 1; i >= 0; i--) {
+      const shell = shells[i];
+      shell.userData.life -= delta;
+      shell.userData.velocity.y -= shell.userData.gravity * delta;
+      shell.position.addScaledVector(shell.userData.velocity, delta);
+      shell.rotation.x += shell.userData.spin * delta;
+      shell.rotation.z += shell.userData.spin * 0.55 * delta;
+
+      const fadeStart = shell.userData.maxLife * 0.35;
+      const alpha = shell.userData.life > fadeStart ? 1 : Math.max(0, shell.userData.life / fadeStart);
+      shell.material.opacity = alpha;
+
+      if (shell.userData.life <= 0) {
+        weaponScene.remove(shell);
+        shells.splice(i, 1);
+      }
+    }
+  }
+
+  function getMuzzleFlashConfig() {
+    const config = currentModelConfig();
+    const flash = config.muzzleFlash ?? {};
+    const isArray = Array.isArray(flash);
+
+    return {
+      worldOffset: isArray ? flash : (flash.worldOffset ?? config.muzzleOffset ?? [0, 0.04, -0.55]),
+      screenOffset: isArray ? [0, -0.13, -0.55] : (flash.screenOffset ?? [0, -0.13, -0.55]),
+      worldScale: isArray ? 0.28 : (flash.worldScale ?? 0.28),
+      screenScale: isArray ? 0.18 : (flash.screenScale ?? 0.18),
+      worldScaleBoost: isArray ? 0.018 : (flash.worldScaleBoost ?? 0.018),
+      screenScaleBoost: isArray ? 0.014 : (flash.screenScaleBoost ?? 0.014),
+      intensity: isArray ? 10 : (flash.intensity ?? 10),
+      color: isArray ? 0xffdd66 : (flash.color ?? 0xffdd66),
+      lightColor: isArray ? 0xffdd88 : (flash.lightColor ?? 0xffdd88),
+      lightDistance: isArray ? 12 : (flash.lightDistance ?? 12)
+    };
+  }
+
+  function updateMuzzleFlashTransform() {
+    const flash = getMuzzleFlashConfig();
+
+    
+
+    muzzleFlashMesh.position.set(...flash.worldOffset);
+    muzzleFlashMesh.material.color.setHex(flash.color);
+
+    
+  }
+
   function getBasePosition(target) {
     const config = currentModelConfig();
     const pos = config.pos ?? [0, 0, 0];
@@ -378,6 +536,35 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     const config = currentModelConfig();
     const rot = config.rot ?? [0, 0, 0];
     return target.set(rot[0] + view.rotOffset[0], rot[1] + view.rotOffset[1], rot[2] + view.rotOffset[2]);
+  }
+
+  function registerFlashMaterial(material) {
+    const materials = Array.isArray(material) ? material : [material];
+
+    materials.forEach(item => {
+      if (!item || !item.emissive) return;
+      item.userData.baseEmissive = item.emissive.clone();
+      item.userData.baseEmissiveIntensity = item.emissiveIntensity ?? 1;
+      flashMaterials.add(item);
+    });
+  }
+
+  function applyMuzzleIllumination(intensity, color = 0xffdd66) {
+    const strength = Math.min(0.6, intensity * 0.06);
+
+    flashMaterials.forEach(material => {
+      if (!material.emissive) return;
+
+      if (strength <= 0.01) {
+        material.emissive.copy(material.userData.baseEmissive);
+        material.emissiveIntensity = material.userData.baseEmissiveIntensity;
+      } else {
+        material.emissive.setHex(color);
+        material.emissiveIntensity = strength;
+      }
+
+      material.needsUpdate = true;
+    });
   }
 
   function makeMaterialTexturesCrisp(material) {
