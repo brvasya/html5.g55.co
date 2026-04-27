@@ -87,7 +87,11 @@ const cameraShake = {
   rotAmp: 0.035,
   decay: 4.8,
   positionOffset: new THREE.Vector3(),
-  rotationOffsetZ: 0
+  rotationOffsetZ: 0,
+  deathShakeTime: 0,
+  damageShakeTime: 0,
+  impulsePos: new THREE.Vector3(),
+  impulseRotZ: 0
 };
 
 const viewPunch = {
@@ -224,7 +228,7 @@ function shoot() {
 
   addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
-  hud.setCrosshairFire?.();
+  if (hud.setCrosshairFire) hud.setCrosshairFire();
   spawnTracer();
 
   const hit = getBulletHit();
@@ -336,16 +340,35 @@ function updateTracers(delta) {
 }
 
 function takeDamage(amount) {
-  state.health = Math.max(0, state.health - amount);
-  cameraShake.trauma = Math.min(1, cameraShake.trauma + 0.45);
+  if (state.isGameOver) return;
 
+  state.health = Math.max(0, state.health - amount);
+
+  cameraShake.damageShakeTime = 0.14;
+  cameraShake.impulsePos.set(
+    (Math.random() - 0.5) * 0.08,
+    (Math.random() - 0.5) * 0.055,
+    (Math.random() - 0.5) * 0.035
+  );
+  cameraShake.impulseRotZ = (Math.random() - 0.5) * 0.035;
+
+  viewPunch.pitchVelocity += 0.045;
+  viewPunch.yawVelocity += (Math.random() - 0.5) * 0.035;
+
+  if (state.health <= 0) {
+    endGame();
+    updateHud();
+    return;
+  }
+
+  dom.damageFlash.style.transition = "opacity 0.12s ease";
+  dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
   dom.damageFlash.style.opacity = "1";
-  setTimeout(() => (dom.damageFlash.style.opacity = "0"), 120);
+  setTimeout(() => {
+    if (!state.isGameOver) dom.damageFlash.style.opacity = "0";
+  }, 120);
 
   sounds.playPlayerHit();
-
-  if (state.health <= 0) endGame();
-
   updateHud();
 }
 
@@ -359,10 +382,41 @@ function endGame() {
 
   document.body.classList.remove("cursor-locked", "fallback-look");
 
-  dom.overlay.style.display = "grid";
-  dom.panelTitle.textContent = "Game Over";
-  dom.panelText.textContent = `Final score: ${state.score}. Click restart to play again.`;
-  dom.startButton.textContent = "Restart";
+  viewPunch.pitchVelocity += 0.18;
+  viewPunch.yawVelocity += (Math.random() - 0.5) * 0.12;
+
+  cameraShake.impulsePos.set(
+    (Math.random() - 0.5) * 0.12,
+    (Math.random() - 0.5) * 0.08,
+    (Math.random() - 0.5) * 0.06
+  );
+  cameraShake.impulseRotZ = (Math.random() - 0.5) * 0.05;
+  cameraShake.deathShakeTime = 0.2;
+
+  dom.damageFlash.style.display = "block";
+  dom.damageFlash.style.position = "fixed";
+  dom.damageFlash.style.left = "0";
+  dom.damageFlash.style.top = "0";
+  dom.damageFlash.style.width = "100vw";
+  dom.damageFlash.style.height = "100vh";
+  dom.damageFlash.style.pointerEvents = "none";
+  dom.damageFlash.style.zIndex = "2";
+  dom.damageFlash.style.transition = "opacity 1.0s ease";
+  dom.damageFlash.style.background = "rgba(160, 0, 0, 0.45)";
+  dom.damageFlash.style.opacity = "0";
+
+  requestAnimationFrame(() => {
+    dom.damageFlash.style.opacity = "1";
+  });
+
+  sounds.playPlayerDie();
+
+  setTimeout(() => {
+    dom.overlay.style.display = "grid";
+    dom.panelTitle.textContent = "Game Over";
+    dom.panelText.textContent = `Final score: ${state.score}. Click restart to play again.`;
+    dom.startButton.textContent = "Restart";
+  }, 650);
 }
 
 function resetGame() {
@@ -370,6 +424,15 @@ function resetGame() {
   state.score = 0;
   state.wave = 1;
   state.isGameOver = false;
+
+  cameraShake.trauma = 0;
+  cameraShake.posAmp = 0.08;
+  cameraShake.rotAmp = 0.035;
+  cameraShake.decay = 4.8;
+  cameraShake.deathShakeTime = 0;
+  dom.damageFlash.style.transition = "opacity 0.12s ease";
+  dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
+  dom.damageFlash.style.opacity = "0";
 
   player.reset();
   enemies.reset();
@@ -414,15 +477,33 @@ function updateViewPunch(delta) {
 
 function updateCameraShake(delta) {
   cameraShake.time += delta;
-  cameraShake.trauma = Math.max(0, cameraShake.trauma - cameraShake.decay * delta);
 
-  cameraShake.positionOffset.set(
-    Math.sin(cameraShake.time * 71.0) * cameraShake.posAmp * cameraShake.trauma,
-    Math.sin(cameraShake.time * 53.0) * cameraShake.posAmp * 0.45 * cameraShake.trauma,
-    0
-  );
+  if (cameraShake.deathShakeTime > 0) {
+    cameraShake.deathShakeTime = Math.max(0, cameraShake.deathShakeTime - delta);
 
-  cameraShake.rotationOffsetZ = Math.sin(cameraShake.time * 83.0) * cameraShake.rotAmp * cameraShake.trauma;
+    const decay = Math.exp(-20 * delta);
+    cameraShake.impulsePos.multiplyScalar(decay);
+    cameraShake.impulseRotZ *= decay;
+
+    cameraShake.positionOffset.copy(cameraShake.impulsePos);
+    cameraShake.rotationOffsetZ = cameraShake.impulseRotZ;
+    return;
+  }
+
+  if (cameraShake.damageShakeTime > 0) {
+    cameraShake.damageShakeTime = Math.max(0, cameraShake.damageShakeTime - delta);
+
+    const decay = Math.exp(-28 * delta);
+    cameraShake.impulsePos.multiplyScalar(decay);
+    cameraShake.impulseRotZ *= decay;
+
+    cameraShake.positionOffset.copy(cameraShake.impulsePos);
+    cameraShake.rotationOffsetZ = cameraShake.impulseRotZ;
+    return;
+  }
+
+  cameraShake.positionOffset.set(0, 0, 0);
+  cameraShake.rotationOffsetZ = 0;
 }
 
 function renderWithCameraShake() {
