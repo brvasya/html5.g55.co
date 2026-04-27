@@ -177,6 +177,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     if (slot.id !== 9) slot.reserveAmmo += amount;
   }
 
+  function getCurrentAsset() {
+    return currentSlot().asset ?? null;
+  }
+
   function getHudState() {
     const slot = currentSlot();
     return {
@@ -425,6 +429,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     resetSlots,
     addReserveAmmo,
     getHudState,
+    getCurrentAsset,
     addRecoil,
     getDuration
   };

@@ -17,6 +17,8 @@ const CONFIG = {
   airFriction: 0.4,
   stopSpeed: 1.2,
   walkMultiplier: 0.55,
+  mouseSensitivity: 0.0022,
+  dragSensitivity: 0.006,
   enemyHealth: 100,
   enemySpeed: 1.55,
   enemyDamage: 8,
@@ -190,7 +192,7 @@ function shoot() {
     return;
   }
 
-  sounds.playShoot();
+  sounds.playShoot(weapon.getCurrentAsset());
   hud.setCrosshairFire?.();
   spawnTracer();
 

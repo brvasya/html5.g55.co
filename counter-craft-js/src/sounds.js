@@ -16,9 +16,14 @@ export function createSounds() {
     return ctx ? ctx.currentTime : 0;
   }
 
-  function playShoot() {
+  function playShoot(asset) {
     if (!ctx) return;
     resume();
+
+    if (asset?.fireSound) {
+      playFromAsset(asset.fireSound);
+      return;
+    }
 
     const t = now();
     const noise = createNoiseBuffer(0.11);
@@ -128,6 +133,13 @@ export function createSounds() {
     gain.connect(masterGain);
     osc.start(t);
     osc.stop(t + 0.22);
+  }
+
+  function playFromAsset(src) {
+    const audio = new Audio(src);
+    audio.volume = 0.6;
+    audio.currentTime = 0;
+    audio.play();
   }
 
   function playClick(startTime, volume, frequency, duration) {

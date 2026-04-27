@@ -1,19 +1,5 @@
 export function createPlayer({ THREE, camera, config, colliders }) {
-  const cfg = {
-    playerHeight: config.playerHeight ?? 1.75,
-    gravity: config.gravity ?? 26,
-    jumpPower: config.jumpPower ?? 8,
-    playerSpeed: config.playerSpeed ?? 8.5,
-    groundAcceleration: config.groundAcceleration ?? 55,
-    airAcceleration: config.airAcceleration ?? 12,
-    friction: config.friction ?? 14,
-    airFriction: config.airFriction ?? 0.4,
-    stopSpeed: config.stopSpeed ?? 1.2,
-    walkMultiplier: config.walkMultiplier ?? 0.55,
-    arenaSize: config.arenaSize ?? 42,
-    mouseSensitivity: config.mouseSensitivity ?? 0.0022,
-    dragSensitivity: config.dragSensitivity ?? 0.006
-  };
+  const cfg = config;
   const keys = {
     forward: false,
     backward: false,
