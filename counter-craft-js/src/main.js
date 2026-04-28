@@ -41,19 +41,23 @@ const state = {
 };
 
 const preloader = createPreloader();
+let bootLoadingActive = true;
 
 THREE.DefaultLoadingManager.onStart = () => {
+  if (!bootLoadingActive) return;
   preloader.show();
   preloader.setProgress(0);
 };
 
 THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-  if (!itemsTotal) return;
+  if (!bootLoadingActive || !itemsTotal) return;
+
   const progress = (itemsLoaded / itemsTotal) * 100;
   preloader.setProgress(progress);
 };
 
 THREE.DefaultLoadingManager.onLoad = () => {
+  if (!bootLoadingActive) return;
   preloader.setProgress(100);
 };
 
@@ -142,10 +146,12 @@ async function boot() {
     await world.ready;
     await resetGame();
     preloader.setProgress(100);
+    bootLoadingActive = false;
     requestAnimationFrame(() => preloader.hide());
     animate();
   } catch (error) {
     console.error("Game failed to initialize:", error);
+    bootLoadingActive = false;
     preloader.hide();
 
     dom.overlay.style.display = "grid";
