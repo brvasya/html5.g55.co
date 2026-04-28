@@ -1,0 +1,303 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+  color: #fff;
+  user-select: none;
+  touch-action: none;
+  cursor: default;
+
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Trebuchet MS', Arial, sans-serif;
+}
+
+body.cursor-locked { cursor: none; }
+body.fallback-look { cursor: crosshair; }
+
+canvas { display: block; }
+
+#modeNote {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  max-width: 300px;
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: right;
+  background: linear-gradient(180deg, rgba(20, 18, 12, 0.82), rgba(0, 0, 0, 0.55));
+  border: 1px solid rgba(242, 211, 123, 0.24);
+  border-radius: 4px;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 0 #000, 0 0 8px rgba(255, 188, 64, 0.22);
+}
+
+/* HUD base */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: "";
+  position: absolute;
+  background: white;
+  opacity: 0.9;
+}
+
+#crosshair::before {
+  left: 8px;
+  top: 0;
+  width: 2px;
+  height: 18px;
+}
+
+#crosshair::after {
+  left: 0;
+  top: 8px;
+  width: 18px;
+  height: 2px;
+}
+
+/* override default crosshair when HUD active */
+.cs-hud #crosshair {
+  width: 42px;
+  height: 42px;
+  transition: width 70ms ease, height 70ms ease;
+  background:
+    linear-gradient(#39ff14, #39ff14) center 0 / 2px 11px no-repeat,
+    linear-gradient(#39ff14, #39ff14) center 100% / 2px 11px no-repeat,
+    linear-gradient(#39ff14, #39ff14) 0 center / 11px 2px no-repeat,
+    linear-gradient(#39ff14, #39ff14) 100% center / 11px 2px no-repeat;
+}
+
+.cs-hud #crosshair::before,
+.cs-hud #crosshair::after {
+  display: none;
+}
+
+.cs-hud #crosshair.fire {
+  width: 58px;
+  height: 58px;
+  background:
+    linear-gradient(#39ff14, #39ff14) center 0 / 2px 12px no-repeat,
+    linear-gradient(#39ff14, #39ff14) center 100% / 2px 12px no-repeat,
+    linear-gradient(#39ff14, #39ff14) 0 center / 12px 2px no-repeat,
+    linear-gradient(#39ff14, #39ff14) 100% center / 12px 2px no-repeat;
+}
+
+/* HUD style */
+.cs-hud {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f2d37b;
+  text-shadow: 0 2px 0 #000, 0 0 10px rgba(255, 188, 64, 0.35);
+}
+
+.cs-hud #stats {
+  position: static;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  line-height: 1;
+  font-size: inherit;
+  min-width: 0;
+}
+
+.cs-topbar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, rgba(20, 18, 12, 0.88), rgba(0, 0, 0, 0.58));
+  border: 1px solid rgba(242, 211, 123, 0.32);
+  border-radius: 4px;
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+  font-size: 18px;
+}
+
+.cs-badge {
+  color: #e8e8e8;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.cs-score {
+  min-width: 96px;
+  text-align: center;
+  color: #95e37f;
+}
+
+.cs-round {
+  color: #f2d37b;
+}
+
+.cs-bottom-left,
+.cs-bottom-right {
+  position: absolute;
+  bottom: 24px;
+  min-width: 155px;
+  padding: 10px 14px 12px;
+  background: linear-gradient(180deg, rgba(22, 20, 14, 0.82), rgba(0, 0, 0, 0.5));
+  border: 1px solid rgba(242, 211, 123, 0.34);
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.68);
+}
+
+.cs-bottom-left { left: 28px; }
+
+.cs-bottom-right {
+  right: 28px;
+  text-align: right;
+}
+
+.cs-label {
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+}
+
+.cs-big,
+.cs-ammo {
+  font-size: 48px;
+  line-height: 0.9;
+  color: #f2d37b;
+}
+
+.cs-ammo small {
+  font-size: 22px;
+  color: rgba(242, 211, 123, 0.75);
+}
+
+.cs-bottom-left.danger,
+.cs-bottom-right.danger {
+  border-color: rgba(255, 95, 79, 0.55);
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 0, 0, 0.55);
+}
+
+.cs-bottom-left.danger .cs-big,
+.cs-bottom-right.danger .cs-ammo,
+.cs-bottom-right.danger small {
+  color: #ff5f4f;
+}
+
+/* buttons */
+.cs-button {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 11px 22px;
+  color: #f2d37b;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Trebuchet MS', Arial, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 #000, 0 0 10px rgba(255, 188, 64, 0.35);
+  background: linear-gradient(180deg, rgba(22, 20, 14, 0.9), rgba(0, 0, 0, 0.65));
+  border: 1px solid rgba(242, 211, 123, 0.45);
+  border-radius: 4px;
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.cs-button + .cs-button {
+  margin-left: 14px;
+}
+
+.cs-button:hover {
+  color: #ffffff;
+  border-color: rgba(242, 211, 123, 0.9);
+  box-shadow: 0 0 22px rgba(255, 188, 64, 0.35);
+  transform: translateY(-1px);
+}
+
+.cs-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+/* overlay */
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 10;
+  text-align: center;
+  padding: 24px;
+}
+
+#panel {
+  width: min(540px, 92vw);
+  padding: 28px;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 30px;
+}
+
+p {
+  margin: 8px 0;
+  color: #ddd;
+  line-height: 1.45;
+}
+
+/* remove default button styles */
+button {
+  all: unset;
+  display: inline-block;
+}
+
+/* damage flash */
+#damageFlash {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 6;
+  transition: opacity 120ms ease;
+}
+
+@media (max-width: 700px) {
+  .cs-topbar { font-size: 14px; gap: 8px; }
+  .cs-bottom-left,
+  .cs-bottom-right { bottom: 16px; min-width: 118px; padding: 9px 11px; }
+  .cs-bottom-left { left: 14px; }
+  .cs-bottom-right { right: 14px; }
+  .cs-big,
+  .cs-ammo { font-size: 34px; }
+  .cs-button { font-size: 15px; padding: 10px 18px; }
+}
