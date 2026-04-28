@@ -1,7 +1,7 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { ZOMBIE } from "https://html5.g55.co/assets/enemies/zombie.js";
+import { ZOMBIE } from "../../assets/enemies/zombie.js";
 
 const ENEMY_TYPES = {
   zombie: {

@@ -1,6 +1,6 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-import { AK47 } from "https://html5.g55.co/assets/weapon/ak47.js";
+import { AK47 } from "../../assets/weapon/ak47.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
