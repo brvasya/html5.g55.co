@@ -11,9 +11,21 @@ const ENEMY_TYPES = {
 
 const DEFAULT_ENEMY_TYPE = "zombie";
 
-export function createEnemies({ THREE, scene, camera, config, state, floorObjects = [] }) {
+export function createEnemies({ THREE, scene, camera, config, state, floorObjects = [], colliders = [] }) {
   const enemies = [];
   const toPlayer = new THREE.Vector3();
+
+  const TERRAIN_TUNING = {
+    rayExtraHeight: 2.0,
+    rayLength: 8.0,
+    stepHeight: 0.75,
+    minWalkableNormalY: 0.45,
+    enemyBaseOffset: 0
+  };
+
+  const terrainRaycaster = new THREE.Raycaster();
+  const terrainRayOrigin = new THREE.Vector3();
+  const terrainRayDirection = new THREE.Vector3(0, -1, 0);
 
   const modelCache = new Map();
 
@@ -155,6 +167,11 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     mesh.updateWorldMatrix(true, false);
     point.applyMatrix4(mesh.matrixWorld);
 
+    const terrainY = getTerrainY(point.x, point.y + TERRAIN_TUNING.rayExtraHeight, point.z, null);
+
+    if (terrainY === null) return null;
+
+    point.y = terrainY + TERRAIN_TUNING.enemyBaseOffset;
     return point;
   }
 
@@ -184,8 +201,12 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       attackElapsed: 0,
       pendingDamage: false,
       model: null,
-      fallback: null
+      fallback: null,
+      groundY: y,
+      verticalVelocity: 0
     };
+
+    snapEnemyToTerrain(group, true);
 
     createFallbackEnemy(group);
 
@@ -341,7 +362,18 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       if (distance > enemy.userData.attackDistance) {
         if (!enemy.userData.isAttacking) {
           toPlayer.normalize();
-          enemy.position.add(toPlayer.multiplyScalar((enemy.userData.speed + state.wave * 0.08) * delta));
+
+          const oldX = enemy.position.x;
+          const oldZ = enemy.position.z;
+
+          enemy.position.x += toPlayer.x * (enemy.userData.speed + state.wave * 0.08) * delta;
+          enemy.position.z += toPlayer.z * (enemy.userData.speed + state.wave * 0.08) * delta;
+
+          if (!snapEnemyToTerrain(enemy, false)) {
+            enemy.position.x = oldX;
+            enemy.position.z = oldZ;
+          }
+
           playEnemyAnimation(enemy, "walk");
         }
       } else if (nowTime - enemy.userData.lastAttack > config.enemyAttackCooldown && !enemy.userData.isAttacking) {
@@ -366,6 +398,49 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
         takeDamage(enemy.userData.damage);
       }
     });
+  }
+
+  function snapEnemyToTerrain(enemy, forceSnap) {
+    const rayStartY = enemy.position.y + TERRAIN_TUNING.rayExtraHeight;
+    const terrainY = getTerrainY(enemy.position.x, rayStartY, enemy.position.z, enemy);
+
+    if (terrainY === null) return false;
+
+    const targetY = terrainY + TERRAIN_TUNING.enemyBaseOffset;
+    const deltaY = targetY - enemy.position.y;
+
+    if (!forceSnap && deltaY > TERRAIN_TUNING.stepHeight) {
+      return false;
+    }
+
+    enemy.position.y = targetY;
+    enemy.userData.groundY = terrainY;
+    enemy.userData.verticalVelocity = 0;
+
+    return true;
+  }
+
+  function getTerrainY(x, y, z, enemy) {
+    terrainRayOrigin.set(x, y, z);
+    terrainRaycaster.set(terrainRayOrigin, terrainRayDirection);
+    terrainRaycaster.far = TERRAIN_TUNING.rayLength;
+
+    const terrainObjects = colliders.length ? colliders : floorObjects;
+    const hits = terrainRaycaster.intersectObjects(terrainObjects, true);
+
+    for (const hit of hits) {
+      if (!hit.face) continue;
+
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+
+      if (normal.y < TERRAIN_TUNING.minWalkableNormalY) continue;
+
+      if (enemy && hit.point.y > enemy.position.y + TERRAIN_TUNING.stepHeight) continue;
+
+      return hit.point.y;
+    }
+
+    return null;
   }
 
   function getHit(activeRaycaster) {

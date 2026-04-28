@@ -448,7 +448,8 @@ async function resetGame() {
       camera,
       config: CONFIG,
       state,
-      floorObjects: world.floorObjects
+      floorObjects: world.floorObjects,
+      colliders: world.colliders
     });
   }
 
