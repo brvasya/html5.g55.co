@@ -144,6 +144,8 @@ async function boot() {
 
   try {
     await world.ready;
+    createEnemySystemIfNeeded();
+    await preloadAllAssets();
     await resetGame();
     preloader.setProgress(100);
     bootLoadingActive = false;
@@ -161,6 +163,41 @@ async function boot() {
     dom.startButton.onclick = () => window.location.reload();
   }
 }
+
+function createEnemySystemIfNeeded() {
+  if (enemies) return enemies;
+
+  enemies = createEnemies({
+    THREE,
+    scene,
+    camera,
+    config: CONFIG,
+    state,
+    floorObjects: world.floorObjects,
+    colliders: world.colliders
+  });
+
+  return enemies;
+}
+
+async function preloadAllAssets() {
+  const tasks = [];
+
+  if (typeof weapon.preloadAll === "function") {
+    tasks.push(weapon.preloadAll());
+  }
+
+  if (typeof sounds.preloadAll === "function") {
+    tasks.push(sounds.preloadAll());
+  }
+
+  if (enemies && typeof enemies.preloadAll === "function") {
+    tasks.push(enemies.preloadAll());
+  }
+
+  await Promise.all(tasks);
+}
+
 
 function setupLights() {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.5));
@@ -548,17 +585,7 @@ async function resetGame() {
   await world.ready;
   world.resetPlayer(player);
 
-  if (!enemies) {
-    enemies = createEnemies({
-      THREE,
-      scene,
-      camera,
-      config: CONFIG,
-      state,
-      floorObjects: world.floorObjects,
-      colliders: world.colliders
-    });
-  }
+  createEnemySystemIfNeeded();
 
   enemies.reset();
   enemies.spawnWave(state.wave);

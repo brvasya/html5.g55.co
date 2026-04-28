@@ -41,23 +41,40 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
   const obstacleRayDirection = new THREE.Vector3();
 
   const modelCache = new Map();
+  const audioCache = new Map();
 
-  preloadEnemyType(DEFAULT_ENEMY_TYPE);
+  function preloadAll() {
+    const tasks = [];
+
+    Object.keys(ENEMY_TYPES).forEach(typeId => {
+      tasks.push(preloadEnemyType(typeId));
+
+      const asset = ENEMY_TYPES[typeId]?.asset;
+      if (asset?.attackSound) tasks.push(preloadSound(asset.attackSound));
+      if (asset?.hitSound) tasks.push(preloadSound(asset.hitSound));
+      if (asset?.deathSound) tasks.push(preloadSound(asset.deathSound));
+    });
+
+    return Promise.all(tasks);
+  }
 
   function preloadEnemyType(typeId) {
     const type = getEnemyType(typeId);
     const asset = type.asset;
 
-    if (!asset || !asset.model) return;
+    if (!asset || !asset.model) return Promise.resolve(null);
 
     let cached = modelCache.get(typeId);
-    if (cached) return;
+
+    if (cached?.promise) return cached.promise;
+    if (cached?.source || cached?.failed) return Promise.resolve(cached);
 
     cached = {
       source: null,
       animations: [],
       loading: true,
-      failed: false
+      failed: false,
+      promise: null
     };
 
     modelCache.set(typeId, cached);
@@ -65,36 +82,82 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     const loader = new GLTFLoader();
     loader.setMeshoptDecoder(MeshoptDecoder);
 
-    loader.load(
-      asset.model,
-      gltf => {
-        cached.source = gltf.scene;
-        cached.animations = gltf.animations || [];
-        cached.loading = false;
+    cached.promise = new Promise(resolve => {
+      loader.load(
+        asset.model,
+        gltf => {
+          cached.source = gltf.scene;
+          cached.animations = gltf.animations || [];
+          cached.loading = false;
+          cached.failed = false;
 
-        cached.source.traverse(object => {
-          if (!object.isMesh) return;
+          cached.source.traverse(object => {
+            if (!object.isMesh) return;
 
-          object.castShadow = true;
-          object.receiveShadow = true;
-          object.frustumCulled = false;
+            object.castShadow = true;
+            object.receiveShadow = true;
+            object.frustumCulled = false;
 
-          if (object.material) makeMaterialCrisp(object.material);
-        });
+            if (object.material) makeMaterialCrisp(object.material);
+          });
 
-        enemies.forEach(enemy => {
-          if (enemy.userData.typeId === typeId && !enemy.userData.model) {
-            attachEnemyModel(enemy);
-          }
-        });
-      },
-      undefined,
-      () => {
-        cached.loading = false;
-        cached.failed = true;
-      }
-    );
+          enemies.forEach(enemy => {
+            if (enemy.userData.typeId === typeId && !enemy.userData.model) {
+              attachEnemyModel(enemy);
+            }
+          });
+
+          resolve(cached);
+        },
+        undefined,
+        error => {
+          cached.loading = false;
+          cached.failed = true;
+          console.warn(`Enemy model failed to preload: ${typeId}`, error);
+          resolve(cached);
+        }
+      );
+    });
+
+    return cached.promise;
   }
+
+  function preloadSound(src) {
+    if (!src) return Promise.resolve(null);
+
+    const cached = audioCache.get(src);
+    if (cached?.promise) return cached.promise;
+    if (cached?.audio || cached?.failed) return Promise.resolve(cached);
+
+    const audio = new Audio();
+
+    const entry = {
+      audio,
+      failed: false,
+      promise: null
+    };
+
+    audioCache.set(src, entry);
+
+    entry.promise = new Promise(resolve => {
+      const done = () => resolve(entry);
+      const fail = () => {
+        entry.failed = true;
+        resolve(entry);
+      };
+
+      audio.preload = "auto";
+      audio.src = src;
+      audio.volume = 1.0;
+      audio.addEventListener("canplaythrough", done, { once: true });
+      audio.addEventListener("error", fail, { once: true });
+      audio.load();
+    });
+
+    return entry.promise;
+  }
+
+  preloadEnemyType(DEFAULT_ENEMY_TYPE);
 
   function getEnemyType(typeId) {
     return ENEMY_TYPES[typeId] || ENEMY_TYPES[DEFAULT_ENEMY_TYPE];
@@ -606,8 +669,10 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       const deathAction = enemy.userData.actions["death"];
 
       if (deathAction) {
-        if (enemy.userData.type.asset.attackSound) {
-          playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
+        const deathSound = enemy.userData.type.asset.deathSound || enemy.userData.type.asset.attackSound;
+
+        if (deathSound) {
+          playAssetSound(deathSound, 1.0);
         }
 
         deathAction.reset();
@@ -695,7 +760,9 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
   function playAssetSound(src, volume = 1.0) {
     if (!src) return;
 
-    const audio = new Audio(src);
+    const cached = audioCache.get(src);
+    const audio = cached?.audio ? cached.audio.cloneNode(true) : new Audio(src);
+
     audio.volume = volume;
     audio.currentTime = 0;
     audio.play().catch(() => {});
@@ -706,6 +773,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
   }
 
   return {
+    preloadAll,
     spawnWave,
     update,
     getHit,

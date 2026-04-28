@@ -1,5 +1,6 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { AK47 } from "../../assets/weapon/ak47.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
@@ -28,7 +29,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   let isReloading = false;
 
   const rig = new THREE.Group();
-  
+  const modelCache = new Map();
+  const audioCache = new Map();
 
   const muzzleFlashTexture = createMuzzleFlashTexture();
 
@@ -47,8 +49,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   muzzleFlashMesh.renderOrder = 9999;
   muzzleFlashMesh.scale.set(0.28, 0.28, 1);
   rig.add(muzzleFlashMesh);
-
-  
 
   const actions = new Map();
   const targetPosition = new THREE.Vector3();
@@ -76,7 +76,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   resetRigTransform();
   weaponScene.add(rig);
 
-  loadCurrentModel();
+  preloadWeaponAsset(currentModelConfig()).then(() => {
+    attachCurrentModel();
+    play("idle");
+  });
 
   function createMuzzleFlashTexture() {
     const canvas = document.createElement("canvas");
@@ -149,6 +152,124 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return currentSlot().asset ?? {};
   }
 
+  function getAssetCacheKey(asset) {
+    if (!asset) return "empty";
+    return asset.id || asset.name || asset.model || "inline-weapon";
+  }
+
+  function preloadAll() {
+    const tasks = [];
+    const seenAssets = new Set();
+
+    slots.forEach(slot => {
+      const asset = slot.asset;
+      const key = getAssetCacheKey(asset);
+
+      if (seenAssets.has(key)) return;
+      seenAssets.add(key);
+
+      tasks.push(preloadWeaponAsset(asset));
+
+      if (asset?.fireSound) tasks.push(preloadSound(asset.fireSound));
+      if (asset?.shootSound) tasks.push(preloadSound(asset.shootSound));
+      if (asset?.reloadSound) tasks.push(preloadSound(asset.reloadSound));
+    });
+
+    return Promise.all(tasks).then(() => {
+      attachCurrentModel();
+      play("idle");
+    });
+  }
+
+  function preloadWeaponAsset(asset) {
+    if (!asset || !asset.model) return Promise.resolve(null);
+
+    const key = getAssetCacheKey(asset);
+    let cached = modelCache.get(key);
+
+    if (cached?.promise) return cached.promise;
+    if (cached?.source || cached?.failed) return Promise.resolve(cached);
+
+    cached = {
+      source: null,
+      animations: [],
+      loading: true,
+      failed: false,
+      promise: null
+    };
+
+    modelCache.set(key, cached);
+
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+
+    cached.promise = new Promise(resolve => {
+      loader.load(
+        asset.model,
+        gltf => {
+          cached.source = gltf.scene;
+          cached.animations = gltf.animations || [];
+          cached.loading = false;
+          cached.failed = false;
+
+          cached.source.traverse(object => {
+            if (!object.isMesh) return;
+            object.frustumCulled = false;
+            object.castShadow = false;
+            object.receiveShadow = false;
+            makeMaterialTexturesCrisp(object.material);
+          });
+
+          resolve(cached);
+        },
+        undefined,
+        error => {
+          cached.loading = false;
+          cached.failed = true;
+          console.warn("Weapon model failed to preload:", key, error);
+          resolve(cached);
+        }
+      );
+    });
+
+    return cached.promise;
+  }
+
+  function preloadSound(src) {
+    if (!src) return Promise.resolve(null);
+
+    const cached = audioCache.get(src);
+    if (cached?.promise) return cached.promise;
+    if (cached?.audio || cached?.failed) return Promise.resolve(cached);
+
+    const audio = new Audio();
+
+    const entry = {
+      audio,
+      failed: false,
+      promise: null
+    };
+
+    audioCache.set(src, entry);
+
+    entry.promise = new Promise(resolve => {
+      const done = () => resolve(entry);
+      const fail = () => {
+        entry.failed = true;
+        resolve(entry);
+      };
+
+      audio.preload = "auto";
+      audio.src = src;
+      audio.volume = 1.0;
+      audio.addEventListener("canplaythrough", done, { once: true });
+      audio.addEventListener("error", fail, { once: true });
+      audio.load();
+    });
+
+    return entry.promise;
+  }
+
   function switchSlot(slotNumber) {
     const index = slotNumber - 1;
     if (!slots[index] || index === currentSlotIndex || isReloading) return false;
@@ -156,8 +277,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     currentSlotIndex = index;
     lastShotTime = 0;
     recoil = 0;
-    loadCurrentModel();
+
+    attachCurrentModel();
     play("idle");
+
     return true;
   }
 
@@ -171,6 +294,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     lastShotTime = 0;
     isReloading = false;
     clearTimeout(reloadTimer);
+    attachCurrentModel();
     play("idle");
   }
 
@@ -242,53 +366,82 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     };
   }
 
-  function loadCurrentModel() {
+  function attachCurrentModel() {
     const config = currentModelConfig();
 
     if (!config.model) {
       clearModel();
-      play("idle");
       return;
     }
 
-    const loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
-    loader.load(
-      config.model,
-      gltf => {
-        clearModel();
-        model = gltf.scene;
-        model.name = "WeaponGLB";
+    const key = getAssetCacheKey(config);
+    const cached = modelCache.get(key);
 
-        model.traverse(object => {
-          if (!object.isMesh) return;
-          object.frustumCulled = false;
-          object.castShadow = false;
-          object.receiveShadow = false;
-          makeMaterialTexturesCrisp(object.material);
-          registerFlashMaterial(object.material);
-        });
+    if (!cached || !cached.source) {
+      clearModel();
+      preloadWeaponAsset(config).then(() => {
+        if (currentModelConfig() === config) {
+          attachCurrentModel();
+          play("idle");
+        }
+      });
+      return;
+    }
 
-        rig.add(model);
-        setupAnimations(gltf.animations);
-        play("idle");
-      },
-      undefined,
-      () => {
-        clearModel();
-        play("idle");
+    clearModel();
+
+    model = SkeletonUtils.clone(cached.source);
+    model.name = "WeaponGLB";
+
+    model.traverse(object => {
+      if (!object.isMesh) return;
+
+      object.frustumCulled = false;
+      object.castShadow = false;
+      object.receiveShadow = false;
+
+      if (Array.isArray(object.material)) {
+        object.material = object.material.map(material => material.clone());
+      } else if (object.material) {
+        object.material = object.material.clone();
       }
-    );
+
+      makeMaterialTexturesCrisp(object.material);
+      registerFlashMaterial(object.material);
+    });
+
+    rig.add(model);
+    resetRigTransform();
+    setupAnimations(cached.animations);
   }
 
   function clearModel() {
-    if (model) rig.remove(model);
+    if (model) {
+      rig.remove(model);
+      disposeModel(model);
+    }
+
     model = null;
     mixer = null;
     activeAction = null;
     actions.clear();
     flashMaterials.clear();
     clearTimeout(returnTimer);
+  }
+
+  function disposeModel(root) {
+    root.traverse(object => {
+      // Do not dispose geometry here.
+      // Weapon clones share geometry with the cached preload source.
+      // Disposing geometry from one visible clone can make future cached clones invisible.
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
+    });
   }
 
   function setupAnimations(clips) {
@@ -357,18 +510,17 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
       const opacity = Math.min(1, flashIntensity / 10);
       muzzleFlashMesh.material.opacity = opacity;
-      
+
       const flashScale = flash.worldScale + flashIntensity * flash.worldScaleBoost;
       muzzleFlashMesh.scale.set(flashScale, flashScale, 1);
-      
+
       flashIntensity = THREE.MathUtils.lerp(flashIntensity, 0, 1 - Math.exp(-30 * delta));
     } else {
       flashIntensity = 0;
-      
       muzzleFlashMesh.material.opacity = 0;
       applyMuzzleIllumination(0);
-      
     }
+
     updateShells(delta);
     if (mixer) mixer.update(delta);
 
@@ -488,6 +640,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
       if (shell.userData.life <= 0) {
         weaponScene.remove(shell);
+        shell.material.dispose();
         shells.splice(i, 1);
       }
     }
@@ -514,13 +667,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function updateMuzzleFlashTransform() {
     const flash = getMuzzleFlashConfig();
-
-    
-
     muzzleFlashMesh.position.set(...flash.worldOffset);
     muzzleFlashMesh.material.color.setHex(flash.color);
-
-    
   }
 
   function getBasePosition(target) {
@@ -583,6 +731,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   return {
     rig,
+    preloadAll,
     play,
     update,
     shoot,
