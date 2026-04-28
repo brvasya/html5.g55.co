@@ -5,6 +5,7 @@ import { MAP_GLB_BASE64 } from "../assets/map.js";
 export function createWorld({ THREE, scene }) {
   const colliders = [];
   const tracers = [];
+  const floorObjects = [];
 
   function resetPlayer(player) {
     if (!world.isLoaded || !world.spawn) return;
@@ -19,9 +20,11 @@ export function createWorld({ THREE, scene }) {
     map: null,
     colliders,
     tracers,
+    floorObjects,
     isLoaded: false,
     spawn: null,
     spawnObjectName: "G55START001",
+    floorObjectPrefix: "G55FLR",
     ready: null,
     addBox,
     resetPlayer
@@ -51,6 +54,10 @@ export function createWorld({ THREE, scene }) {
 
             makeMaterialCrisp(object.material);
             colliders.push(object);
+
+            if (isFloorMesh(object)) {
+              floorObjects.push(object);
+            }
           });
 
           scene.add(map);
@@ -80,6 +87,23 @@ export function createWorld({ THREE, scene }) {
     });
   }
 
+  function isFloorMesh(object) {
+    const prefix = world.floorObjectPrefix.toLowerCase();
+    let current = object;
+
+    while (current) {
+      const name = (current.name || "").trim().toLowerCase();
+
+      if (name.startsWith(prefix)) {
+        return true;
+      }
+
+      current = current.parent;
+    }
+
+    return false;
+  }
+
   function findSpawnObject(root) {
     let found = null;
     const targetName = world.spawnObjectName.toLowerCase();
@@ -87,8 +111,11 @@ export function createWorld({ THREE, scene }) {
     root.traverse(object => {
       if (found) return;
 
-      const name = (object.name || "").toLowerCase();
-      if (name === targetName) found = object;
+      const name = (object.name || "").trim().toLowerCase();
+
+      if (name === targetName) {
+        found = object;
+      }
     });
 
     return found;
@@ -125,6 +152,7 @@ export function createWorld({ THREE, scene }) {
     scene.add(mesh);
 
     if (isCollider) colliders.push(mesh);
+
     return mesh;
   }
 

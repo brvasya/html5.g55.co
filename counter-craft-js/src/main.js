@@ -72,7 +72,8 @@ document.body.appendChild(renderer.domElement);
 const hud = createHud();
 const world = createWorld({ THREE, scene, config: CONFIG });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
-const enemies = createEnemies({ THREE, scene, camera, config: CONFIG, state });
+let enemies = null;
+
 const weapon = createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVelocity: player.velocity });
 const impacts = createImpactParticles({ THREE, scene });
 const bulletHoles = createBulletHoles({ THREE, scene });
@@ -214,11 +215,13 @@ function switchWeapon(slotNumber) {
 }
 
 function updateHud() {
-  state.enemiesLeft = enemies.count;
+  state.enemiesLeft = enemies ? enemies.count : 0;
   hud.update({ ...state, ...weapon.getHudState() });
 }
 
 function shoot() {
+  if (!enemies) return;
+
   const shot = weapon.shoot();
 
   if (!shot.ok) {
@@ -248,6 +251,7 @@ function shoot() {
         updateHud();
 
         setTimeout(() => {
+          if (!enemies) return;
           enemies.spawnWave(state.wave);
           updateHud();
         }, 700);
@@ -278,7 +282,7 @@ function reload() {
 function getBulletHit() {
   impactRaycaster.setFromCamera(impactCenter, camera);
 
-  const enemyHit = enemies.getHit(impactRaycaster);
+  const enemyHit = enemies ? enemies.getHit(impactRaycaster) : null;
   const surfaceHit = getSurfaceImpact();
 
   if (enemyHit && surfaceHit) {
@@ -437,6 +441,17 @@ async function resetGame() {
   await world.ready;
   world.resetPlayer(player);
 
+  if (!enemies) {
+    enemies = createEnemies({
+      THREE,
+      scene,
+      camera,
+      config: CONFIG,
+      state,
+      floorObjects: world.floorObjects
+    });
+  }
+
   enemies.reset();
   enemies.spawnWave(state.wave);
   weapon.resetSlots();
@@ -544,7 +559,10 @@ function animate() {
     shoot();
   }
 
-  enemies.update(delta, state.isPlaying, takeDamage);
+  if (enemies) {
+    enemies.update(delta, state.isPlaying, takeDamage);
+  }
+
   weapon.update(delta, state.isPlaying, player.inputState);
   updateTracers(delta);
   impacts.update(delta);

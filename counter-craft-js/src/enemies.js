@@ -11,10 +11,8 @@ const ENEMY_TYPES = {
 
 const DEFAULT_ENEMY_TYPE = "zombie";
 
-export function createEnemies({ THREE, scene, camera, config, state }) {
+export function createEnemies({ THREE, scene, camera, config, state, floorObjects = [] }) {
   const enemies = [];
-  const raycaster = new THREE.Raycaster();
-  const center = new THREE.Vector2(0, 0);
   const toPlayer = new THREE.Vector3();
 
   const modelCache = new Map();
@@ -84,24 +82,87 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
   function spawnWave(wave) {
     const count = Math.min(4 + wave, 14);
 
+    if (!floorObjects || floorObjects.length === 0) {
+      console.warn("No G55FLR floor objects found for enemy spawning");
+      return;
+    }
+
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 12 + Math.random() * 7;
+      const point = getRandomFloorPoint();
+
+      if (!point) continue;
 
       createEnemy(
-        Math.cos(angle) * radius,
-        Math.sin(angle) * radius,
+        point.x,
+        point.y,
+        point.z,
         wave,
         chooseEnemyTypeForWave(wave)
       );
     }
   }
 
-  function createEnemy(x, z, wave, typeId = DEFAULT_ENEMY_TYPE) {
+  function getRandomFloorPoint() {
+    let point = null;
+    let tries = 20;
+
+    while (!point && tries-- > 0) {
+      const mesh = floorObjects[Math.floor(Math.random() * floorObjects.length)];
+      point = getRandomPointOnMesh(mesh);
+    }
+
+    return point;
+  }
+
+  function getRandomPointOnMesh(mesh) {
+    if (!mesh || !mesh.geometry || !mesh.geometry.attributes.position) return null;
+
+    const geometry = mesh.geometry;
+    const position = geometry.attributes.position;
+    const index = geometry.index;
+
+    let a;
+    let b;
+    let c;
+
+    if (index) {
+      const triangleIndex = Math.floor(Math.random() * (index.count / 3)) * 3;
+
+      a = index.getX(triangleIndex);
+      b = index.getX(triangleIndex + 1);
+      c = index.getX(triangleIndex + 2);
+    } else {
+      const triangleIndex = Math.floor(Math.random() * (position.count / 3)) * 3;
+
+      a = triangleIndex;
+      b = triangleIndex + 1;
+      c = triangleIndex + 2;
+    }
+
+    const vA = new THREE.Vector3().fromBufferAttribute(position, a);
+    const vB = new THREE.Vector3().fromBufferAttribute(position, b);
+    const vC = new THREE.Vector3().fromBufferAttribute(position, c);
+
+    const r1 = Math.random();
+    const r2 = Math.random();
+    const sqrtR1 = Math.sqrt(r1);
+
+    const point = new THREE.Vector3()
+      .addScaledVector(vA, 1 - sqrtR1)
+      .addScaledVector(vB, sqrtR1 * (1 - r2))
+      .addScaledVector(vC, sqrtR1 * r2);
+
+    mesh.updateWorldMatrix(true, false);
+    point.applyMatrix4(mesh.matrixWorld);
+
+    return point;
+  }
+
+  function createEnemy(x, y, z, wave, typeId = DEFAULT_ENEMY_TYPE) {
     const type = getEnemyType(typeId);
 
     const group = new THREE.Group();
-    group.position.set(x, 0, z);
+    group.position.set(x, y, z);
 
     const asset = type.asset || {};
 
@@ -182,8 +243,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     model.rotation.set(assetRotation[0], assetRotation[1], assetRotation[2]);
     model.position.set(assetPosition[0], assetPosition[1], assetPosition[2]);
 
-    // Important: cloned GLB meshes can still share material instances.
-    // Clone materials per enemy so hit flash affects only this enemy.
     model.traverse(object => {
       if (!object.isMesh || !object.material) return;
 
@@ -217,7 +276,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
       const clip = THREE.AnimationUtils.subclip(baseClip, name, data[0], data[1], fps);
       const action = mixer.clipAction(clip);
 
-      // derive attack duration from animation clip
       if (name === "attack") {
         enemy.userData.attackDuration = clip.duration;
       }
@@ -281,7 +339,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
       enemy.lookAt(playerPosition.x, enemy.position.y, playerPosition.z);
 
       if (distance > enemy.userData.attackDistance) {
-        // DO NOT move while attacking
         if (!enemy.userData.isAttacking) {
           toPlayer.normalize();
           enemy.position.add(toPlayer.multiplyScalar((enemy.userData.speed + state.wave * 0.08) * delta));
@@ -294,12 +351,12 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
         enemy.userData.attackElapsed = 0;
         enemy.userData.pendingDamage = true;
         playEnemyAnimation(enemy, "attack");
+
         if (enemy.userData.type.asset.attackSound) {
           playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
         }
       }
 
-      // apply delayed damage
       if (
         enemy.userData.isAttacking &&
         enemy.userData.pendingDamage &&
@@ -334,8 +391,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
 
   function damageEnemy(enemy, damage) {
     if (!enemy || !enemies.includes(enemy)) return false;
-
-    // already dying
     if (enemy.userData.isDying) return false;
 
     enemy.userData.health -= damage;
@@ -344,18 +399,17 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
     if (enemy.userData.health <= 0) {
       enemy.userData.isDying = true;
 
-      // stop all actions
       if (enemy.userData.currentAction) {
         enemy.userData.currentAction.fadeOut(0.05);
       }
 
-      // play death animation if exists
       const deathAction = enemy.userData.actions["death"];
 
       if (deathAction) {
         if (enemy.userData.type.asset.attackSound) {
           playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
         }
+
         deathAction.reset();
         deathAction.clampWhenFinished = true;
         deathAction.setLoop(THREE.LoopOnce, 1);
@@ -363,7 +417,6 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
 
         enemy.userData.deathTimer = deathAction.getClip().duration;
       } else {
-        // fallback instant remove if no animation
         removeEnemy(enemy);
         return true;
       }
@@ -420,7 +473,14 @@ export function createEnemies({ THREE, scene, camera, config, state }) {
   function disposeObject(root) {
     root.traverse(object => {
       if (object.geometry) object.geometry.dispose();
-      if (object.material) object.material.dispose();
+
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(material => material.dispose());
+        } else {
+          object.material.dispose();
+        }
+      }
     });
   }
 
