@@ -15,35 +15,25 @@
   </script>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
       background: #111;
-      font-family: Arial, sans-serif;
+      /* unified font removed here, handled by hud.js injection */
       color: #fff;
       user-select: none;
       touch-action: none;
       cursor: default;
     }
 
-    body.cursor-locked {
-      cursor: none;
-    }
+    body.cursor-locked { cursor: none; }
+    body.fallback-look { cursor: crosshair; }
 
-    body.fallback-look {
-      cursor: crosshair;
-    }
-
-    canvas {
-      display: block;
-    }
+    canvas { display: block; }
 
     #hud {
       position: fixed;
@@ -138,16 +128,10 @@
       line-height: 1.45;
     }
 
+    /* REMOVE default button style that was conflicting */
     button {
-      margin-top: 18px;
-      padding: 13px 22px;
-      border: 0;
-      border-radius: 999px;
-      background: white;
-      color: #111;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 700;
+      all: unset;
+      display: inline-block;
     }
 
     #damageFlash {

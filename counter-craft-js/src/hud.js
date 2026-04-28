@@ -64,8 +64,11 @@ function injectHudStyles() {
   const style = document.createElement("style");
   style.id = "csHudStyles";
   style.textContent = `
-    .cs-hud {
+    body {
       font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Trebuchet MS', Arial, sans-serif;
+    }
+
+    .cs-hud {
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: #f2d37b;
@@ -174,7 +177,6 @@ function injectHudStyles() {
         linear-gradient(#39ff14, #39ff14) center 100% / 2px 11px no-repeat,
         linear-gradient(#39ff14, #39ff14) 0 center / 11px 2px no-repeat,
         linear-gradient(#39ff14, #39ff14) 100% center / 11px 2px no-repeat;
-      
     }
 
     .cs-hud #crosshair::before,
@@ -193,6 +195,44 @@ function injectHudStyles() {
         linear-gradient(#39ff14, #39ff14) 100% center / 12px 2px no-repeat;
     }
 
+    .cs-button {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 11px 22px;
+      color: #f2d37b;
+      font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Trebuchet MS', Arial, sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      line-height: 1;
+      text-align: center;
+      text-decoration: none;
+      text-transform: uppercase;
+      text-shadow: 0 2px 0 #000, 0 0 10px rgba(255, 188, 64, 0.35);
+      background: linear-gradient(180deg, rgba(22, 20, 14, 0.9), rgba(0, 0, 0, 0.65));
+      border: 1px solid rgba(242, 211, 123, 0.45);
+      border-radius: 4px;
+      box-shadow: 0 0 18px rgba(0, 0, 0, 0.65);
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    /* spacing between buttons */
+    .cs-button + .cs-button {
+      margin-left: 14px;
+    }
+
+    .cs-button:hover {
+      color: #ffffff;
+      border-color: rgba(242, 211, 123, 0.9);
+      box-shadow: 0 0 22px rgba(255, 188, 64, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .cs-button:active {
+      transform: translateY(1px);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+    }
+
     @media (max-width: 700px) {
       .cs-topbar { font-size: 14px; gap: 8px; }
       .cs-bottom-left,
@@ -201,6 +241,7 @@ function injectHudStyles() {
       .cs-bottom-right { right: 14px; }
       .cs-big,
       .cs-ammo { font-size: 34px; }
+      .cs-button { font-size: 15px; padding: 10px 18px; }
     }
   `;
 

@@ -35,7 +35,8 @@ const state = {
   wave: 1,
   enemiesLeft: 0,
   isPlaying: false,
-  isGameOver: false
+  isGameOver: false,
+  isWaveComplete: false
 };
 
 const sounds = createSounds();
@@ -43,9 +44,11 @@ const sounds = createSounds();
 const dom = {
   overlay: document.getElementById("overlay"),
   startButton: document.getElementById("startButton"),
+  panel: document.getElementById("panel"),
   panelTitle: document.querySelector("#panel h1"),
   panelText: document.querySelector("#panel p"),
-  damageFlash: document.getElementById("damageFlash")
+  damageFlash: document.getElementById("damageFlash"),
+  moreGamesButton: null
 };
 
 const clock = new THREE.Clock();
@@ -108,6 +111,7 @@ const viewPunch = {
 
 setupLights();
 setupInput();
+setupOverlayButtons();
 resetGame();
 animate();
 
@@ -142,7 +146,7 @@ function setupInput() {
   document.addEventListener("keyup", e => player.onKeyUp(e));
 
   document.addEventListener("mousedown", e => {
-    if (e.button !== 0 || state.isGameOver) return;
+    if (e.button !== 0 || state.isGameOver || state.isWaveComplete) return;
     sounds.resume();
     player.onMouseDown(e);
   });
@@ -155,8 +159,33 @@ function setupInput() {
   window.addEventListener("blur", player.clearMovement);
 }
 
-function startGame() {
-  if (state.isGameOver) resetGame();
+function setupOverlayButtons() {
+  // apply shared button style to existing start button
+  if (dom.startButton && !dom.startButton.classList.contains("cs-button")) {
+    dom.startButton.classList.add("cs-button");
+  }
+  if (!dom.startButton || document.getElementById("moreGamesButton")) return;
+
+  dom.moreGamesButton = document.createElement("a");
+  dom.moreGamesButton.id = "moreGamesButton";
+  dom.moreGamesButton.href = "https://g55.co/";
+  dom.moreGamesButton.textContent = "More Games";
+  dom.moreGamesButton.className = "cs-button";
+  dom.moreGamesButton.target = "_blank";
+  dom.moreGamesButton.rel = "noopener noreferrer";
+
+  dom.startButton.insertAdjacentElement("afterend", dom.moreGamesButton);
+}
+
+async function startGame() {
+  sounds.resume();
+
+  if (state.isWaveComplete) {
+    continueWave();
+    return;
+  }
+
+  if (state.isGameOver) await resetGame();
 
   state.isPlaying = true;
   dom.overlay.style.display = "none";
@@ -167,7 +196,7 @@ function startGame() {
 }
 
 function pauseGame() {
-  if (!state.isPlaying || state.isGameOver) return;
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
 
   state.isPlaying = false;
   player.clearMovement();
@@ -181,13 +210,49 @@ function pauseGame() {
   dom.startButton.textContent = "Continue";
 }
 
+function showWaveComplete() {
+  state.isPlaying = false;
+  state.isWaveComplete = true;
+
+  player.clearMovement();
+
+  if (document.pointerLockElement === document.body) document.exitPointerLock();
+
+  document.body.classList.remove("cursor-locked", "fallback-look");
+
+  weapon.addReserveAmmo(30);
+  updateHud();
+
+  dom.overlay.style.display = "grid";
+  dom.panelTitle.textContent = `Wave ${state.wave} Complete`;
+  dom.panelText.textContent = `Score: ${state.score}. Continue to start wave ${state.wave + 1}.`;
+  dom.startButton.textContent = "Continue";
+}
+
+function continueWave() {
+  if (!enemies) return;
+
+  state.isWaveComplete = false;
+  state.wave += 1;
+
+  enemies.spawnWave(state.wave);
+  updateHud();
+
+  state.isPlaying = true;
+  dom.overlay.style.display = "none";
+  document.body.classList.remove("fallback-look");
+
+  player.lockCursor();
+  updateModeNote();
+}
+
 function onPointerLockChange() {
   const locked = document.pointerLockElement === document.body;
 
   player.setPointerLockActive(locked);
   document.body.classList.toggle("cursor-locked", locked);
 
-  if (!locked && state.isPlaying && !state.isGameOver && player.pointerLockSupported) {
+  if (!locked && state.isPlaying && !state.isGameOver && !state.isWaveComplete && player.pointerLockSupported) {
     pauseGame();
   }
 
@@ -203,6 +268,7 @@ function enableFallbackLook() {
 
 function updateModeNote() {
   const modeNote = document.getElementById("modeNote");
+  if (!modeNote) return;
 
   if (player.pointerLockActive) modeNote.textContent = "Cursor locked: mouse look active";
   else if (player.pointerLockSupported) modeNote.textContent = "Cursor lock: click start to lock";
@@ -210,7 +276,7 @@ function updateModeNote() {
 }
 
 function switchWeapon(slotNumber) {
-  if (!state.isPlaying || state.isGameOver) return;
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
   if (weapon.switchSlot(slotNumber)) updateHud();
 }
 
@@ -220,7 +286,7 @@ function updateHud() {
 }
 
 function shoot() {
-  if (!enemies) return;
+  if (!enemies || state.isWaveComplete) return;
 
   const shot = weapon.shoot();
 
@@ -246,15 +312,7 @@ function shoot() {
       state.score += 100;
 
       if (enemies.count === 0) {
-        state.wave += 1;
-        weapon.addReserveAmmo(30);
-        updateHud();
-
-        setTimeout(() => {
-          if (!enemies) return;
-          enemies.spawnWave(state.wave);
-          updateHud();
-        }, 700);
+        showWaveComplete();
       }
     } else {
       sounds.playEnemyHit();
@@ -268,7 +326,7 @@ function shoot() {
 }
 
 function reload() {
-  if (!state.isPlaying || state.isGameOver) return;
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
 
   const result = weapon.reload();
   if (!result.started) return;
@@ -344,7 +402,7 @@ function updateTracers(delta) {
 }
 
 function takeDamage(amount) {
-  if (state.isGameOver) return;
+  if (state.isGameOver || state.isWaveComplete) return;
 
   state.health = Math.max(0, state.health - amount);
 
@@ -369,7 +427,7 @@ function takeDamage(amount) {
   dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
   dom.damageFlash.style.opacity = "1";
   setTimeout(() => {
-    if (!state.isGameOver) dom.damageFlash.style.opacity = "0";
+    if (!state.isGameOver && !state.isWaveComplete) dom.damageFlash.style.opacity = "0";
   }, 120);
 
   sounds.playPlayerHit();
@@ -379,6 +437,7 @@ function takeDamage(amount) {
 function endGame() {
   state.isGameOver = true;
   state.isPlaying = false;
+  state.isWaveComplete = false;
 
   player.clearMovement();
 
@@ -428,6 +487,7 @@ async function resetGame() {
   state.score = 0;
   state.wave = 1;
   state.isGameOver = false;
+  state.isWaveComplete = false;
 
   cameraShake.trauma = 0;
   cameraShake.posAmp = 0.08;
@@ -556,7 +616,7 @@ function animate() {
     sounds.playFootstep(player.inputState.walking, player.inputState.speed01);
   }
 
-  if (state.isPlaying && !state.isGameOver && player.inputState.mouseDown) {
+  if (state.isPlaying && !state.isGameOver && !state.isWaveComplete && player.inputState.mouseDown) {
     shoot();
   }
 
