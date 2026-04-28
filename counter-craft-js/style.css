@@ -19,6 +19,74 @@ body.fallback-look { cursor: crosshair; }
 
 canvas { display: block; }
 
+/* preloader */
+#preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at center, rgba(70, 62, 36, 0.22), transparent 42%),
+    linear-gradient(180deg, #15120c 0%, #050505 100%);
+  color: #f2d37b;
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 #000, 0 0 14px rgba(255, 188, 64, 0.35);
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+#preloader.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.preloader-panel {
+  width: min(420px, 86vw);
+  padding: 26px 24px 24px;
+  background: linear-gradient(180deg, rgba(22, 20, 14, 0.92), rgba(0, 0, 0, 0.72));
+  border: 1px solid rgba(242, 211, 123, 0.38);
+  border-radius: 4px;
+  box-shadow: 0 0 34px rgba(0, 0, 0, 0.78), 0 0 24px rgba(255, 188, 64, 0.12);
+}
+
+.preloader-title {
+  margin-bottom: 18px;
+  color: #f2d37b;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.preloader-bar {
+  width: 100%;
+  height: 16px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(242, 211, 123, 0.56);
+  border-radius: 3px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.85), 0 0 14px rgba(255, 188, 64, 0.16);
+  overflow: hidden;
+}
+
+#preloaderFill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #8fcf6a, #f2d37b);
+  box-shadow: 0 0 14px rgba(242, 211, 123, 0.55);
+  transition: width 0.15s ease;
+}
+
+#preloaderText {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 18px;
+  line-height: 1;
+}
+
 #modeNote {
   position: absolute;
   top: 18px;
@@ -292,6 +360,19 @@ button {
 }
 
 @media (max-width: 700px) {
+  .preloader-panel {
+    width: min(340px, 88vw);
+    padding: 22px 18px 20px;
+  }
+
+  .preloader-title {
+    font-size: 24px;
+  }
+
+  #preloaderText {
+    font-size: 16px;
+  }
+
   .cs-topbar { font-size: 14px; gap: 8px; }
   .cs-bottom-left,
   .cs-bottom-right { bottom: 16px; min-width: 118px; padding: 9px 11px; }

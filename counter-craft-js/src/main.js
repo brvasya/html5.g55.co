@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createPreloader } from "./preloader.js";
 import { createPlayer } from "./player.js";
 import { createWeaponSystem } from "./weapon.js";
 import { createWorld } from "./world.js";
@@ -37,6 +38,27 @@ const state = {
   isPlaying: false,
   isGameOver: false,
   isWaveComplete: false
+};
+
+const preloader = createPreloader();
+
+THREE.DefaultLoadingManager.onStart = () => {
+  preloader.show();
+  preloader.setProgress(0);
+};
+
+THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+  if (!itemsTotal) return;
+  const progress = (itemsLoaded / itemsTotal) * 100;
+  preloader.setProgress(progress);
+};
+
+THREE.DefaultLoadingManager.onLoad = () => {
+  preloader.setProgress(100);
+};
+
+THREE.DefaultLoadingManager.onError = url => {
+  console.warn("Asset failed to load:", url);
 };
 
 const sounds = createSounds();
@@ -109,11 +131,30 @@ const viewPunch = {
   damping: 20
 };
 
-setupLights();
-setupInput();
-setupOverlayButtons();
-resetGame();
-animate();
+boot();
+
+async function boot() {
+  setupLights();
+  setupInput();
+  setupOverlayButtons();
+
+  try {
+    await world.ready;
+    await resetGame();
+    preloader.setProgress(100);
+    requestAnimationFrame(() => preloader.hide());
+    animate();
+  } catch (error) {
+    console.error("Game failed to initialize:", error);
+    preloader.hide();
+
+    dom.overlay.style.display = "grid";
+    dom.panelTitle.textContent = "Loading Error";
+    dom.panelText.textContent = "The game could not load correctly. Please refresh the page.";
+    dom.startButton.textContent = "Refresh";
+    dom.startButton.onclick = () => window.location.reload();
+  }
+}
 
 function setupLights() {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.5));
@@ -160,10 +201,10 @@ function setupInput() {
 }
 
 function setupOverlayButtons() {
-  // apply shared button style to existing start button
   if (dom.startButton && !dom.startButton.classList.contains("cs-button")) {
     dom.startButton.classList.add("cs-button");
   }
+
   if (!dom.startButton || document.getElementById("moreGamesButton")) return;
 
   dom.moreGamesButton = document.createElement("a");
