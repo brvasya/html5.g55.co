@@ -105,7 +105,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
   }
 
   function spawnWave(wave) {
-    const count = Math.min(4 + wave, 14);
+    const count = Math.min(3 + wave * 3, 30);
 
     if (!floorObjects || floorObjects.length === 0) {
       console.warn("No G55FLR floor objects found for enemy spawning");
