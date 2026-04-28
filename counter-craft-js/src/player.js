@@ -17,7 +17,8 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     stepHeight: 0.48,
     groundSnapDistance: 0.28,
     groundRayExtraHeight: 0.35,
-    groundRayLength: 4
+    groundRayLength: 4,
+    playerRadius: 0.38
   };
 
   const keys = {
@@ -47,14 +48,13 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   const side = new THREE.Vector3();
   const oldPosition = new THREE.Vector3();
 
-  const playerBox = new THREE.Box3();
-  const colliderBox = new THREE.Box3();
-  const playerBoxCenter = new THREE.Vector3();
-  const playerBoxSize = new THREE.Vector3(0.75, config.playerHeight, 0.75);
-
   const groundRaycaster = new THREE.Raycaster();
   const groundRayOrigin = new THREE.Vector3();
   const groundRayDirection = new THREE.Vector3(0, -1, 0);
+
+  const wallRaycaster = new THREE.Raycaster();
+  const wallRayOrigin = new THREE.Vector3();
+  const wallMove = new THREE.Vector3();
 
   let yaw = 0;
   let pitch = 0;
@@ -75,7 +75,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   let cameraYawApplied = 0;
   let stepDip = 0;
   let baseCameraY = config.playerHeight;
-  let groundY = 0;
+  let groundY = null;
 
   applyCameraRotation();
 
@@ -199,8 +199,11 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     inputState.mouseDown = false;
   }
 
-  function reset() {
-    yaw = 0;
+  function reset(options = {}) {
+    const position = options.position ?? null;
+    const nextYaw = options.yaw ?? 0;
+
+    yaw = nextYaw;
     pitch = 0;
     verticalVelocity = 0;
     canJump = true;
@@ -213,10 +216,12 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     cameraYawOffset = 0;
     cameraYawApplied = 0;
     stepDip = 0;
-    groundY = 0;
-    baseCameraY = config.playerHeight;
+    groundY = null;
+
+    if (position) camera.position.copy(position);
+
+    baseCameraY = camera.position.y;
     velocity.set(0, 0, 0);
-    camera.position.set(0, config.playerHeight, 8);
     applyCameraRotation();
     clearMovement();
 
@@ -237,8 +242,10 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     if (!isPlaying) return;
 
     groundY = getGroundY();
-    const targetGroundCameraY = groundY + config.playerHeight;
-    const grounded = baseCameraY <= targetGroundCameraY + MOVE_TUNING.groundSnapDistance && verticalVelocity <= 0;
+
+    const hasGround = groundY !== null;
+    const targetGroundCameraY = hasGround ? groundY + config.playerHeight : baseCameraY;
+    const grounded = hasGround && baseCameraY <= targetGroundCameraY + MOVE_TUNING.groundSnapDistance && verticalVelocity <= 0;
 
     if (grounded) {
       baseCameraY = targetGroundCameraY;
@@ -303,6 +310,7 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     }
 
     oldPosition.copy(camera.position);
+
     camera.position.x += velocity.x * delta;
     camera.position.z += velocity.z * delta;
 
@@ -312,23 +320,24 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       velocity.z = 0;
     }
 
-    clampToArena();
-
     verticalVelocity -= config.gravity * delta;
     baseCameraY += verticalVelocity * delta;
 
     groundY = getGroundY();
-    const nextGroundCameraY = groundY + config.playerHeight;
 
-    if (baseCameraY <= nextGroundCameraY && verticalVelocity <= 0) {
-      baseCameraY = nextGroundCameraY;
-      verticalVelocity = 0;
-      canJump = true;
+    if (groundY !== null) {
+      const nextGroundCameraY = groundY + config.playerHeight;
+
+      if (baseCameraY <= nextGroundCameraY && verticalVelocity <= 0) {
+        baseCameraY = nextGroundCameraY;
+        verticalVelocity = 0;
+        canJump = true;
+      } else {
+        canJump = false;
+      }
     } else {
       canJump = false;
     }
-
-    clampToArena();
 
     const currentMoveSpeed = Math.hypot(velocity.x, velocity.z);
     inputState.moving = hasInput && currentMoveSpeed > 0.35;
@@ -388,7 +397,44 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       return hit.point.y;
     }
 
-    return 0;
+    return null;
+  }
+
+  function hitsWall(position) {
+    wallMove.copy(position).sub(oldPosition);
+    wallMove.y = 0;
+
+    const distance = wallMove.length();
+    if (distance <= 0.0001) return false;
+
+    const direction = wallMove.normalize();
+
+    const rayHeights = [
+      baseCameraY - config.playerHeight + 0.35,
+      baseCameraY - config.playerHeight * 0.5,
+      baseCameraY - 0.25
+    ];
+
+    for (const y of rayHeights) {
+      wallRayOrigin.set(oldPosition.x, y, oldPosition.z);
+
+      wallRaycaster.set(wallRayOrigin, direction);
+      wallRaycaster.far = distance + MOVE_TUNING.playerRadius;
+
+      const hits = wallRaycaster.intersectObjects(colliders, true);
+
+      for (const hit of hits) {
+        if (!hit.face) continue;
+
+        const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+
+        if (normal.y > 0.45) continue;
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
   function updateCameraBob(delta) {
@@ -414,28 +460,6 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     }
 
     stepDip = THREE.MathUtils.lerp(stepDip, 0, 1 - Math.exp(-28 * delta));
-  }
-
-  function clampToArena() {
-    const limit = config.arenaSize / 2 - 0.6;
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -limit, limit);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -limit, limit);
-  }
-
-  function hitsWall(position) {
-    const feetY = baseCameraY - config.playerHeight;
-
-    playerBoxCenter.set(position.x, baseCameraY - config.playerHeight / 2, position.z);
-    playerBox.setFromCenterAndSize(playerBoxCenter, playerBoxSize);
-
-    return colliders.some(collider => {
-      colliderBox.setFromObject(collider);
-
-      if (colliderBox.max.y <= feetY + MOVE_TUNING.stepHeight) return false;
-      if (colliderBox.min.y >= baseCameraY - 0.05) return false;
-
-      return playerBox.intersectsBox(colliderBox);
-    });
   }
 
   return {

@@ -1,29 +1,116 @@
-export function createWorld({ THREE, scene, config }) {
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { MAP_GLB_BASE64 } from "../assets/map.js";
+
+export function createWorld({ THREE, scene }) {
   const colliders = [];
   const tracers = [];
 
-  buildArena();
+  function resetPlayer(player) {
+    if (!world.isLoaded || !world.spawn) return;
 
-  function buildArena() {
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(config.arenaSize, config.arenaSize),
-      new THREE.MeshStandardMaterial({ color: 0x6b8f4e, roughness: 0.9 })
-    );
+    player.reset({
+      position: world.spawn.clone(),
+      yaw: 0
+    });
+  }
 
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
-    colliders.push(floor);
+  const world = {
+    map: null,
+    colliders,
+    tracers,
+    isLoaded: false,
+    spawn: null,
+    spawnObjectName: "G55START001",
+    ready: null,
+    addBox,
+    resetPlayer
+  };
 
-    addBox(0, 1.5, -config.arenaSize / 2, config.arenaSize, 3, 1, 0x5b5b5b, true);
-    addBox(0, 1.5, config.arenaSize / 2, config.arenaSize, 3, 1, 0x5b5b5b, true);
-    addBox(-config.arenaSize / 2, 1.5, 0, 1, 3, config.arenaSize, 0x5b5b5b, true);
-    addBox(config.arenaSize / 2, 1.5, 0, 1, 3, config.arenaSize, 0x5b5b5b, true);
+  world.ready = loadMap();
 
-    addBox(-8, 0.75, -4, 3, 1.5, 3, 0x8b5a2b, true);
-    addBox(7, 0.75, 5, 3, 1.5, 3, 0x8b5a2b, true);
-    addBox(1, 0.75, -10, 5, 1.5, 2, 0x8b5a2b, true);
-    addBox(-12, 0.75, 10, 2, 1.5, 5, 0x8b5a2b, true);
+  function loadMap() {
+    return new Promise(resolve => {
+      const loader = new GLTFLoader();
+      loader.setMeshoptDecoder(MeshoptDecoder);
+
+      loader.load(
+        MAP_GLB_BASE64.model,
+        gltf => {
+          const map = gltf.scene;
+          const mapScale = MAP_GLB_BASE64.scale;
+
+          map.scale.set(mapScale[0], mapScale[1], mapScale[2]);
+
+          map.traverse(object => {
+            if (!object.isMesh) return;
+
+            object.castShadow = true;
+            object.receiveShadow = true;
+            object.frustumCulled = false;
+
+            makeMaterialCrisp(object.material);
+            colliders.push(object);
+          });
+
+          scene.add(map);
+
+          world.map = map;
+          world.isLoaded = true;
+
+          const spawnObject = findSpawnObject(map);
+
+          if (spawnObject) {
+            const raw = new THREE.Vector3();
+            spawnObject.getWorldPosition(raw);
+            world.spawn = raw.clone();
+          } else {
+            console.warn(`Spawn object ${world.spawnObjectName} not found`);
+          }
+
+          resolve(world);
+        },
+        undefined,
+        error => {
+          console.error("Map GLB failed to load", error);
+          world.isLoaded = true;
+          resolve(world);
+        }
+      );
+    });
+  }
+
+  function findSpawnObject(root) {
+    let found = null;
+    const targetName = world.spawnObjectName.toLowerCase();
+
+    root.traverse(object => {
+      if (found) return;
+
+      const name = (object.name || "").toLowerCase();
+      if (name === targetName) found = object;
+    });
+
+    return found;
+  }
+
+  function makeMaterialCrisp(material) {
+    if (!material) return;
+
+    const materials = Array.isArray(material) ? material : [material];
+
+    materials.forEach(mat => {
+      if (!mat) return;
+
+      [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.emissiveMap, mat.aoMap]
+        .filter(Boolean)
+        .forEach(texture => {
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+          texture.generateMipmaps = false;
+          texture.needsUpdate = true;
+        });
+    });
   }
 
   function addBox(x, y, z, sx, sy, sz, color, isCollider = false) {
@@ -41,9 +128,5 @@ export function createWorld({ THREE, scene, config }) {
     return mesh;
   }
 
-  return {
-    colliders,
-    tracers,
-    addBox
-  };
+  return world;
 }

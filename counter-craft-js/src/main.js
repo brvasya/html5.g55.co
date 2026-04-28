@@ -55,7 +55,7 @@ const weaponScene = new THREE.Scene();
 scene.background = new THREE.Color(0x87a7c7);
 scene.fog = new THREE.Fog(0x87a7c7, 22, 75);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 900);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 20000);
 camera.position.set(0, CONFIG.playerHeight, 8);
 scene.add(camera);
 
@@ -419,7 +419,7 @@ function endGame() {
   }, 650);
 }
 
-function resetGame() {
+async function resetGame() {
   state.health = 100;
   state.score = 0;
   state.wave = 1;
@@ -434,7 +434,9 @@ function resetGame() {
   dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
   dom.damageFlash.style.opacity = "0";
 
-  player.reset();
+  await world.ready;
+  world.resetPlayer(player);
+
   enemies.reset();
   enemies.spawnWave(state.wave);
   weapon.resetSlots();
