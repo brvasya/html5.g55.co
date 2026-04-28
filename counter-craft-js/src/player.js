@@ -312,11 +312,16 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     oldPosition.copy(camera.position);
 
     camera.position.x += velocity.x * delta;
-    camera.position.z += velocity.z * delta;
-
     if (hitsWall(camera.position)) {
-      camera.position.copy(oldPosition);
+      camera.position.x = oldPosition.x;
       velocity.x = 0;
+    }
+
+    oldPosition.copy(camera.position);
+
+    camera.position.z += velocity.z * delta;
+    if (hitsWall(camera.position)) {
+      camera.position.z = oldPosition.z;
       velocity.z = 0;
     }
 
