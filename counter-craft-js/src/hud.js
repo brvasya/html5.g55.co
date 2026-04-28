@@ -3,22 +3,7 @@ export function createHud() {
   const stats = document.getElementById("stats");
   const crosshair = document.getElementById("crosshair");
 
-  stats.innerHTML = `
-    <div class="cs-topbar">
-      <div class="cs-badge">ENEMIES <span id="enemiesLeft">0</span></div>
-      <div class="cs-score">$<span id="score">0</span></div>
-      <div class="cs-round">WAVE <span id="wave">1</span></div>
-    </div>
-    <div class="cs-bottom-left">
-      <div class="cs-label">HEALTH</div>
-      <div class="cs-big"><span id="health">100</span></div>
-    </div>
-    <div class="cs-bottom-right">
-      <div class="cs-label"><span id="weaponSlot">1</span> · <span id="weaponName">WEAPON</span></div>
-      <div class="cs-ammo"><span id="ammo">30</span><small>/ <span id="reserve">90</span></small></div>
-    </div>
-  `;
-
+  // HUD structure moved to index.html for better performance and no reflow
   const refs = {
     health: document.getElementById("health"),
     ammo: document.getElementById("ammo"),
