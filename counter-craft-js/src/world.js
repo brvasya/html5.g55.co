@@ -24,7 +24,7 @@ export function createWorld({ THREE, scene }) {
     isLoaded: false,
     spawn: null,
     spawnObjectName: "G55START001",
-    floorObjectPrefix: "G55FLR",
+    floorObjectPrefixes: ["G55FLR", "G55OUT0"],
     ready: null,
     addBox,
     resetPlayer
@@ -88,14 +88,20 @@ export function createWorld({ THREE, scene }) {
   }
 
   function isFloorMesh(object) {
-    const prefix = world.floorObjectPrefix.toLowerCase();
+    const prefixes = Array.isArray(world.floorObjectPrefixes)
+      ? world.floorObjectPrefixes
+      : [world.floorObjectPrefixes];
+
     let current = object;
 
     while (current) {
       const name = (current.name || "").trim().toLowerCase();
 
-      if (name.startsWith(prefix)) {
-        return true;
+      for (let i = 0; i < prefixes.length; i++) {
+        const prefix = prefixes[i].toLowerCase();
+        if (name.startsWith(prefix)) {
+          return true;
+        }
       }
 
       current = current.parent;
