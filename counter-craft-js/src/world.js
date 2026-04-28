@@ -27,7 +27,8 @@ export function createWorld({ THREE, scene }) {
     floorObjectPrefixes: ["G55FLR", "G55OUT0"],
     ready: null,
     addBox,
-    resetPlayer
+    resetPlayer,
+    getRandomFloorPoint
   };
 
   world.ready = loadMap();
@@ -87,6 +88,38 @@ export function createWorld({ THREE, scene }) {
     });
   }
 
+  function getRandomFloorPoint(maxTries = 20) {
+    if (!floorObjects.length) return null;
+
+    for (let i = 0; i < maxTries; i++) {
+      const mesh = floorObjects[Math.floor(Math.random() * floorObjects.length)];
+
+      mesh.updateWorldMatrix(true, false);
+
+      if (!mesh.geometry.boundingBox) {
+        mesh.geometry.computeBoundingBox();
+      }
+
+      const box = mesh.geometry.boundingBox.clone();
+      box.applyMatrix4(mesh.matrixWorld);
+
+      const x = THREE.MathUtils.lerp(box.min.x, box.max.x, Math.random());
+      const z = THREE.MathUtils.lerp(box.min.z, box.max.z, Math.random());
+
+      const rayOrigin = new THREE.Vector3(x, box.max.y + 50, z);
+      const rayDirection = new THREE.Vector3(0, -1, 0);
+
+      const raycaster = new THREE.Raycaster(rayOrigin, rayDirection, 0, 200);
+      const hits = raycaster.intersectObject(mesh, true);
+
+      if (hits.length) {
+        return hits[0].point.clone();
+      }
+    }
+
+    return null;
+  }
+
   function isFloorMesh(object) {
     const prefixes = Array.isArray(world.floorObjectPrefixes)
       ? world.floorObjectPrefixes
@@ -99,6 +132,7 @@ export function createWorld({ THREE, scene }) {
 
       for (let i = 0; i < prefixes.length; i++) {
         const prefix = prefixes[i].toLowerCase();
+
         if (name.startsWith(prefix)) {
           return true;
         }
@@ -135,7 +169,14 @@ export function createWorld({ THREE, scene }) {
     materials.forEach(mat => {
       if (!mat) return;
 
-      [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.emissiveMap, mat.aoMap]
+      [
+        mat.map,
+        mat.normalMap,
+        mat.roughnessMap,
+        mat.metalnessMap,
+        mat.emissiveMap,
+        mat.aoMap
+      ]
         .filter(Boolean)
         .forEach(texture => {
           texture.magFilter = THREE.NearestFilter;

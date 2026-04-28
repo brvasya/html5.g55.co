@@ -23,9 +23,22 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     enemyBaseOffset: 0
   };
 
+  const NAV_TUNING = {
+    obstacleRayHeight: 0.9,
+    obstacleRayDistance: 1.25,
+    targetReachDistance: 1.2,
+    targetMaxAge: 3.0,
+    repickDistance: 0.8,
+    maxTargetTries: 20
+  };
+
   const terrainRaycaster = new THREE.Raycaster();
   const terrainRayOrigin = new THREE.Vector3();
   const terrainRayDirection = new THREE.Vector3(0, -1, 0);
+
+  const obstacleRaycaster = new THREE.Raycaster();
+  const obstacleRayOrigin = new THREE.Vector3();
+  const obstacleRayDirection = new THREE.Vector3();
 
   const modelCache = new Map();
 
@@ -116,7 +129,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
 
   function getRandomFloorPoint() {
     let point = null;
-    let tries = 20;
+    let tries = NAV_TUNING.maxTargetTries;
 
     while (!point && tries-- > 0) {
       const mesh = floorObjects[Math.floor(Math.random() * floorObjects.length)];
@@ -203,7 +216,9 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       model: null,
       fallback: null,
       groundY: y,
-      verticalVelocity: 0
+      verticalVelocity: 0,
+      navTarget: null,
+      navTargetAge: 0
     };
 
     snapEnemyToTerrain(group, true);
@@ -357,23 +372,16 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       );
 
       const distance = toPlayer.length();
-      enemy.lookAt(playerPosition.x, enemy.position.y, playerPosition.z);
+
+      if (distance <= enemy.userData.attackDistance) {
+        enemy.userData.navTarget = null;
+        enemy.userData.navTargetAge = 0;
+        enemy.lookAt(playerPosition.x, enemy.position.y, playerPosition.z);
+      }
 
       if (distance > enemy.userData.attackDistance) {
         if (!enemy.userData.isAttacking) {
-          toPlayer.normalize();
-
-          const oldX = enemy.position.x;
-          const oldZ = enemy.position.z;
-
-          enemy.position.x += toPlayer.x * (enemy.userData.speed + state.wave * 0.08) * delta;
-          enemy.position.z += toPlayer.z * (enemy.userData.speed + state.wave * 0.08) * delta;
-
-          if (!snapEnemyToTerrain(enemy, false)) {
-            enemy.position.x = oldX;
-            enemy.position.z = oldZ;
-          }
-
+          moveEnemy(enemy, playerPosition, delta);
           playEnemyAnimation(enemy, "walk");
         }
       } else if (nowTime - enemy.userData.lastAttack > config.enemyAttackCooldown && !enemy.userData.isAttacking) {
@@ -398,6 +406,123 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
         takeDamage(enemy.userData.damage);
       }
     });
+  }
+
+  function moveEnemy(enemy, playerPosition, delta) {
+    enemy.userData.navTargetAge += delta;
+
+    const playerDirection = new THREE.Vector3(
+      playerPosition.x - enemy.position.x,
+      0,
+      playerPosition.z - enemy.position.z
+    );
+
+    if (playerDirection.lengthSq() <= 0.0001) return;
+
+    playerDirection.normalize();
+
+    const directPathBlocked = hasObstacleAhead(enemy, playerDirection);
+
+    if (directPathBlocked && !enemy.userData.navTarget) {
+      enemy.userData.navTarget = getRandomFloorPoint();
+      enemy.userData.navTargetAge = 0;
+    }
+
+    if (enemy.userData.navTarget && enemy.userData.navTargetAge > NAV_TUNING.targetMaxAge) {
+      enemy.userData.navTarget = null;
+      enemy.userData.navTargetAge = 0;
+    }
+
+    let moveTarget = playerPosition;
+
+    if (enemy.userData.navTarget) {
+      const navDistance = getFlatDistance(enemy.position, enemy.userData.navTarget);
+
+      if (navDistance < NAV_TUNING.targetReachDistance) {
+        enemy.userData.navTarget = null;
+        enemy.userData.navTargetAge = 0;
+      } else {
+        moveTarget = enemy.userData.navTarget;
+      }
+    }
+
+    const moveDirection = new THREE.Vector3(
+      moveTarget.x - enemy.position.x,
+      0,
+      moveTarget.z - enemy.position.z
+    );
+
+    if (moveDirection.lengthSq() <= 0.0001) return;
+
+    moveDirection.normalize();
+
+    if (hasObstacleAhead(enemy, moveDirection)) {
+      const newTarget = getRandomFloorPoint();
+
+      if (newTarget && getFlatDistance(enemy.position, newTarget) > NAV_TUNING.repickDistance) {
+        enemy.userData.navTarget = newTarget;
+        enemy.userData.navTargetAge = 0;
+      }
+
+      return;
+    }
+
+    const oldX = enemy.position.x;
+    const oldZ = enemy.position.z;
+
+    const speed = enemy.userData.speed + state.wave * 0.08;
+
+    enemy.position.x += moveDirection.x * speed * delta;
+    enemy.position.z += moveDirection.z * speed * delta;
+
+    if (!snapEnemyToTerrain(enemy, false)) {
+      enemy.position.x = oldX;
+      enemy.position.z = oldZ;
+
+      enemy.userData.navTarget = getRandomFloorPoint();
+      enemy.userData.navTargetAge = 0;
+      return;
+    }
+
+    enemy.lookAt(moveTarget.x, enemy.position.y, moveTarget.z);
+  }
+
+  function hasObstacleAhead(enemy, direction) {
+    if (!colliders || colliders.length === 0) return false;
+    if (!direction || direction.lengthSq() <= 0.0001) return false;
+
+    obstacleRayDirection.copy(direction).normalize();
+
+    obstacleRayOrigin.set(
+      enemy.position.x,
+      enemy.position.y + NAV_TUNING.obstacleRayHeight,
+      enemy.position.z
+    );
+
+    obstacleRaycaster.set(obstacleRayOrigin, obstacleRayDirection);
+    obstacleRaycaster.near = 0;
+    obstacleRaycaster.far = NAV_TUNING.obstacleRayDistance;
+
+    const hits = obstacleRaycaster.intersectObjects(colliders, true);
+
+    for (const hit of hits) {
+      if (!hit.face) continue;
+
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+
+      if (normal.y >= TERRAIN_TUNING.minWalkableNormalY) continue;
+
+      return true;
+    }
+
+    return false;
+  }
+
+  function getFlatDistance(a, b) {
+    const dx = a.x - b.x;
+    const dz = a.z - b.z;
+
+    return Math.sqrt(dx * dx + dz * dz);
   }
 
   function snapEnemyToTerrain(enemy, forceSnap) {
