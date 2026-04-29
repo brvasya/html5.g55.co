@@ -364,8 +364,10 @@ function handleBuyMenuSlot(slotNumber) {
 
   if (slot.owned) {
     if (weapon.switchSlot(slotNumber)) {
+      playBuyMenuWeaponSound();
       updateHud();
       updateBuyMenu();
+      closeBuyMenu(true);
     }
     return;
   }
@@ -380,9 +382,16 @@ function handleBuyMenuSlot(slotNumber) {
 
   state.score -= slot.price;
   weapon.switchSlot(slotNumber);
+  playBuyMenuWeaponSound();
 
   updateHud();
   updateBuyMenu();
+  closeBuyMenu(true);
+}
+
+function playBuyMenuWeaponSound() {
+  sounds.resume();
+  sounds.playReload();
 }
 
 function showWaveComplete() {
