@@ -101,6 +101,7 @@ document.body.appendChild(renderer.domElement);
 
 const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
+if (hud.setBuyCloseCallback) hud.setBuyCloseCallback(() => closeBuyMenu(true));
 const world = createWorld({ THREE, scene, config: CONFIG });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
 let enemies = null;

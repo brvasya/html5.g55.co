@@ -16,6 +16,7 @@ export function createHud() {
   };
 
   let buyCallback = null;
+  let buyCloseCallback = null;
 
   const buyMenu = document.createElement("div");
   buyMenu.id = "buyMenu";
@@ -35,6 +36,11 @@ export function createHud() {
   `;
   document.body.appendChild(buyMenu);
 
+  const buyHint = document.createElement("div");
+  buyHint.id = "buyHint";
+  buyHint.textContent = "PRESS B TO BUY WEAPONS";
+  document.body.appendChild(buyHint);
+
   const buyMenuGrid = buyMenu.querySelector("#buyMenuGrid");
   const buyMenuScore = buyMenu.querySelector("#buyMenuScore");
   const buyMenuClose = buyMenu.querySelector("#buyMenuClose");
@@ -42,10 +48,10 @@ export function createHud() {
   hud.classList.add("cs-hud");
 
   buyMenu.addEventListener("click", event => {
-    if (event.target === buyMenu) hideBuyMenu();
+    if (event.target === buyMenu) requestBuyMenuClose();
   });
 
-  buyMenuClose.addEventListener("click", hideBuyMenu);
+  buyMenuClose.addEventListener("click", requestBuyMenuClose);
 
   buyMenuGrid.addEventListener("click", event => {
     const button = event.target.closest("[data-buy-slot]");
@@ -55,6 +61,19 @@ export function createHud() {
 
   function setBuyCallback(callback) {
     buyCallback = callback;
+  }
+
+  function setBuyCloseCallback(callback) {
+    buyCloseCallback = callback;
+  }
+
+  function requestBuyMenuClose() {
+    if (buyCloseCallback) {
+      buyCloseCallback();
+      return;
+    }
+
+    hideBuyMenu();
   }
 
   function setCrosshairFire() {
@@ -83,7 +102,12 @@ export function createHud() {
 
     buyMenuGrid.innerHTML = weapons.map(weapon => {
       const canBuy = !weapon.owned && score >= weapon.price;
-      const status = weapon.active ? "ACTIVE" : weapon.owned ? "OWNED" : `$${weapon.price}`;
+      const priceClass = canBuy ? "affordable" : "expensive";
+      const status = weapon.active
+        ? '<span class="cs-buy-owned-text">ACTIVE</span>'
+        : weapon.owned
+          ? '<span class="cs-buy-owned-text">OWNED</span>'
+          : `<span class="cs-buy-price ${priceClass}">$${weapon.price}</span>`;
       const actionText = weapon.owned ? "Select" : "Buy";
       const disabled = weapon.active || (!weapon.owned && !canBuy) ? "disabled" : "";
       const stateClass = weapon.active ? "active" : weapon.owned ? "owned" : canBuy ? "available" : "locked";
@@ -102,10 +126,12 @@ export function createHud() {
 
   function showBuyMenu() {
     buyMenu.classList.add("open");
+    buyHint.classList.add("hidden");
   }
 
   function hideBuyMenu() {
     buyMenu.classList.remove("open");
+    buyHint.classList.remove("hidden");
   }
 
   function isBuyMenuOpen() {
@@ -116,6 +142,7 @@ export function createHud() {
     update,
     setCrosshairFire,
     setBuyCallback,
+    setBuyCloseCallback,
     updateBuyMenu,
     showBuyMenu,
     hideBuyMenu,

@@ -359,6 +359,31 @@ button {
   transition: opacity 120ms ease;
 }
 
+/* buy hint */
+#buyHint {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 #000, 0 0 8px rgba(255, 188, 64, 0.25);
+  background: linear-gradient(180deg, rgba(20, 18, 12, 0.75), rgba(0, 0, 0, 0.45));
+  border: 1px solid rgba(242, 211, 123, 0.25);
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+#buyHint.hidden {
+  display: none;
+}
+
 /* buy menu */
 .cs-buy-menu {
   position: fixed;
@@ -495,6 +520,25 @@ button {
 .cs-buy-status {
   margin-top: auto;
   font-size: 20px;
+}
+
+.cs-buy-price {
+  display: inline-block;
+  transition: color 0.12s ease, text-shadow 0.12s ease;
+}
+
+.cs-buy-price.affordable {
+  color: #6cff6c;
+  text-shadow: 0 0 10px rgba(108, 255, 108, 0.62);
+}
+
+.cs-buy-price.expensive {
+  color: #ff5f4f;
+  text-shadow: 0 0 10px rgba(255, 95, 79, 0.62);
+}
+
+.cs-buy-owned-text {
+  color: #f2d37b;
 }
 
 .cs-buy-action {
