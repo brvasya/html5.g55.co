@@ -6,6 +6,17 @@ export function createWorld({ THREE, scene }) {
   const colliders = [];
   const tracers = [];
   const floorObjects = [];
+  const skyObjects = [];
+
+  const SKY_COLOR_TOP = 0x6fb8ff;
+  const SKY_COLOR_MID = 0xa8d8ff;
+  const SKY_COLOR_HORIZON = 0xd8f0ff;
+  const FOG_COLOR = 0xd8f0ff;
+  const CLOUD_COLOR = 0xffffff;
+  const SUN_COLOR = 0xfff4b0;
+  const SUN_GLOW_COLOR = 0xffe7a0;
+
+  createDaytimeSky();
 
   function resetPlayer(player) {
     if (!world.isLoaded || !world.spawn) return;
@@ -21,6 +32,7 @@ export function createWorld({ THREE, scene }) {
     colliders,
     tracers,
     floorObjects,
+    skyObjects,
     isLoaded: false,
     spawn: null,
     spawnObjectName: "G55START001",
@@ -86,6 +98,165 @@ export function createWorld({ THREE, scene }) {
         }
       );
     });
+  }
+
+  function createDaytimeSky() {
+    scene.background = new THREE.Color(FOG_COLOR);
+    scene.fog = new THREE.Fog(FOG_COLOR, 45, 260);
+
+    createGradientSkyDome();
+    createSquareSun();
+    createClouds();
+  }
+
+  function createGradientSkyDome() {
+    const radius = 1400;
+    const geometry = new THREE.SphereGeometry(radius, 32, 16);
+    const colors = [];
+    const topColor = new THREE.Color(SKY_COLOR_TOP);
+    const midColor = new THREE.Color(SKY_COLOR_MID);
+    const horizonColor = new THREE.Color(SKY_COLOR_HORIZON);
+    const position = geometry.attributes.position;
+
+    for (let i = 0; i < position.count; i++) {
+      const y = position.getY(i);
+      const t = THREE.MathUtils.clamp((y + radius * 0.15) / (radius * 1.15), 0, 1);
+      const color = new THREE.Color();
+
+      if (t < 0.45) {
+        color.copy(horizonColor).lerp(midColor, t / 0.45);
+      } else {
+        color.copy(midColor).lerp(topColor, (t - 0.45) / 0.55);
+      }
+
+      colors.push(color.r, color.g, color.b);
+    }
+
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+
+    const material = new THREE.MeshBasicMaterial({
+      side: THREE.BackSide,
+      vertexColors: true,
+      depthWrite: false,
+      fog: false
+    });
+
+    const skyDome = new THREE.Mesh(geometry, material);
+    skyDome.name = "DaytimeGradientSky";
+    skyDome.renderOrder = -1000;
+    scene.add(skyDome);
+    skyObjects.push(skyDome);
+  }
+
+  function createSquareSun() {
+    const sunGroup = new THREE.Group();
+    sunGroup.name = "SquareSun";
+    sunGroup.position.set(160, 185, -320);
+    sunGroup.lookAt(0, 40, 0);
+
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(82, 82),
+      new THREE.MeshBasicMaterial({
+        color: SUN_GLOW_COLOR,
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false,
+        fog: false
+      })
+    );
+    glow.name = "SquareSunGlow";
+    glow.renderOrder = -900;
+    sunGroup.add(glow);
+
+    const sun = new THREE.Mesh(
+      new THREE.PlaneGeometry(42, 42),
+      new THREE.MeshBasicMaterial({
+        color: SUN_COLOR,
+        depthWrite: false,
+        fog: false
+      })
+    );
+    sun.name = "SquareSunCore";
+    sun.position.z = 0.1;
+    sun.renderOrder = -899;
+    sunGroup.add(sun);
+
+    scene.add(sunGroup);
+    skyObjects.push(sunGroup);
+  }
+
+  function createClouds() {
+    const cloudMaterial = new THREE.MeshBasicMaterial({
+      color: CLOUD_COLOR,
+      fog: true
+    });
+
+    const cloudCount = 42;
+    const ringCount = 3;
+    const cloudsPerRing = Math.ceil(cloudCount / ringCount);
+    const ringDistances = [140, 230, 320];
+    const sunAvoidPosition = new THREE.Vector3(160, 185, -320);
+    const sunAvoidRadius = 95;
+
+    for (let i = 0; i < cloudCount; i++) {
+      const cloud = new THREE.Group();
+      cloud.name = `BlockCloud${i + 1}`;
+
+      const ringIndex = i % ringCount;
+      const indexInRing = Math.floor(i / ringCount);
+      const ringOffset = ringIndex * ((Math.PI * 2) / (cloudsPerRing * ringCount));
+      const angle = (indexInRing / cloudsPerRing) * Math.PI * 2 + ringOffset;
+      const distance = ringDistances[ringIndex] + THREE.MathUtils.randFloatSpread(34);
+      let x = Math.cos(angle) * distance;
+      let z = Math.sin(angle) * distance;
+      let y = THREE.MathUtils.randFloat(62, 110);
+
+      const cloudPosition = new THREE.Vector3(x, y, z);
+      const distanceFromSun = cloudPosition.distanceTo(sunAvoidPosition);
+
+      if (distanceFromSun < sunAvoidRadius) {
+        const pushDirection = cloudPosition.clone().sub(sunAvoidPosition).normalize();
+        const pushAmount = sunAvoidRadius - distanceFromSun + THREE.MathUtils.randFloat(18, 42);
+        cloudPosition.addScaledVector(pushDirection, pushAmount);
+        x = cloudPosition.x;
+        y = cloudPosition.y;
+        z = cloudPosition.z;
+      }
+
+      x += THREE.MathUtils.randFloatSpread(12);
+      z += THREE.MathUtils.randFloatSpread(12);
+
+      cloud.position.set(x, y, z);
+      cloud.rotation.y = THREE.MathUtils.randFloat(0, Math.PI * 2);
+
+      const blockCount = THREE.MathUtils.randInt(6, 11);
+      const baseSize = THREE.MathUtils.randFloat(4.5, 7.5);
+
+      for (let b = 0; b < blockCount; b++) {
+        const sx = baseSize * THREE.MathUtils.randFloat(1.4, 3.2);
+        const sy = baseSize * THREE.MathUtils.randFloat(0.35, 0.65);
+        const sz = baseSize * THREE.MathUtils.randFloat(0.9, 1.7);
+
+        const block = new THREE.Mesh(
+          new THREE.BoxGeometry(sx, sy, sz),
+          cloudMaterial
+        );
+
+        block.name = `CloudBlock${b + 1}`;
+        block.position.set(
+          THREE.MathUtils.randFloatSpread(baseSize * 6),
+          THREE.MathUtils.randFloatSpread(baseSize * 0.45),
+          THREE.MathUtils.randFloatSpread(baseSize * 3)
+        );
+        block.castShadow = false;
+        block.receiveShadow = false;
+        block.frustumCulled = false;
+        cloud.add(block);
+      }
+
+      scene.add(cloud);
+      skyObjects.push(cloud);
+    }
   }
 
   function getRandomFloorPoint(maxTries = 20) {
