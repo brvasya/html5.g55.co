@@ -5,6 +5,8 @@ export function makeMaterialCrisp(THREE, material) {
 
   materials.forEach(mat => {
     if (!mat) return;
+    if ('metalness' in mat) mat.metalness = 0;
+    if ('roughness' in mat) mat.roughness = 1;
 
     [
       mat.map,
@@ -21,5 +23,7 @@ export function makeMaterialCrisp(THREE, material) {
         texture.generateMipmaps = false;
         texture.needsUpdate = true;
       });
+
+    mat.needsUpdate = true;
   });
 }
