@@ -2,6 +2,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { ZOMBIE } from "../../assets/enemies/zombie.js";
+import { makeMaterialCrisp } from "./materials.js";
 
 const ENEMY_TYPES = {
   zombie: {
@@ -98,7 +99,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
             object.receiveShadow = true;
             object.frustumCulled = false;
 
-            if (object.material) makeMaterialCrisp(object.material);
+            if (object.material) makeMaterialCrisp(THREE, object.material);
           });
 
           enemies.forEach(enemy => {
@@ -351,7 +352,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
         object.material = object.material.clone();
       }
 
-      makeMaterialCrisp(object.material);
+      makeMaterialCrisp(THREE, object.material);
     });
 
     enemy.add(model);
@@ -749,13 +750,6 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     });
   }
 
-  function makeMaterialCrisp(material) {
-    if (!material.map) return;
-
-    material.map.magFilter = THREE.NearestFilter;
-    material.map.minFilter = THREE.NearestFilter;
-    material.map.needsUpdate = true;
-  }
 
   function playAssetSound(src, volume = 1.0) {
     if (!src) return;

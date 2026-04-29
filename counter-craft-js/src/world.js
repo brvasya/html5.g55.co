@@ -1,6 +1,7 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { MAP_GLB_BASE64 } from "../../assets/world/map.js";
+import { makeMaterialCrisp } from "./materials.js";
 
 export function createWorld({ THREE, scene }) {
   const colliders = [];
@@ -65,7 +66,7 @@ export function createWorld({ THREE, scene }) {
             object.receiveShadow = true;
             object.frustumCulled = false;
 
-            makeMaterialCrisp(object.material);
+            makeMaterialCrisp(THREE, object.material);
             colliders.push(object);
 
             if (isFloorMesh(object)) {
@@ -332,31 +333,6 @@ export function createWorld({ THREE, scene }) {
     return found;
   }
 
-  function makeMaterialCrisp(material) {
-    if (!material) return;
-
-    const materials = Array.isArray(material) ? material : [material];
-
-    materials.forEach(mat => {
-      if (!mat) return;
-
-      [
-        mat.map,
-        mat.normalMap,
-        mat.roughnessMap,
-        mat.metalnessMap,
-        mat.emissiveMap,
-        mat.aoMap
-      ]
-        .filter(Boolean)
-        .forEach(texture => {
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
-          texture.generateMipmaps = false;
-          texture.needsUpdate = true;
-        });
-    });
-  }
 
   function addBox(x, y, z, sx, sy, sz, color, isCollider = false) {
     const mesh = new THREE.Mesh(

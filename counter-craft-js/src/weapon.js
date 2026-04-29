@@ -2,6 +2,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { AK47 } from "../../assets/weapon/ak47.js";
+import { makeMaterialCrisp } from "./materials.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
@@ -228,7 +229,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
             object.frustumCulled = false;
             object.castShadow = false;
             object.receiveShadow = false;
-            makeMaterialTexturesCrisp(object.material);
+            makeMaterialCrisp(THREE, object.material);
           });
 
           resolve(cached);
@@ -453,7 +454,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
         object.material = object.material.clone();
       }
 
-      makeMaterialTexturesCrisp(object.material);
+      makeMaterialCrisp(THREE, object.material);
       registerFlashMaterial(object.material);
     });
 
@@ -759,22 +760,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     });
   }
 
-  function makeMaterialTexturesCrisp(material) {
-    const materials = Array.isArray(material) ? material : [material];
-
-    materials.forEach(item => {
-      if (!item) return;
-      Object.values(item).forEach(value => {
-        if (value && value.isTexture) {
-          value.magFilter = THREE.NearestFilter;
-          value.minFilter = THREE.NearestFilter;
-          value.generateMipmaps = false;
-          value.anisotropy = 1;
-          value.needsUpdate = true;
-        }
-      });
-    });
-  }
 
   return {
     rig,
