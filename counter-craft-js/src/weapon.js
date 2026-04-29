@@ -8,9 +8,9 @@ import { P90 } from "../../assets/weapon/p90.js";
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
   const view = {
-    posOffset: [0, 0, -0.35],
+    posOffset: [0, 0, 0],
     rotOffset: [0, -Math.PI, 0],
-    scaleMultiplier: 0.82
+    scaleMultiplier: 1
   };
 
   const settings = {
