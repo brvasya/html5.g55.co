@@ -115,12 +115,23 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     };
   }
 
-  function makeSlot(id, asset) {
+  function getPriceFromAsset(asset, fallbackPrice) {
+    const rawPrice = asset?.price ?? asset?.cost ?? asset?.shop?.price ?? fallbackPrice;
+    return Math.max(0, Number(rawPrice) || 0);
+  }
+
+  function makeSlot(id, asset, options = {}) {
     const behavior = getBehaviorFromAsset(asset);
+    const owned = Boolean(options.owned);
+    const price = getPriceFromAsset(asset, options.price ?? 0);
+
     return {
       id,
       asset,
       name: getNameFromConfig(asset, `SLOT ${id}`),
+      price,
+      owned,
+      defaultOwned: owned,
       magazineSize: behavior.magazineSize,
       ammo: behavior.magazineSize,
       reserveAmmo: behavior.reserveAmmo,
@@ -132,15 +143,15 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function createSlots(fallbackAsset) {
     return [
-      makeSlot(1, AK47 ?? fallbackAsset),
-      makeSlot(2, fallbackAsset),
-      makeSlot(3, fallbackAsset),
-      makeSlot(4, fallbackAsset),
-      makeSlot(5, fallbackAsset),
-      makeSlot(6, fallbackAsset),
-      makeSlot(7, fallbackAsset),
-      makeSlot(8, fallbackAsset),
-      makeSlot(9, fallbackAsset)
+      makeSlot(1, AK47 ?? fallbackAsset, { owned: true, price: 0 }),
+      makeSlot(2, fallbackAsset, { price: 300 }),
+      makeSlot(3, fallbackAsset, { price: 600 }),
+      makeSlot(4, fallbackAsset, { price: 900 }),
+      makeSlot(5, fallbackAsset, { price: 1200 }),
+      makeSlot(6, fallbackAsset, { price: 1500 }),
+      makeSlot(7, fallbackAsset, { price: 1800 }),
+      makeSlot(8, fallbackAsset, { price: 2100 }),
+      makeSlot(9, fallbackAsset, { price: 2400 })
     ];
   }
 
@@ -272,7 +283,9 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function switchSlot(slotNumber) {
     const index = slotNumber - 1;
-    if (!slots[index] || index === currentSlotIndex || isReloading) return false;
+    const slot = slots[index];
+
+    if (!slot || !slot.owned || index === currentSlotIndex || isReloading) return false;
 
     currentSlotIndex = index;
     lastShotTime = 0;
@@ -284,8 +297,23 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return true;
   }
 
+  function buySlot(slotNumber) {
+    const index = slotNumber - 1;
+    const slot = slots[index];
+
+    if (!slot) return { ok: false, reason: "missing" };
+    if (slot.owned) return { ok: false, reason: "owned", slot: getSlotShopState(slot) };
+
+    slot.owned = true;
+    slot.ammo = slot.magazineSize;
+    slot.reserveAmmo = slot.defaultReserveAmmo;
+
+    return { ok: true, slot: getSlotShopState(slot) };
+  }
+
   function resetSlots() {
     slots.forEach(slot => {
+      slot.owned = slot.defaultOwned;
       slot.ammo = slot.magazineSize;
       slot.reserveAmmo = slot.defaultReserveAmmo;
     });
@@ -364,6 +392,25 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       reserveAmmo: slot.reserveAmmo,
       isReloading
     };
+  }
+
+  function getSlotShopState(slot) {
+    return {
+      id: slot.id,
+      name: slot.name,
+      price: slot.price,
+      owned: slot.owned,
+      active: slot.id === currentSlot().id,
+      ammo: slot.ammo,
+      reserveAmmo: slot.reserveAmmo,
+      damage: slot.damage,
+      magazineSize: slot.magazineSize,
+      fireCooldownMs: slot.fireCooldownMs
+    };
+  }
+
+  function getShopState() {
+    return slots.map(getSlotShopState);
   }
 
   function attachCurrentModel() {
@@ -737,9 +784,11 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     shoot,
     reload,
     switchSlot,
+    buySlot,
     resetSlots,
     addReserveAmmo,
     getHudState,
+    getShopState,
     getCurrentAsset,
     addRecoil,
     getDuration

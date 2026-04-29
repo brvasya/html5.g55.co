@@ -15,7 +15,47 @@ export function createHud() {
     weaponName: document.getElementById("weaponName")
   };
 
+  let buyCallback = null;
+
+  const buyMenu = document.createElement("div");
+  buyMenu.id = "buyMenu";
+  buyMenu.className = "cs-buy-menu";
+  buyMenu.innerHTML = `
+    <div class="cs-buy-panel">
+      <div class="cs-buy-head">
+        <div>
+          <div class="cs-buy-title">Buy Weapons</div>
+          <div class="cs-buy-subtitle">Press B to close</div>
+        </div>
+        <button id="buyMenuClose" class="cs-buy-close" type="button">×</button>
+      </div>
+      <div class="cs-buy-score">$<span id="buyMenuScore">0</span></div>
+      <div id="buyMenuGrid" class="cs-buy-grid"></div>
+    </div>
+  `;
+  document.body.appendChild(buyMenu);
+
+  const buyMenuGrid = buyMenu.querySelector("#buyMenuGrid");
+  const buyMenuScore = buyMenu.querySelector("#buyMenuScore");
+  const buyMenuClose = buyMenu.querySelector("#buyMenuClose");
+
   hud.classList.add("cs-hud");
+
+  buyMenu.addEventListener("click", event => {
+    if (event.target === buyMenu) hideBuyMenu();
+  });
+
+  buyMenuClose.addEventListener("click", hideBuyMenu);
+
+  buyMenuGrid.addEventListener("click", event => {
+    const button = event.target.closest("[data-buy-slot]");
+    if (!button || !buyCallback) return;
+    buyCallback(Number(button.dataset.buySlot));
+  });
+
+  function setBuyCallback(callback) {
+    buyCallback = callback;
+  }
 
   function setCrosshairFire() {
     crosshair.classList.remove("fire");
@@ -38,5 +78,47 @@ export function createHud() {
     refs.ammo.closest(".cs-bottom-right").classList.toggle("danger", state.ammo <= 5);
   }
 
-  return { update, setCrosshairFire };
+  function updateBuyMenu({ score, weapons }) {
+    buyMenuScore.textContent = score;
+
+    buyMenuGrid.innerHTML = weapons.map(weapon => {
+      const canBuy = !weapon.owned && score >= weapon.price;
+      const status = weapon.active ? "ACTIVE" : weapon.owned ? "OWNED" : `$${weapon.price}`;
+      const actionText = weapon.owned ? "Select" : "Buy";
+      const disabled = weapon.active || (!weapon.owned && !canBuy) ? "disabled" : "";
+      const stateClass = weapon.active ? "active" : weapon.owned ? "owned" : canBuy ? "available" : "locked";
+
+      return `
+        <button class="cs-buy-card ${stateClass}" data-buy-slot="${weapon.id}" type="button" ${disabled}>
+          <span class="cs-buy-key">${weapon.id}</span>
+          <span class="cs-buy-name">${weapon.name}</span>
+          <span class="cs-buy-stats">${weapon.damage} DMG · ${weapon.magazineSize} MAG</span>
+          <span class="cs-buy-status">${status}</span>
+          <span class="cs-buy-action">${actionText}</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function showBuyMenu() {
+    buyMenu.classList.add("open");
+  }
+
+  function hideBuyMenu() {
+    buyMenu.classList.remove("open");
+  }
+
+  function isBuyMenuOpen() {
+    return buyMenu.classList.contains("open");
+  }
+
+  return {
+    update,
+    setCrosshairFire,
+    setBuyCallback,
+    updateBuyMenu,
+    showBuyMenu,
+    hideBuyMenu,
+    isBuyMenuOpen
+  };
 }

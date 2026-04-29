@@ -37,7 +37,8 @@ const state = {
   enemiesLeft: 0,
   isPlaying: false,
   isGameOver: false,
-  isWaveComplete: false
+  isWaveComplete: false,
+  isBuyMenuOpen: false
 };
 
 const preloader = createPreloader();
@@ -99,6 +100,7 @@ renderer.autoClear = false;
 document.body.appendChild(renderer.domElement);
 
 const hud = createHud();
+hud.setBuyCallback(handleBuyMenuSlot);
 const world = createWorld({ THREE, scene, config: CONFIG });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
 let enemies = null;
@@ -220,6 +222,18 @@ function setupInput() {
   window.addEventListener("resize", onResize);
 
   document.addEventListener("keydown", e => {
+    if (e.code === "KeyB") {
+      toggleBuyMenu();
+      return;
+    }
+
+    if (state.isBuyMenuOpen) {
+      if (/^Digit[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Digit", "")));
+      if (/^Numpad[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Numpad", "")));
+      if (e.code === "Escape") closeBuyMenu(true);
+      return;
+    }
+
     if (/^Digit[1-9]$/.test(e.code)) switchWeapon(Number(e.code.replace("Digit", "")));
     if (/^Numpad[1-9]$/.test(e.code)) switchWeapon(Number(e.code.replace("Numpad", "")));
     if (e.code === "KeyR") reload();
@@ -230,7 +244,7 @@ function setupInput() {
   document.addEventListener("keyup", e => player.onKeyUp(e));
 
   document.addEventListener("mousedown", e => {
-    if (e.button !== 0 || state.isGameOver || state.isWaveComplete) return;
+    if (e.button !== 0 || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
     sounds.resume();
     player.onMouseDown(e);
   });
@@ -280,7 +294,7 @@ async function startGame() {
 }
 
 function pauseGame() {
-  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
 
   state.isPlaying = false;
   player.clearMovement();
@@ -292,6 +306,82 @@ function pauseGame() {
   dom.panelTitle.textContent = "Paused";
   dom.panelText.textContent = "Click continue to lock the cursor again.";
   dom.startButton.textContent = "Continue";
+}
+
+function toggleBuyMenu() {
+  if (state.isGameOver || state.isWaveComplete) return;
+
+  if (state.isBuyMenuOpen) {
+    closeBuyMenu(true);
+  } else {
+    openBuyMenu();
+  }
+}
+
+function openBuyMenu() {
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
+
+  state.isPlaying = false;
+  state.isBuyMenuOpen = true;
+
+  player.clearMovement();
+
+  if (document.pointerLockElement === document.body) document.exitPointerLock();
+
+  document.body.classList.remove("cursor-locked", "fallback-look");
+
+  updateBuyMenu();
+  hud.showBuyMenu();
+}
+
+function closeBuyMenu(resumeGame = false) {
+  if (!state.isBuyMenuOpen) return;
+
+  state.isBuyMenuOpen = false;
+  hud.hideBuyMenu();
+
+  if (!resumeGame || state.isGameOver || state.isWaveComplete) return;
+
+  state.isPlaying = true;
+  player.lockCursor();
+  updateModeNote();
+}
+
+function updateBuyMenu() {
+  if (!hud.updateBuyMenu || !weapon.getShopState) return;
+  hud.updateBuyMenu({
+    score: state.score,
+    weapons: weapon.getShopState()
+  });
+}
+
+function handleBuyMenuSlot(slotNumber) {
+  if (!weapon.getShopState) return;
+
+  const slot = weapon.getShopState().find(item => item.id === slotNumber);
+  if (!slot) return;
+
+  if (slot.owned) {
+    if (weapon.switchSlot(slotNumber)) {
+      updateHud();
+      updateBuyMenu();
+    }
+    return;
+  }
+
+  if (state.score < slot.price) {
+    updateBuyMenu();
+    return;
+  }
+
+  const result = weapon.buySlot(slotNumber);
+  if (!result.ok) return;
+
+  state.score -= slot.price;
+  weapon.switchSlot(slotNumber);
+
+  updateHud();
+  updateBuyMenu();
 }
 
 function showWaveComplete() {
@@ -336,7 +426,7 @@ function onPointerLockChange() {
   player.setPointerLockActive(locked);
   document.body.classList.toggle("cursor-locked", locked);
 
-  if (!locked && state.isPlaying && !state.isGameOver && !state.isWaveComplete && player.pointerLockSupported) {
+  if (!locked && state.isPlaying && !state.isGameOver && !state.isWaveComplete && !state.isBuyMenuOpen && player.pointerLockSupported) {
     pauseGame();
   }
 
@@ -360,17 +450,25 @@ function updateModeNote() {
 }
 
 function switchWeapon(slotNumber) {
-  if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+
+  const slot = weapon.getShopState().find(item => item.id === slotNumber);
+
+  // Number keys only select already owned weapons.
+  // B is the only key that opens the buy menu.
+  if (slot && !slot.owned) return;
+
   if (weapon.switchSlot(slotNumber)) updateHud();
 }
 
 function updateHud() {
   state.enemiesLeft = enemies ? enemies.count : 0;
   hud.update({ ...state, ...weapon.getHudState() });
+  updateBuyMenu();
 }
 
 function shoot() {
-  if (!enemies || state.isWaveComplete) return;
+  if (!enemies || state.isWaveComplete || state.isBuyMenuOpen) return;
 
   const shot = weapon.shoot();
 
@@ -572,6 +670,8 @@ async function resetGame() {
   state.wave = 1;
   state.isGameOver = false;
   state.isWaveComplete = false;
+  state.isBuyMenuOpen = false;
+  hud.hideBuyMenu();
 
   cameraShake.trauma = 0;
   cameraShake.posAmp = 0.08;

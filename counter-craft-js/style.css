@@ -359,6 +359,163 @@ button {
   transition: opacity 120ms ease;
 }
 
+/* buy menu */
+.cs-buy-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.58);
+  font-family: inherit;
+}
+
+.cs-buy-menu.open {
+  display: grid;
+}
+
+.cs-buy-panel {
+  width: min(860px, calc(100vw - 32px));
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(15, 18, 24, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.cs-buy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.cs-buy-title {
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cs-buy-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cs-buy-close {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-buy-score {
+  margin-bottom: 16px;
+  font-size: 24px;
+  color: #a7ff83;
+}
+
+.cs-buy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cs-buy-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-height: 132px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cs-buy-card:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.cs-buy-card:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.cs-buy-card.active {
+  border-color: rgba(167, 255, 131, 0.85);
+  opacity: 1;
+}
+
+.cs-buy-card.available {
+  border-color: rgba(255, 222, 90, 0.72);
+}
+
+.cs-buy-card.locked {
+  filter: grayscale(0.45);
+}
+
+.cs-buy-key {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 14px;
+}
+
+.cs-buy-name {
+  padding-right: 34px;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cs-buy-stats {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.cs-buy-status {
+  margin-top: auto;
+  font-size: 20px;
+}
+
+.cs-buy-action {
+  font-size: 12px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 720px) {
+  .cs-buy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cs-buy-panel {
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+  }
+}
+
+
 @media (max-width: 700px) {
   .preloader-panel {
     width: min(340px, 88vw);
