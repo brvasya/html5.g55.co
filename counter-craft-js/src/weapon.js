@@ -143,15 +143,15 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function createSlots(fallbackAsset) {
     return [
-      makeSlot(1, AK47 ?? fallbackAsset, { owned: true, price: 0 }),
-      makeSlot(2, fallbackAsset, { price: 300 }),
-      makeSlot(3, fallbackAsset, { price: 600 }),
-      makeSlot(4, fallbackAsset, { price: 900 }),
-      makeSlot(5, fallbackAsset, { price: 1200 }),
-      makeSlot(6, fallbackAsset, { price: 1500 }),
-      makeSlot(7, fallbackAsset, { price: 1800 }),
-      makeSlot(8, fallbackAsset, { price: 2100 }),
-      makeSlot(9, fallbackAsset, { price: 2400 })
+      makeSlot(1, AK47, { owned: true, price: 0 }),
+      makeSlot(2, fallbackAsset, { price: 0 }),
+      makeSlot(3, fallbackAsset, { price: 0 }),
+      makeSlot(4, fallbackAsset, { price: 0 }),
+      makeSlot(5, fallbackAsset, { price: 0 }),
+      makeSlot(6, fallbackAsset, { price: 0 }),
+      makeSlot(7, fallbackAsset, { price: 0 }),
+      makeSlot(8, fallbackAsset, { price: 0 }),
+      makeSlot(9, fallbackAsset, { price: 0 })
     ];
   }
 
