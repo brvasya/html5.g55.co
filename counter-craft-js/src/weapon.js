@@ -1,8 +1,9 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { AK47 } from "../../assets/weapon/ak47.js";
 import { makeMaterialCrisp } from "./materials.js";
+import { AK47 } from "../../assets/weapon/ak47.js";
+import { P90 } from "../../assets/weapon/p90.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
@@ -145,7 +146,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   function createSlots(fallbackAsset) {
     return [
       makeSlot(1, AK47, { owned: true, price: 0 }),
-      makeSlot(2, fallbackAsset, { price: 0 }),
+      makeSlot(2, P90, { price: 0 }),
       makeSlot(3, fallbackAsset, { price: 0 }),
       makeSlot(4, fallbackAsset, { price: 0 }),
       makeSlot(5, fallbackAsset, { price: 0 }),

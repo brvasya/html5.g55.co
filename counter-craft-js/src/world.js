@@ -1,7 +1,7 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-import { MAP_GLB_BASE64 } from "../../assets/world/map.js";
 import { makeMaterialCrisp } from "./materials.js";
+import { MAP_GLB_BASE64 } from "../../assets/world/map.js";
 
 export function createWorld({ THREE, scene }) {
   const colliders = [];
