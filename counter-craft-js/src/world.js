@@ -102,7 +102,7 @@ export function createWorld({ THREE, scene }) {
 
   function createDaytimeSky() {
     scene.background = new THREE.Color(FOG_COLOR);
-    scene.fog = new THREE.Fog(FOG_COLOR, 45, 260);
+    scene.fog = new THREE.Fog(FOG_COLOR, 10, 100);
 
     createGradientSkyDome();
     createSquareSun();
