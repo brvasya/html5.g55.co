@@ -57,9 +57,16 @@ export function createHud() {
   buyMenuClose.addEventListener("click", requestBuyMenuClose);
 
   buyMenuGrid.addEventListener("click", event => {
+    const ammoButton = event.target.closest("[data-buy-ammo]");
+    if (ammoButton && buyCallback) {
+      event.stopPropagation();
+      buyCallback(Number(ammoButton.dataset.buyAmmo), "ammo");
+      return;
+    }
+
     const button = event.target.closest("[data-buy-slot]");
     if (!button || !buyCallback) return;
-    buyCallback(Number(button.dataset.buySlot));
+    buyCallback(Number(button.dataset.buySlot), "weapon");
   });
 
   function setBuyCallback(callback) {
@@ -127,6 +134,9 @@ export function createHud() {
     buyMenuGrid.innerHTML = weapons.map(weapon => {
       const canBuy = !weapon.owned && score >= weapon.price;
       const priceClass = canBuy ? "affordable" : "expensive";
+      const ammoPrice = weapon.ammoPrice;
+      const canBuyAmmo = weapon.owned && !weapon.isMelee && score >= ammoPrice;
+      const ammoPriceClass = canBuyAmmo ? "affordable" : "expensive";
       const status = weapon.active
         ? '<span class="cs-buy-owned-text">ACTIVE</span>'
         : weapon.owned
@@ -135,15 +145,21 @@ export function createHud() {
       const actionText = weapon.owned ? "Select" : "Buy";
       const disabled = weapon.active || (!weapon.owned && !canBuy) ? "disabled" : "";
       const stateClass = weapon.active ? "active" : weapon.owned ? "owned" : canBuy ? "available" : "locked";
+      const ammoButton = weapon.owned && !weapon.isMelee
+        ? `<button class="cs-buy-action ${ammoPriceClass}" data-buy-ammo="${weapon.id}" type="button" ${canBuyAmmo ? "" : "disabled"}>
+              <span class="cs-buy-price ${ammoPriceClass}">+ AMMO $${ammoPrice}</span>
+           </button>`
+        : "";
 
       return `
-        <button class="cs-buy-card ${stateClass}" data-buy-slot="${weapon.id}" type="button" ${disabled}>
+        <div class="cs-buy-card ${stateClass}" data-buy-slot="${weapon.id}" type="button" ${disabled}>
           <span class="cs-buy-key">${weapon.id}</span>
           <span class="cs-buy-name">${weapon.name}</span>
           <span class="cs-buy-stats">${weapon.damage} DMG · ${weapon.magazineSize} MAG</span>
           <span class="cs-buy-status">${status}</span>
           <span class="cs-buy-action">${actionText}</span>
-        </button>
+          ${ammoButton}
+        </div>
       `;
     }).join("");
   }

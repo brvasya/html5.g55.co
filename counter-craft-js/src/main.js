@@ -229,8 +229,8 @@ function setupInput() {
     }
 
     if (state.isBuyMenuOpen) {
-      if (/^Digit[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Digit", "")));
-      if (/^Numpad[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Numpad", "")));
+      if (/^Digit[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Digit", "")), "weapon");
+      if (/^Numpad[1-9]$/.test(e.code)) handleBuyMenuSlot(Number(e.code.replace("Numpad", "")), "weapon");
       if (e.code === "Escape") closeBuyMenu(true);
       return;
     }
@@ -382,11 +382,28 @@ function updateBuyMenu() {
   });
 }
 
-function handleBuyMenuSlot(slotNumber) {
+function handleBuyMenuSlot(slotNumber, type = "weapon") {
   if (!weapon.getShopState) return;
 
   const slot = weapon.getShopState().find(item => item.id === slotNumber);
   if (!slot) return;
+
+  if (type === "ammo") {
+    if (!slot.owned || slot.isMelee) return;
+    if (state.score < slot.ammoPrice) {
+      updateBuyMenu();
+      return;
+    }
+
+    const result = weapon.buyAmmo(slotNumber);
+    if (!result.ok) return;
+
+    state.score -= result.price;
+    playBuyMenuWeaponSound();
+    updateHud();
+    updateBuyMenu();
+    return;
+  }
 
   if (slot.owned) {
     if (weapon.switchSlot(slotNumber)) {

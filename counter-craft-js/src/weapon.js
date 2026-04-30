@@ -124,6 +124,11 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return asset.price;
   }
 
+  function getAmmoPrice(slot) {
+    if (slot.isMelee) return 0;
+    return 100;
+  }
+
   function makeSlot(id, asset, options = {}) {
     const behavior = getBehaviorFromAsset(asset);
     const owned = Boolean(options.owned);
@@ -317,6 +322,23 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return { ok: true, slot: getSlotShopState(slot) };
   }
 
+  function buyAmmo(slotNumber) {
+    const index = slotNumber - 1;
+    const slot = slots[index];
+
+    if (!slot || !slot.owned || slot.isMelee) return { ok: false };
+
+    const price = getAmmoPrice(slot);
+    slot.reserveAmmo += slot.magazineSize;
+
+    return {
+      ok: true,
+      price,
+      amount: slot.magazineSize,
+      slot: getSlotShopState(slot)
+    };
+  }
+
   function resetSlots() {
     slots.forEach(slot => {
       slot.owned = slot.defaultOwned;
@@ -412,6 +434,15 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     if (slot.id !== 9 && !slot.isMelee) slot.reserveAmmo += amount;
   }
 
+  function addReserveAmmoToSlot(slotNumber, amount) {
+    const index = slotNumber - 1;
+    const slot = slots[index];
+    if (!slot || slot.isMelee) return false;
+
+    slot.reserveAmmo += amount;
+    return true;
+  }
+
   function getCurrentAsset() {
     return currentSlot().asset;
   }
@@ -433,6 +464,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       id: slot.id,
       name: slot.name,
       price: slot.price,
+      ammoPrice: getAmmoPrice(slot),
       owned: slot.owned,
       active: slot.id === currentSlot().id,
       ammo: slot.ammo,
@@ -803,8 +835,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     reload,
     switchSlot,
     buySlot,
+    buyAmmo,
     resetSlots,
     addReserveAmmo,
+    addReserveAmmoToSlot,
     getHudState,
     getShopState,
     getCurrentAsset,
