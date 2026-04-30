@@ -5,6 +5,7 @@ import { makeMaterialCrisp } from "./materials.js";
 import { AK47 } from "../../assets/weapon/ak47.js";
 import { P90 } from "../../assets/weapon/p90.js";
 import { KNIFE } from "../../assets/weapon/knife.js";
+import { AWP } from "../../assets/weapon/awp.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
@@ -155,7 +156,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return [
       makeSlot(1, AK47, { owned: true, price: 0 }),
       makeSlot(2, P90, { price: 0 }),
-      makeSlot(3, fallbackAsset, { price: 0 }),
+      makeSlot(3, AWP, { price: 0 }),
       makeSlot(4, fallbackAsset, { price: 0 }),
       makeSlot(5, fallbackAsset, { price: 0 }),
       makeSlot(6, fallbackAsset, { price: 0 }),
