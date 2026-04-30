@@ -555,7 +555,10 @@ function shoot() {
   const shot = weapon.shoot();
 
   if (!shot.ok) {
-    if (shot.reason === "empty") sounds.playEmpty();
+    if (shot.reason === "empty") {
+        sounds.playEmpty();
+        reload();
+    }
     return;
   }
 
