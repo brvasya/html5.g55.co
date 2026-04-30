@@ -86,6 +86,8 @@ scene.background = new THREE.Color(0x87a7c7);
 scene.fog = new THREE.Fog(0x87a7c7, 22, 75);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 20000);
+const defaultFov = 75;
+let isZooming = false;
 camera.position.set(0, CONFIG.playerHeight, 8);
 scene.add(camera);
 
@@ -244,12 +246,24 @@ function setupInput() {
   document.addEventListener("keyup", e => player.onKeyUp(e));
 
   document.addEventListener("mousedown", e => {
+    if (e.button === 2) {
+      startZoom();
+      return;
+    }
+
     if (e.button !== 0 || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
     sounds.resume();
     player.onMouseDown(e);
   });
 
-  document.addEventListener("mouseup", e => player.onMouseUp(e));
+  document.addEventListener("mouseup", e => {
+    if (e.button === 2) {
+      stopZoom();
+      return;
+    }
+    player.onMouseUp(e);
+  });
+
   document.addEventListener("mousemove", e => player.onMouseMove(e));
   document.addEventListener("contextmenu", e => e.preventDefault());
   document.addEventListener("pointerlockchange", onPointerLockChange);
@@ -453,9 +467,30 @@ function updateModeNote() {
   const modeNote = document.getElementById("modeNote");
   if (!modeNote) return;
 
-  if (player.pointerLockActive) modeNote.textContent = "Cursor locked: mouse look active";
+  if (isZooming) modeNote.textContent = "Zoom active";
+  else if (player.pointerLockActive) modeNote.textContent = "Cursor locked: mouse look active";
   else if (player.pointerLockSupported) modeNote.textContent = "Cursor lock: click start to lock";
   else modeNote.textContent = "Cursor lock blocked: hold left mouse button and drag";
+}
+
+function startZoom() {
+  const asset = weapon.getCurrentAsset();
+  if (!asset?.behavior?.isSniper) return;
+
+  isZooming = true;
+  const zoomFov = asset.behavior.zoomFov ?? 30;
+  camera.fov = zoomFov;
+  camera.updateProjectionMatrix();
+  updateModeNote();
+}
+
+function stopZoom() {
+  if (!isZooming) return;
+
+  isZooming = false;
+  camera.fov = defaultFov;
+  camera.updateProjectionMatrix();
+  updateModeNote();
 }
 
 function switchWeapon(slotNumber) {

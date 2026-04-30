@@ -11,7 +11,8 @@ reserveAmmo: 90,
 damage: 35,
 fireCooldownMs: 130,
 pellets: 8,
-spread: 0.05
+spread: 0.05,
+isSniper: true
 },
 shellEject:  [0.3, -0.2, 0.7],
 muzzleFlash: [0.3, -0.2, 1.5],
