@@ -201,7 +201,6 @@ async function preloadAllAssets() {
   await Promise.all(tasks);
 }
 
-
 function setupLights() {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.5));
 
@@ -464,8 +463,6 @@ function switchWeapon(slotNumber) {
 
   const slot = weapon.getShopState().find(item => item.id === slotNumber);
 
-  // Number keys only select already owned weapons.
-  // B is the only key that opens the buy menu.
   if (slot && !slot.owned) return;
 
   if (weapon.switchSlot(slotNumber)) updateHud();
@@ -487,12 +484,14 @@ function shoot() {
     return;
   }
 
+  const direction = getShotDirection(shot.spread);
+
   addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
   if (hud.setCrosshairFire) hud.setCrosshairFire();
-  spawnTracer();
+  spawnTracer(direction);
 
-  const hit = getBulletHit();
+  const hit = getBulletHit(direction);
 
   if (hit?.type === "enemy") {
     const killed = enemies.damageEnemy(hit.enemy, shot.damage);
@@ -517,6 +516,28 @@ function shoot() {
   updateHud();
 }
 
+function getShotDirection(spread) {
+  const direction = new THREE.Vector3();
+  const right = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+
+  camera.getWorldDirection(direction);
+  right.crossVectors(direction, up).normalize();
+  up.crossVectors(right, direction).normalize();
+
+  if (spread > 0) {
+    const spreadX = (Math.random() - 0.5) * spread;
+    const spreadY = (Math.random() - 0.5) * spread;
+
+    direction
+      .addScaledVector(right, spreadX)
+      .addScaledVector(up, spreadY)
+      .normalize();
+  }
+
+  return direction;
+}
+
 function reload() {
   if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
 
@@ -529,8 +550,8 @@ function reload() {
   setTimeout(() => updateHud(), result.duration);
 }
 
-function getBulletHit() {
-  impactRaycaster.setFromCamera(impactCenter, camera);
+function getBulletHit(direction) {
+  impactRaycaster.set(camera.position, direction);
 
   const enemyHit = enemies ? enemies.getHit(impactRaycaster) : null;
   const surfaceHit = getSurfaceImpact();
@@ -556,11 +577,7 @@ function getSurfaceImpact() {
   };
 }
 
-function spawnTracer() {
-  const direction = new THREE.Vector3();
-
-  camera.getWorldDirection(direction);
-
+function spawnTracer(direction) {
   const start = camera.position.clone().add(direction.clone().multiplyScalar(0.8));
   const end = camera.position.clone().add(direction.clone().multiplyScalar(28));
   const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);

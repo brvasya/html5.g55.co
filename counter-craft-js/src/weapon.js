@@ -102,13 +102,14 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return (config.name || config.id || fallback).toString().toUpperCase();
   }
 
-  function getBehaviorFromAsset(asset, fallback = {}) {
-    const behavior = asset?.behavior ?? asset?.stats ?? {};
+  function getBehaviorFromAsset(asset) {
+    const behavior = asset.behavior;
     return {
-      magazineSize: behavior.magazineSize ?? behavior.magazine ?? fallback.magazineSize ?? 30,
-      reserveAmmo: behavior.reserveAmmo ?? behavior.reserve ?? fallback.reserveAmmo ?? 90,
-      damage: behavior.damage ?? fallback.damage ?? 35,
-      fireCooldownMs: behavior.fireCooldownMs ?? behavior.fireRate ?? fallback.fireCooldownMs ?? 130
+      magazineSize: behavior.magazineSize,
+      reserveAmmo: behavior.reserveAmmo,
+      damage: behavior.damage,
+      fireCooldownMs: behavior.fireCooldownMs,
+      spread: behavior.spread
     };
   }
 
@@ -134,7 +135,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       reserveAmmo: behavior.reserveAmmo,
       defaultReserveAmmo: behavior.reserveAmmo,
       damage: behavior.damage,
-      fireCooldownMs: behavior.fireCooldownMs
+      fireCooldownMs: behavior.fireCooldownMs,
+      spread: behavior.spread
     };
   }
 
@@ -344,6 +346,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       slot: slot.id,
       weaponName: slot.name,
       damage: slot.damage,
+      spread: slot.spread,
       ammo: slot.ammo,
       reserveAmmo: slot.reserveAmmo
     };
@@ -402,7 +405,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       reserveAmmo: slot.reserveAmmo,
       damage: slot.damage,
       magazineSize: slot.magazineSize,
-      fireCooldownMs: slot.fireCooldownMs
+      fireCooldownMs: slot.fireCooldownMs,
+      spread: slot.spread
     };
   }
 
@@ -475,9 +479,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function disposeModel(root) {
     root.traverse(object => {
-      // Do not dispose geometry here.
-      // Weapon clones share geometry with the cached preload source.
-      // Disposing geometry from one visible clone can make future cached clones invisible.
       if (object.material) {
         if (Array.isArray(object.material)) {
           object.material.forEach(material => material.dispose());
@@ -764,7 +765,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       material.needsUpdate = true;
     });
   }
-
 
   return {
     rig,
