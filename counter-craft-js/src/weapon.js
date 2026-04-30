@@ -7,11 +7,7 @@ import { P90 } from "../../assets/weapon/p90.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
-  const view = {
-    posOffset: [0, 0, 0],
-    rotOffset: [0, -Math.PI, 0],
-    scaleMultiplier: 1
-  };
+  
 
   const settings = {
     bobAmount: 0.018,
@@ -162,7 +158,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function currentModelConfig() {
-    return currentSlot().asset ?? {};
+    return currentSlot().asset;
   }
 
   function getAssetCacheKey(asset) {
@@ -629,12 +625,12 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     getBaseRotation(targetRotation);
     rig.position.copy(targetPosition);
     rig.rotation.copy(targetRotation);
-    const config = currentModelConfig();
-    const scl = config.scl ?? [1, 1, 1];
+    const view = getCurrentView();
+    const scl = view.scl;
     rig.scale.set(
-      scl[0] * view.scaleMultiplier,
-      scl[1] * view.scaleMultiplier,
-      scl[2] * view.scaleMultiplier
+      scl[0],
+      scl[1],
+      scl[2]
     );
   }
 
@@ -720,16 +716,25 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     muzzleFlashMesh.material.color.setHex(flash.color);
   }
 
-  function getBasePosition(target) {
+  function getCurrentView() {
     const config = currentModelConfig();
-    const pos = config.pos ?? [0, 0, 0];
-    return target.set(pos[0] + view.posOffset[0], pos[1] + view.posOffset[1], pos[2] + view.posOffset[2]);
+    const assetView = config.view;
+
+    return {
+      posOffset: assetView.posOffset,
+      rotOffset: assetView.rotOffset,
+      scl: assetView.scl
+    };
+  }
+
+  function getBasePosition(target) {
+    const view = getCurrentView();
+    return target.set(view.posOffset[0], view.posOffset[1], view.posOffset[2]);
   }
 
   function getBaseRotation(target) {
-    const config = currentModelConfig();
-    const rot = config.rot ?? [0, 0, 0];
-    return target.set(rot[0] + view.rotOffset[0], rot[1] + view.rotOffset[1], rot[2] + view.rotOffset[2]);
+    const view = getCurrentView();
+    return target.set(view.rotOffset[0], view.rotOffset[1], view.rotOffset[2]);
   }
 
   function registerFlashMaterial(material) {

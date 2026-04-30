@@ -1,5 +1,10 @@
 export const P90 = {
 name: "P90",
+view: {
+posOffset: [0, 0, 0],
+rotOffset: [0, -Math.PI, 0],
+scl: [1, 1, 1]
+},
 shellEject:  [0.5, -0.4, 0.7],
 muzzleFlash: [0.5, -0.4, 1.5],
 behavior: {magazineSize: 90, reserveAmmo: 90, damage: 35, fireCooldownMs: 130},

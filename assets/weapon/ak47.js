@@ -1,5 +1,10 @@
 export const AK47 = {
 name: "AK47",
+view: {
+posOffset: [0, 0, 0],
+rotOffset: [0, -Math.PI, 0],
+scl: [1, 1, 1]
+},
 shellEject:  [0.3, -0.2, 0.7],
 muzzleFlash: [0.3, -0.2, 1.5],
 behavior: {magazineSize: 30, reserveAmmo: 90, damage: 35, fireCooldownMs: 130},
