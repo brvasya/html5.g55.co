@@ -560,18 +560,23 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     if (activeAction && activeAction !== action) activeAction.fadeOut(0.06);
 
     const config = currentModelConfig();
-    const loop = config.anim?.[name]?.[2] ?? false;
+    const loop = config.anim[name][2];
+    const duration = getDuration(name);
+
     action.reset();
     action.enabled = true;
+    action.timeScale = name === "shoot" ? duration / currentSlot().fireCooldownMs : 1;
     action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
     action.clampWhenFinished = !loop;
     action.fadeIn(0.04).play();
     activeAction = action;
 
-    const duration = action.getClip().duration * 1000;
-    if (!loop) returnTimer = setTimeout(() => play("idle"), duration);
+    if (!loop) {
+      const returnDelay = name === "shoot" ? currentSlot().fireCooldownMs : duration;
+      returnTimer = setTimeout(() => play("idle"), returnDelay);
+    }
 
-    return duration;
+    return name === "shoot" ? currentSlot().fireCooldownMs : duration;
   }
 
   function getDuration(name) {
