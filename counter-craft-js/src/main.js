@@ -526,6 +526,7 @@ function switchWeapon(slotNumber) {
   if (weapon.switchSlot(slotNumber)) {
     stopZoom();
     updateHud();
+    playBuyMenuWeaponSound();
   }
 }
 
