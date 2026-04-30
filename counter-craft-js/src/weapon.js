@@ -103,14 +103,19 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function getBehaviorFromAsset(asset) {
-    const behavior = asset.behavior;
+    const behavior = asset.behavior ?? {};
+    const isMelee = behavior.isMelee ?? false;
+
     return {
-      magazineSize: behavior.magazineSize,
-      reserveAmmo: behavior.reserveAmmo,
-      damage: behavior.damage,
-      fireCooldownMs: behavior.fireCooldownMs,
-      spread: behavior.spread,
-      pellets: behavior.pellets ?? 1
+      magazineSize: isMelee ? 0 : (behavior.magazineSize ?? 0),
+      reserveAmmo: isMelee ? 0 : (behavior.reserveAmmo ?? 0),
+      damage: behavior.damage ?? 25,
+      fireCooldownMs: behavior.fireCooldownMs ?? 300,
+      spread: isMelee ? 0 : (behavior.spread ?? 0),
+      pellets: isMelee ? 1 : (behavior.pellets ?? 1),
+      isSniper: behavior.isSniper ?? false,
+      isMelee,
+      range: behavior.range ?? (isMelee ? 2 : 200)
     };
   }
 
@@ -138,7 +143,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       damage: behavior.damage,
       fireCooldownMs: behavior.fireCooldownMs,
       spread: behavior.spread,
-      pellets: behavior.pellets
+      pellets: behavior.pellets,
+      isSniper: behavior.isSniper,
+      isMelee: behavior.isMelee,
+      range: behavior.range
     };
   }
 
@@ -333,9 +341,27 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
     if (isReloading) return { ok: false, reason: "reloading" };
     if (now - lastShotTime < slot.fireCooldownMs) return { ok: false, reason: "cooldown" };
-    if (slot.ammo <= 0) return { ok: false, reason: "empty" };
 
     lastShotTime = now;
+
+    if (slot.isMelee) {
+      play("shoot");
+      addRecoil();
+
+      return {
+        ok: true,
+        slot: slot.id,
+        weaponName: slot.name,
+        damage: slot.damage,
+        isMelee: true,
+        range: slot.range,
+        ammo: slot.ammo,
+        reserveAmmo: slot.reserveAmmo
+      };
+    }
+
+    if (slot.ammo <= 0) return { ok: false, reason: "empty" };
+
     updateMuzzleFlashTransform();
     flashIntensity = getMuzzleFlashConfig().intensity;
     ejectShell();
@@ -350,6 +376,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       damage: slot.damage,
       spread: slot.spread,
       pellets: slot.pellets,
+      isMelee: false,
+      range: slot.range,
       ammo: slot.ammo,
       reserveAmmo: slot.reserveAmmo
     };
@@ -357,6 +385,11 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function reload() {
     const slot = currentSlot();
+
+    if (slot.isMelee) {
+      return { started: false, duration: 0 };
+    }
+
     if (isReloading || slot.ammo === slot.magazineSize || slot.reserveAmmo <= 0) {
       return { started: false, duration: 0 };
     }
@@ -379,7 +412,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function addReserveAmmo(amount) {
     const slot = currentSlot();
-    if (slot.id !== 9) slot.reserveAmmo += amount;
+    if (slot.id !== 9 && !slot.isMelee) slot.reserveAmmo += amount;
   }
 
   function getCurrentAsset() {
@@ -393,7 +426,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       weaponName: slot.name,
       ammo: slot.ammo,
       reserveAmmo: slot.reserveAmmo,
-      isReloading
+      isReloading,
+      isMelee: slot.isMelee
     };
   }
 
@@ -410,7 +444,10 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       magazineSize: slot.magazineSize,
       fireCooldownMs: slot.fireCooldownMs,
       spread: slot.spread,
-      pellets: slot.pellets
+      pellets: slot.pellets,
+      isSniper: slot.isSniper,
+      isMelee: slot.isMelee,
+      range: slot.range
     };
   }
 

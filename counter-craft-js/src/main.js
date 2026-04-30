@@ -113,7 +113,6 @@ const impacts = createImpactParticles({ THREE, scene });
 const bulletHoles = createBulletHoles({ THREE, scene });
 
 const impactRaycaster = new THREE.Raycaster();
-const impactCenter = new THREE.Vector2(0, 0);
 
 const cameraShake = {
   trauma: 0,
@@ -500,7 +499,10 @@ function switchWeapon(slotNumber) {
 
   if (slot && !slot.owned) return;
 
-  if (weapon.switchSlot(slotNumber)) updateHud();
+  if (weapon.switchSlot(slotNumber)) {
+    stopZoom();
+    updateHud();
+  }
 }
 
 function updateHud() {
@@ -519,12 +521,19 @@ function shoot() {
     return;
   }
 
-  const pelletCount = Math.max(1, shot.pellets ?? 1);
-  let enemyWasHit = false;
-
   addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
+
+  if (shot.isMelee) {
+    handleMeleeHit(shot);
+    updateHud();
+    return;
+  }
+
   if (hud.setCrosshairFire) hud.setCrosshairFire();
+
+  const pelletCount = Math.max(1, shot.pellets ?? 1);
+  let enemyWasHit = false;
 
   for (let i = 0; i < pelletCount; i++) {
     const direction = getShotDirection(shot.spread);
@@ -559,6 +568,53 @@ function shoot() {
   }
 
   updateHud();
+}
+
+function handleMeleeHit(shot) {
+  if (!enemies) return;
+
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+
+  impactRaycaster.set(camera.position, direction);
+  impactRaycaster.near = 0;
+  impactRaycaster.far = shot.range ?? 2.2;
+
+  const enemyHit = enemies.getHit(impactRaycaster);
+  const surfaceHit = getSurfaceImpact();
+
+  if (enemyHit && surfaceHit && surfaceHit.distance < enemyHit.distance) {
+    impacts.spawnSurface(surfaceHit.point, surfaceHit.normal);
+    resetImpactRaycasterRange();
+    return;
+  }
+
+  if (!enemyHit) {
+    if (surfaceHit) impacts.spawnSurface(surfaceHit.point, surfaceHit.normal);
+    resetImpactRaycasterRange();
+    return;
+  }
+
+  const killed = enemies.damageEnemy(enemyHit.enemy, shot.damage);
+
+  impacts.spawnBlood(enemyHit.point, enemyHit.normal.clone().multiplyScalar(-1));
+  sounds.playEnemyHit();
+
+  if (killed) {
+    sounds.playEnemyDie();
+    state.score += 100;
+
+    if (enemies.count === 0) {
+      showWaveComplete();
+    }
+  }
+
+  resetImpactRaycasterRange();
+}
+
+function resetImpactRaycasterRange() {
+  impactRaycaster.near = 0;
+  impactRaycaster.far = Infinity;
 }
 
 function getShotDirection(spread) {
@@ -597,6 +653,7 @@ function reload() {
 
 function getBulletHit(direction) {
   impactRaycaster.set(camera.position, direction);
+  resetImpactRaycasterRange();
 
   const enemyHit = enemies ? enemies.getHit(impactRaycaster) : null;
   const surfaceHit = getSurfaceImpact();
@@ -753,6 +810,8 @@ async function resetGame() {
   dom.damageFlash.style.transition = "opacity 0.12s ease";
   dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
   dom.damageFlash.style.opacity = "0";
+
+  stopZoom();
 
   await world.ready;
   world.resetPlayer(player);

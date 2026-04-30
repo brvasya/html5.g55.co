@@ -12,7 +12,8 @@ damage: 35,
 fireCooldownMs: 130,
 pellets: 8,
 spread: 0.05,
-isSniper: true
+isSniper: true,
+isMelee: true
 },
 shellEject:  [0.5, -0.4, 0.7],
 muzzleFlash: [0.5, -0.4, 1.5],
