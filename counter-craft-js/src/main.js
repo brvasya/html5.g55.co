@@ -847,7 +847,7 @@ function endGame() {
   setTimeout(() => {
     dom.overlay.style.display = "grid";
     dom.panelTitle.textContent = "Game Over";
-    dom.panelText.textContent = `Final score: ${state.score}. Click restart to play again.`;
+    dom.panelText.textContent = `Wave reached: ${state.wave}`;
     dom.startButton.textContent = "Restart";
   }, 650);
 }
