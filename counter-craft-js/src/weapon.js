@@ -4,6 +4,7 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { makeMaterialCrisp } from "./materials.js";
 import { AK47 } from "../../assets/weapon/ak47.js";
 import { P90 } from "../../assets/weapon/p90.js";
+import { KNIFE } from "../../assets/weapon/knife.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
@@ -160,7 +161,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       makeSlot(6, fallbackAsset, { price: 0 }),
       makeSlot(7, fallbackAsset, { price: 0 }),
       makeSlot(8, fallbackAsset, { price: 0 }),
-      makeSlot(9, fallbackAsset, { price: 0 })
+      makeSlot(9, KNIFE, { owned: true, price: 0 })
     ];
   }
 
