@@ -7,7 +7,6 @@ import { P90 } from "../../assets/weapon/p90.js";
 
 export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponConfig = AK47, playerVelocity }) {
   const slots = createSlots(weaponConfig);
-  
 
   const settings = {
     bobAmount: 0.018,
