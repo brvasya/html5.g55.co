@@ -600,7 +600,7 @@ function handleMeleeHit(shot) {
 
   impactRaycaster.set(camera.position, direction);
   impactRaycaster.near = 0;
-  impactRaycaster.far = shot.range ?? 2.2;
+  impactRaycaster.far = shot.range ?? 2;
 
   const enemyHit = enemies.getHit(impactRaycaster);
   const surfaceHit = getSurfaceImpact();

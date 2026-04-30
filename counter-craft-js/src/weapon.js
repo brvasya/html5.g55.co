@@ -99,42 +99,40 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     return texture;
   }
 
-  function getNameFromConfig(config, fallback) {
-    if (!config) return fallback;
-    return (config.name || config.id || fallback).toString().toUpperCase();
+  function getNameFromConfig(config) {
+    return config.name.toString().toUpperCase();
   }
 
   function getBehaviorFromAsset(asset) {
-    const behavior = asset.behavior ?? {};
-    const isMelee = behavior.isMelee ?? false;
+    const behavior = asset.behavior;
+    const isMelee = behavior.isMelee;
 
     return {
-      magazineSize: isMelee ? 0 : (behavior.magazineSize ?? 0),
-      reserveAmmo: isMelee ? 0 : (behavior.reserveAmmo ?? 0),
-      damage: behavior.damage ?? 25,
-      fireCooldownMs: behavior.fireCooldownMs ?? 300,
-      spread: isMelee ? 0 : (behavior.spread ?? 0),
-      pellets: isMelee ? 1 : (behavior.pellets ?? 1),
-      isSniper: behavior.isSniper ?? false,
+      magazineSize: isMelee ? 0 : behavior.magazineSize,
+      reserveAmmo: isMelee ? 0 : behavior.reserveAmmo,
+      damage: behavior.damage,
+      fireCooldownMs: behavior.fireCooldownMs,
+      spread: isMelee ? 0 : behavior.spread,
+      pellets: isMelee ? 1 : behavior.pellets,
+      isSniper: behavior.isSniper,
       isMelee,
-      range: behavior.range ?? (isMelee ? 2 : 200)
+      range: behavior.range
     };
   }
 
-  function getPriceFromAsset(asset, fallbackPrice) {
-    const rawPrice = asset?.price ?? asset?.cost ?? asset?.shop?.price ?? fallbackPrice;
-    return Math.max(0, Number(rawPrice) || 0);
+  function getPriceFromAsset(asset) {
+    return asset.price;
   }
 
   function makeSlot(id, asset, options = {}) {
     const behavior = getBehaviorFromAsset(asset);
     const owned = Boolean(options.owned);
-    const price = getPriceFromAsset(asset, options.price ?? 0);
+    const price = getPriceFromAsset(asset);
 
     return {
       id,
       asset,
-      name: getNameFromConfig(asset, `SLOT ${id}`),
+      name: getNameFromConfig(asset),
       price,
       owned,
       defaultOwned: owned,
@@ -154,15 +152,15 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function createSlots(fallbackAsset) {
     return [
-      makeSlot(1, AK47, { owned: true, price: 0 }),
-      makeSlot(2, P90, { price: 0 }),
-      makeSlot(3, AWP, { price: 0 }),
-      makeSlot(4, fallbackAsset, { price: 0 }),
-      makeSlot(5, fallbackAsset, { price: 0 }),
-      makeSlot(6, fallbackAsset, { price: 0 }),
-      makeSlot(7, fallbackAsset, { price: 0 }),
-      makeSlot(8, fallbackAsset, { price: 0 }),
-      makeSlot(9, KNIFE, { owned: true, price: 0 })
+      makeSlot(1, AK47, { owned: true }),
+      makeSlot(2, P90),
+      makeSlot(3, AWP),
+      makeSlot(4, fallbackAsset),
+      makeSlot(5, fallbackAsset),
+      makeSlot(6, fallbackAsset),
+      makeSlot(7, fallbackAsset),
+      makeSlot(8, fallbackAsset),
+      makeSlot(9, KNIFE, { owned: true })
     ];
   }
 
@@ -175,8 +173,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function getAssetCacheKey(asset) {
-    if (!asset) return "empty";
-    return asset.id || asset.name || asset.model || "inline-weapon";
+    return asset.name;
   }
 
   function preloadAll() {
@@ -192,9 +189,9 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
       tasks.push(preloadWeaponAsset(asset));
 
-      if (asset?.fireSound) tasks.push(preloadSound(asset.fireSound));
-      if (asset?.shootSound) tasks.push(preloadSound(asset.shootSound));
-      if (asset?.reloadSound) tasks.push(preloadSound(asset.reloadSound));
+      if (asset.fireSound) tasks.push(preloadSound(asset.fireSound));
+      if (asset.shootSound) tasks.push(preloadSound(asset.shootSound));
+      if (asset.reloadSound) tasks.push(preloadSound(asset.reloadSound));
     });
 
     return Promise.all(tasks).then(() => {
@@ -204,7 +201,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function preloadWeaponAsset(asset) {
-    if (!asset || !asset.model) return Promise.resolve(null);
 
     const key = getAssetCacheKey(asset);
     let cached = modelCache.get(key);
@@ -230,7 +226,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
         asset.model,
         gltf => {
           cached.source = gltf.scene;
-          cached.animations = gltf.animations || [];
+          cached.animations = gltf.animations;
           cached.loading = false;
           cached.failed = false;
 
@@ -296,7 +292,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     const index = slotNumber - 1;
     const slot = slots[index];
 
-    if (!slot || !slot.owned || index === currentSlotIndex || isReloading) return false;
+    if (!slot.owned || index === currentSlotIndex || isReloading) return false;
 
     currentSlotIndex = index;
     lastShotTime = 0;
@@ -312,7 +308,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     const index = slotNumber - 1;
     const slot = slots[index];
 
-    if (!slot) return { ok: false, reason: "missing" };
     if (slot.owned) return { ok: false, reason: "owned", slot: getSlotShopState(slot) };
 
     slot.owned = true;
@@ -418,7 +413,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function getCurrentAsset() {
-    return currentSlot().asset ?? null;
+    return currentSlot().asset;
   }
 
   function getHudState() {
@@ -459,11 +454,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function attachCurrentModel() {
     const config = currentModelConfig();
-
-    if (!config.model) {
-      clearModel();
-      return;
-    }
 
     const key = getAssetCacheKey(config);
     const cached = modelCache.get(key);
@@ -534,7 +524,6 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
 
   function setupAnimations(clips) {
     const config = currentModelConfig();
-    if (!clips.length || !config.anim) return;
 
     mixer = new THREE.AnimationMixer(model);
     const baseClip = clips[0];
@@ -554,14 +543,13 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
     currentStateTime = 0;
 
     const action = actions.get(name);
-    if (!action) return getDuration(name);
 
     clearTimeout(returnTimer);
     if (activeAction && activeAction !== action) activeAction.fadeOut(0.06);
 
     const config = currentModelConfig();
     const loop = config.anim[name][2];
-    const duration = getDuration(name);
+    const duration = action.getClip().duration * 1000;
 
     action.reset();
     action.enabled = true;
@@ -580,15 +568,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
   }
 
   function getDuration(name) {
-    const action = actions.get(name);
-    if (action) return action.getClip().duration * 1000;
-
-    const config = currentModelConfig();
-    const range = config.anim?.[name];
-    if (!range) return 300;
-
-    const [start, end] = range;
-    return Math.max(80, ((end - start) / 30) * 1000);
+    return actions.get(name).getClip().duration * 1000;
   }
 
   function addRecoil() {
