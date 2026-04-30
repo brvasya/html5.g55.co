@@ -295,8 +295,7 @@ function setupOverlayButtons() {
   dom.moreGamesButton.textContent = "More Games";
   dom.moreGamesButton.className = "cs-button";
   dom.moreGamesButton.target = "_blank";
-  dom.moreGamesButton.rel = "noopener noreferrer";
-
+  dom.moreGamesButton.rel = "noopener";
   dom.startButton.insertAdjacentElement("afterend", dom.moreGamesButton);
 }
 
