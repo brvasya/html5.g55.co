@@ -244,6 +244,14 @@ function setupInput() {
 
   document.addEventListener("keyup", e => player.onKeyUp(e));
 
+  document.addEventListener("wheel", e => {
+    if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+    if (Math.abs(e.deltaY) < 1) return;
+
+    e.preventDefault();
+    switchWeaponByWheel(e.deltaY > 0 ? 1 : -1);
+  }, { passive: false });
+
   document.addEventListener("mousedown", e => {
     if (e.button === 2) {
       startZoom();
@@ -503,6 +511,20 @@ function switchWeapon(slotNumber) {
     stopZoom();
     updateHud();
   }
+}
+
+function switchWeaponByWheel(direction) {
+  if (!weapon.getShopState) return;
+
+  const slots = weapon.getShopState();
+  const ownedSlots = slots.filter(slot => slot.owned);
+  if (ownedSlots.length <= 1) return;
+
+  const currentIndex = ownedSlots.findIndex(slot => slot.active);
+  if (currentIndex === -1) return;
+
+  const nextIndex = (currentIndex + direction + ownedSlots.length) % ownedSlots.length;
+  switchWeapon(ownedSlots[nextIndex].id);
 }
 
 function updateHud() {
