@@ -936,8 +936,10 @@ function renderWithCameraShake() {
 
   renderer.clear();
   renderer.render(scene, camera);
+  if (!isZooming) {
   renderer.clearDepth();
   renderer.render(weaponScene, weaponCamera);
+  }
 
   camera.rotation.z -= cameraShake.rotationOffsetZ;
   camera.rotation.y -= viewPunch.yaw;
