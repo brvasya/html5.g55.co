@@ -172,6 +172,67 @@ canvas { display: block; }
     linear-gradient(#39ff14, #39ff14) 100% center / 12px 2px no-repeat;
 }
 
+#sniperScope {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  display: none;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, transparent 0 34vmin, rgba(0, 0, 0, 0.98) 34.4vmin 100%),
+    linear-gradient(to right, transparent calc(50% - 1px), rgba(0, 0, 0, 0.92) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(to bottom, transparent calc(50% - 1px), rgba(0, 0, 0, 0.92) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px));
+}
+
+#sniperScope.active,
+#sniperScope.open {
+  display: block;
+}
+
+#sniperScope::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 68vmin;
+  height: 68vmin;
+  transform: translate(-50%, -50%);
+  border: 3px solid rgba(0, 0, 0, 0.96);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.16),
+    inset 0 0 32px rgba(0, 0, 0, 0.62),
+    0 0 22px rgba(0, 0, 0, 0.95);
+}
+
+#sniperScope::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.95);
+  box-shadow:
+    0 -16vmin 0 -2px rgba(0, 0, 0, 0.9),
+    0 16vmin 0 -2px rgba(0, 0, 0, 0.9),
+    -16vmin 0 0 -2px rgba(0, 0, 0, 0.9),
+    16vmin 0 0 -2px rgba(0, 0, 0, 0.9);
+}
+
+.cs-hud.scoped #crosshair,
+.cs-hud.scope-active #crosshair {
+  display: none;
+}
+
+body.scoped #crosshair,
+body.scope-active #crosshair {
+  display: none;
+}
+
 /* HUD style */
 .cs-hud {
   letter-spacing: 0.04em;
@@ -579,7 +640,6 @@ button {
   }
 }
 
-
 @media (max-width: 700px) {
   .preloader-panel {
     width: min(340px, 88vw);
@@ -602,4 +662,15 @@ button {
   .cs-big,
   .cs-ammo { font-size: 34px; }
   .cs-button { font-size: 15px; padding: 10px 18px; }
+  #sniperScope {
+    background:
+      radial-gradient(circle at center, transparent 0 40vmin, rgba(0, 0, 0, 0.98) 40.4vmin 100%),
+      linear-gradient(to right, transparent calc(50% - 1px), rgba(0, 0, 0, 0.92) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+      linear-gradient(to bottom, transparent calc(50% - 1px), rgba(0, 0, 0, 0.92) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px));
+  }
+
+  #sniperScope::before {
+    width: 80vmin;
+    height: 80vmin;
+  }
 }

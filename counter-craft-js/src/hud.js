@@ -3,7 +3,6 @@ export function createHud() {
   const stats = document.getElementById("stats");
   const crosshair = document.getElementById("crosshair");
 
-  // HUD structure moved to index.html for better performance and no reflow
   const refs = {
     health: document.getElementById("health"),
     ammo: document.getElementById("ammo"),
@@ -17,6 +16,10 @@ export function createHud() {
 
   let buyCallback = null;
   let buyCloseCallback = null;
+
+  const sniperScope = document.createElement("div");
+  sniperScope.id = "sniperScope";
+  document.body.appendChild(sniperScope);
 
   const buyMenu = document.createElement("div");
   buyMenu.id = "buyMenu";
@@ -83,6 +86,27 @@ export function createHud() {
     setTimeout(() => crosshair.classList.remove("fire"), 120);
   }
 
+  function showScope() {
+    sniperScope.classList.add("active");
+    hud.classList.add("scoped");
+    document.body.classList.add("scoped");
+  }
+
+  function hideScope() {
+    sniperScope.classList.remove("active");
+    hud.classList.remove("scoped");
+    document.body.classList.remove("scoped");
+  }
+
+  function setScope(active) {
+    if (active) {
+      showScope();
+      return;
+    }
+
+    hideScope();
+  }
+
   function update(state) {
     refs.health.textContent = state.health;
     refs.ammo.textContent = state.ammo;
@@ -125,6 +149,7 @@ export function createHud() {
   }
 
   function showBuyMenu() {
+    hideScope();
     buyMenu.classList.add("open");
     buyHint.classList.add("hidden");
   }
@@ -141,6 +166,9 @@ export function createHud() {
   return {
     update,
     setCrosshairFire,
+    showScope,
+    hideScope,
+    setScope,
     setBuyCallback,
     setBuyCloseCallback,
     updateBuyMenu,

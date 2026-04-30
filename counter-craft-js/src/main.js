@@ -103,7 +103,7 @@ document.body.appendChild(renderer.domElement);
 
 const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
-if (hud.setBuyCloseCallback) hud.setBuyCloseCallback(() => closeBuyMenu(true));
+hud.setBuyCloseCallback(() => closeBuyMenu(true));
 const world = createWorld({ THREE, scene, config: CONFIG });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
 let enemies = null;
@@ -268,6 +268,7 @@ function setupInput() {
       stopZoom();
       return;
     }
+
     player.onMouseUp(e);
   });
 
@@ -275,7 +276,10 @@ function setupInput() {
   document.addEventListener("contextmenu", e => e.preventDefault());
   document.addEventListener("pointerlockchange", onPointerLockChange);
   document.addEventListener("pointerlockerror", enableFallbackLook);
-  window.addEventListener("blur", player.clearMovement);
+  window.addEventListener("blur", () => {
+    stopZoom();
+    player.clearMovement();
+  });
 }
 
 function setupOverlayButtons() {
@@ -317,6 +321,7 @@ async function startGame() {
 function pauseGame() {
   if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
 
+  stopZoom();
   state.isPlaying = false;
   player.clearMovement();
   document.body.classList.remove("cursor-locked", "fallback-look");
@@ -342,6 +347,7 @@ function toggleBuyMenu() {
 function openBuyMenu() {
   if (!state.isPlaying || state.isGameOver || state.isWaveComplete) return;
 
+  stopZoom();
   state.isPlaying = false;
   state.isBuyMenuOpen = true;
 
@@ -384,6 +390,7 @@ function handleBuyMenuSlot(slotNumber) {
 
   if (slot.owned) {
     if (weapon.switchSlot(slotNumber)) {
+      stopZoom();
       playBuyMenuWeaponSound();
       updateHud();
       updateBuyMenu();
@@ -402,6 +409,7 @@ function handleBuyMenuSlot(slotNumber) {
 
   state.score -= slot.price;
   weapon.switchSlot(slotNumber);
+  stopZoom();
   playBuyMenuWeaponSound();
 
   updateHud();
@@ -415,6 +423,7 @@ function playBuyMenuWeaponSound() {
 }
 
 function showWaveComplete() {
+  stopZoom();
   state.isPlaying = false;
   state.isWaveComplete = true;
 
@@ -481,22 +490,29 @@ function updateModeNote() {
 }
 
 function startZoom() {
+  if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+
   const asset = weapon.getCurrentAsset();
-  if (!asset?.behavior?.isSniper) return;
+  if (!asset.behavior.isSniper) return;
 
   isZooming = true;
-  const zoomFov = asset.behavior.zoomFov ?? 30;
+  const zoomFov = asset.behavior.zoomFov ?? 10;
   camera.fov = zoomFov;
   camera.updateProjectionMatrix();
+  hud.showScope();
   updateModeNote();
 }
 
 function stopZoom() {
-  if (!isZooming) return;
+  if (!isZooming) {
+    hud.hideScope();
+    return;
+  }
 
   isZooming = false;
   camera.fov = defaultFov;
   camera.updateProjectionMatrix();
+  hud.hideScope();
   updateModeNote();
 }
 
@@ -552,7 +568,7 @@ function shoot() {
     return;
   }
 
-  if (hud.setCrosshairFire) hud.setCrosshairFire();
+  if (!isZooming) hud.setCrosshairFire();
 
   const pelletCount = Math.max(1, shot.pellets ?? 1);
   let enemyWasHit = false;
@@ -768,6 +784,7 @@ function takeDamage(amount) {
 }
 
 function endGame() {
+  stopZoom();
   state.isGameOver = true;
   state.isPlaying = false;
   state.isWaveComplete = false;

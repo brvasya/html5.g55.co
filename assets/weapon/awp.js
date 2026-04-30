@@ -6,7 +6,7 @@ rotOffset: [0, -Math.PI, 0],
 scl: [1, 1, 1]
 },
 behavior: {
-magazineSize: 30,
+magazineSize: 10,
 reserveAmmo: 90,
 damage: 200,
 fireCooldownMs: 1200,
