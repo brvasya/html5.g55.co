@@ -109,7 +109,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       reserveAmmo: behavior.reserveAmmo,
       damage: behavior.damage,
       fireCooldownMs: behavior.fireCooldownMs,
-      spread: behavior.spread
+      spread: behavior.spread,
+      pellets: behavior.pellets ?? 1
     };
   }
 
@@ -136,7 +137,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       defaultReserveAmmo: behavior.reserveAmmo,
       damage: behavior.damage,
       fireCooldownMs: behavior.fireCooldownMs,
-      spread: behavior.spread
+      spread: behavior.spread,
+      pellets: behavior.pellets
     };
   }
 
@@ -347,6 +349,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       weaponName: slot.name,
       damage: slot.damage,
       spread: slot.spread,
+      pellets: slot.pellets,
       ammo: slot.ammo,
       reserveAmmo: slot.reserveAmmo
     };
@@ -406,7 +409,8 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, weaponCon
       damage: slot.damage,
       magazineSize: slot.magazineSize,
       fireCooldownMs: slot.fireCooldownMs,
-      spread: slot.spread
+      spread: slot.spread,
+      pellets: slot.pellets
     };
   }
 

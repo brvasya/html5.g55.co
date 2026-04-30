@@ -484,33 +484,43 @@ function shoot() {
     return;
   }
 
-  const direction = getShotDirection(shot.spread);
+  const pelletCount = Math.max(1, shot.pellets ?? 1);
+  let enemyWasHit = false;
 
   addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
   if (hud.setCrosshairFire) hud.setCrosshairFire();
-  spawnTracer(direction);
 
-  const hit = getBulletHit(direction);
+  for (let i = 0; i < pelletCount; i++) {
+    const direction = getShotDirection(shot.spread);
 
-  if (hit?.type === "enemy") {
-    const killed = enemies.damageEnemy(hit.enemy, shot.damage);
+    spawnTracer(direction);
 
-    impacts.spawnBlood(hit.point, hit.normal.clone().multiplyScalar(-1));
+    const hit = getBulletHit(direction);
 
-    if (killed) {
-      sounds.playEnemyDie();
-      state.score += 100;
+    if (hit?.type === "enemy") {
+      const killed = enemies.damageEnemy(hit.enemy, shot.damage);
 
-      if (enemies.count === 0) {
-        showWaveComplete();
+      impacts.spawnBlood(hit.point, hit.normal.clone().multiplyScalar(-1));
+      enemyWasHit = true;
+
+      if (killed) {
+        sounds.playEnemyDie();
+        state.score += 100;
+
+        if (enemies.count === 0) {
+          showWaveComplete();
+          break;
+        }
       }
-    } else {
-      sounds.playEnemyHit();
+    } else if (hit?.type === "surface") {
+      impacts.spawnSurface(hit.point, hit.normal);
+      bulletHoles.spawn(hit.point, hit.normal);
     }
-  } else if (hit?.type === "surface") {
-    impacts.spawnSurface(hit.point, hit.normal);
-    bulletHoles.spawn(hit.point, hit.normal);
+  }
+
+  if (enemyWasHit) {
+    sounds.playEnemyHit();
   }
 
   updateHud();
