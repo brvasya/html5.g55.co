@@ -886,10 +886,6 @@ async function resetGame() {
   weapon.play("idle");
 
   updateHud();
-
-  dom.panelTitle.textContent = "FPS Template";
-  dom.panelText.textContent = "Click start, then use WASD to move, mouse to look, left click to shoot, and R to reload.";
-  dom.startButton.textContent = "Start Game";
 }
 
 function onResize() {

@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Minimal Three.js FPS Template</title>
-
+  <title>Counter Craft JS</title>
   <link rel="stylesheet" href="./style.css" />
-
   <script type="importmap">
     {
       "imports": {
@@ -26,7 +24,6 @@
       <div id="preloaderText">0%</div>
     </div>
   </div>
-
   <div id="hud">
     <div id="crosshair"></div>
     <div class="cs-topbar">
@@ -34,12 +31,10 @@
       <div class="cs-score">$<span id="score">0</span></div>
       <div class="cs-round">WAVE <span id="wave">1</span></div>
     </div>
-
     <div class="cs-bottom-left">
       <div class="cs-label">HEALTH</div>
       <div class="cs-big"><span id="health">100</span></div>
     </div>
-
     <div class="cs-bottom-right">
       <div class="cs-label">
         <span id="weaponSlot">1</span> · 
@@ -52,18 +47,14 @@
     </div>
     <div id="modeNote">Mouse look: click start first</div>
   </div>
-
   <div id="damageFlash"></div>
-
   <div id="overlay">
     <div id="panel">
-      <h1>FPS Template</h1>
+      <h1>Counter Craft JS</h1>
       <p>Click start, then use WASD to move, mouse to look, left click to shoot, and R to reload.</p>
-      <p>Modular Three.js FPS template with GLB weapon support.</p>
       <button id="startButton" class="cs-button">Start Game</button>
     </div>
   </div>
-
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
