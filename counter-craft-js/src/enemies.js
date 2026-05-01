@@ -2,17 +2,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { makeMaterialCrisp } from "./materials.js";
-import { ZOMBIE } from "../../assets/enemies/zombie.js";
 
-const ENEMY_TYPES = {
-  zombie: {
-    asset: ZOMBIE
-  }
-};
-
-const DEFAULT_ENEMY_TYPE = "zombie";
-
-export function createEnemies({ THREE, scene, camera, config, state, floorObjects = [], colliders = [] }) {
+export function createEnemies({
+  THREE,
+  scene,
+  camera,
+  config,
+  state,
+  floorObjects = [],
+  colliders = [],
+  enemyTypes,
+  defaultEnemyType
+}) {
   const enemies = [];
   const toPlayer = new THREE.Vector3();
 
@@ -47,10 +48,10 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
   function preloadAll() {
     const tasks = [];
 
-    Object.keys(ENEMY_TYPES).forEach(typeId => {
+    Object.keys(enemyTypes).forEach(typeId => {
       tasks.push(preloadEnemyType(typeId));
 
-      const asset = ENEMY_TYPES[typeId]?.asset;
+      const asset = enemyTypes[typeId]?.asset;
       if (asset?.attackSound) tasks.push(preloadSound(asset.attackSound));
       if (asset?.hitSound) tasks.push(preloadSound(asset.hitSound));
       if (asset?.deathSound) tasks.push(preloadSound(asset.deathSound));
@@ -158,14 +159,14 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     return entry.promise;
   }
 
-  preloadEnemyType(DEFAULT_ENEMY_TYPE);
+  preloadEnemyType(defaultEnemyType);
 
   function getEnemyType(typeId) {
-    return ENEMY_TYPES[typeId] || ENEMY_TYPES[DEFAULT_ENEMY_TYPE];
+    return enemyTypes[typeId];
   }
 
   function chooseEnemyTypeForWave() {
-    return DEFAULT_ENEMY_TYPE;
+    return defaultEnemyType;
   }
 
   function spawnWave(wave) {
@@ -252,7 +253,7 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
     return point;
   }
 
-  function createEnemy(x, y, z, wave, typeId = DEFAULT_ENEMY_TYPE) {
+  function createEnemy(x, y, z, wave, typeId = defaultEnemyType) {
     const type = getEnemyType(typeId);
 
     const group = new THREE.Group();
@@ -749,7 +750,6 @@ export function createEnemies({ THREE, scene, camera, config, state, floorObject
       }
     });
   }
-
 
   function playAssetSound(src, volume = 1.0) {
     if (!src) return;

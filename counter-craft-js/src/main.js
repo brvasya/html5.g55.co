@@ -8,6 +8,7 @@ import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
 import { createImpactParticles } from "./impactParticles.js";
 import { createBulletHoles } from "./bulletHoles.js";
+import { GAME_ASSETS } from "./gameConfig.js";
 
 const CONFIG = {
   playerHeight: 1.75,
@@ -104,11 +105,17 @@ document.body.appendChild(renderer.domElement);
 const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
-const world = createWorld({ THREE, scene, config: CONFIG });
+const world = createWorld({ THREE, scene, worldConfig: GAME_ASSETS.world });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders });
 let enemies = null;
 
-const weapon = createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVelocity: player.velocity });
+const weapon = createWeaponSystem({
+  THREE,
+  weaponScene,
+  weaponCamera,
+  playerVelocity: player.velocity,
+  weaponSlots: GAME_ASSETS.weaponSlots
+});
 const impacts = createImpactParticles({ THREE, scene });
 const bulletHoles = createBulletHoles({ THREE, scene });
 
@@ -178,7 +185,9 @@ function createEnemySystemIfNeeded() {
     config: CONFIG,
     state,
     floorObjects: world.floorObjects,
-    colliders: world.colliders
+    colliders: world.colliders,
+    enemyTypes: GAME_ASSETS.enemies.types,
+    defaultEnemyType: GAME_ASSETS.enemies.defaultType
   });
 
   return enemies;
@@ -573,8 +582,8 @@ function shoot() {
 
   if (!shot.ok) {
     if (shot.reason === "empty") {
-        sounds.playEmpty();
-        reload();
+      sounds.playEmpty();
+      reload();
     }
     return;
   }
@@ -953,8 +962,8 @@ function renderWithCameraShake() {
   renderer.clear();
   renderer.render(scene, camera);
   if (!isZooming) {
-  renderer.clearDepth();
-  renderer.render(weaponScene, weaponCamera);
+    renderer.clearDepth();
+    renderer.render(weaponScene, weaponCamera);
   }
 
   camera.rotation.z -= cameraShake.rotationOffsetZ;

@@ -1,21 +1,23 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { makeMaterialCrisp } from "./materials.js";
-import { MAP_GLB_BASE64 } from "../../assets/world/map.js";
 
-export function createWorld({ THREE, scene }) {
+export function createWorld({ THREE, scene, worldConfig }) {
   const colliders = [];
   const tracers = [];
   const floorObjects = [];
   const skyObjects = [];
 
-  const SKY_COLOR_TOP = 0x6fb8ff;
-  const SKY_COLOR_MID = 0xa8d8ff;
-  const SKY_COLOR_HORIZON = 0xd8f0ff;
-  const FOG_COLOR = 0xd8f0ff;
-  const CLOUD_COLOR = 0xffffff;
-  const SUN_COLOR = 0xfff4b0;
-  const SUN_GLOW_COLOR = 0xffe7a0;
+  const mapAsset = worldConfig.map;
+  const skyConfig = worldConfig.sky;
+
+  const SKY_COLOR_TOP = skyConfig.skyColorTop;
+  const SKY_COLOR_MID = skyConfig.skyColorMid;
+  const SKY_COLOR_HORIZON = skyConfig.skyColorHorizon;
+  const FOG_COLOR = skyConfig.fogColor;
+  const CLOUD_COLOR = skyConfig.cloudColor;
+  const SUN_COLOR = skyConfig.sunColor;
+  const SUN_GLOW_COLOR = skyConfig.sunGlowColor;
 
   createDaytimeSky();
 
@@ -36,8 +38,8 @@ export function createWorld({ THREE, scene }) {
     skyObjects,
     isLoaded: false,
     spawn: null,
-    spawnObjectName: "G55START001",
-    floorObjectPrefixes: ["G55FLR", "G55OUT0"],
+    spawnObjectName: worldConfig.spawnObjectName,
+    floorObjectPrefixes: worldConfig.floorObjectPrefixes,
     ready: null,
     addBox,
     resetPlayer,
@@ -52,10 +54,10 @@ export function createWorld({ THREE, scene }) {
       loader.setMeshoptDecoder(MeshoptDecoder);
 
       loader.load(
-        MAP_GLB_BASE64.model,
+        mapAsset.model,
         gltf => {
           const map = gltf.scene;
-          const mapScale = MAP_GLB_BASE64.scale;
+          const mapScale = mapAsset.scale;
 
           map.scale.set(mapScale[0], mapScale[1], mapScale[2]);
 
@@ -103,7 +105,7 @@ export function createWorld({ THREE, scene }) {
 
   function createDaytimeSky() {
     scene.background = new THREE.Color(FOG_COLOR);
-    scene.fog = new THREE.Fog(FOG_COLOR, 10, 100);
+    scene.fog = new THREE.Fog(FOG_COLOR, skyConfig.fogNear, skyConfig.fogFar);
 
     createGradientSkyDome();
     createSquareSun();
@@ -332,7 +334,6 @@ export function createWorld({ THREE, scene }) {
 
     return found;
   }
-
 
   function addBox(x, y, z, sx, sy, sz, color, isCollider = false) {
     const mesh = new THREE.Mesh(
