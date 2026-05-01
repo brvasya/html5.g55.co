@@ -26,7 +26,7 @@ export function createWorld({ THREE, scene, worldConfig }) {
 
     player.reset({
       position: world.spawn.clone(),
-      yaw: 0
+      yaw: worldConfig.spawnYaw
     });
   }
 

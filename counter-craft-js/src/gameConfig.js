@@ -19,6 +19,7 @@ export const GAME_CONFIG = {
 export const GAME_ASSETS = {
   world: {
     map: MAP_GLB_BASE64,
+    spawnYaw: 0,
     spawnObjectName: "G55START001",
     floorObjectPrefixes: ["G55FLR", "G55OUT0"],
     sky: {
