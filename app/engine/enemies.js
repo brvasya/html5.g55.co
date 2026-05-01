@@ -11,8 +11,7 @@ export function createEnemies({
   state,
   floorObjects = [],
   colliders = [],
-  enemyTypes,
-  defaultEnemyType
+  enemyTypes
 }) {
   const enemies = [];
   const toPlayer = new THREE.Vector3();
@@ -251,7 +250,7 @@ export function createEnemies({
     return point;
   }
 
-  function createEnemy(x, y, z, wave, typeId = defaultEnemyType) {
+  function createEnemy(x, y, z, wave, typeId) {
     const type = getEnemyType(typeId);
 
     const group = new THREE.Group();

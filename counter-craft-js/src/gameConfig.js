@@ -47,7 +47,6 @@ export const GAME_ASSETS = {
   ],
 
   enemies: {
-    defaultType: "zombie",
     types: {
       zombie: { asset: ZOMBIE }
     }
