@@ -10,6 +10,9 @@ export const GAME_CONFIG = {
     baseEnemies: 3,
     enemiesPerWave: 3,
     maxEnemies: 30
+  },
+    enemySpawn: {
+    types: ["zombie"]
   }
 };
 
@@ -46,9 +49,7 @@ export const GAME_ASSETS = {
   enemies: {
     defaultType: "zombie",
     types: {
-      zombie: {
-        asset: ZOMBIE
-      }
+      zombie: { asset: ZOMBIE }
     }
   }
 };

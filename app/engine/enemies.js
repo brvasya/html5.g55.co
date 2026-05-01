@@ -159,14 +159,12 @@ export function createEnemies({
     return entry.promise;
   }
 
-  preloadEnemyType(defaultEnemyType);
-
   function getEnemyType(typeId) {
     return enemyTypes[typeId];
   }
 
   function chooseEnemyTypeForWave() {
-    return defaultEnemyType;
+    return config.enemySpawn.types[Math.floor(Math.random() * config.enemySpawn.types.length)];
   }
 
   function spawnWave(wave) {
