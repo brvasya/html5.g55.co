@@ -3,6 +3,7 @@ import { AK47 } from "../../app/assets/weapon/ak47.js";
 import { P90 } from "../../app/assets/weapon/p90.js";
 import { AWP } from "../../app/assets/weapon/awp.js";
 import { KNIFE } from "../../app/assets/weapon/knife.js";
+import { M3 } from "../../app/assets/weapon/m3.js";
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 
 export const GAME_CONFIG = {
@@ -39,7 +40,7 @@ export const GAME_ASSETS = {
     { id: 1, asset: AK47, owned: true },
     { id: 2, asset: P90, owned: false },
     { id: 3, asset: AWP, owned: false },
-    { id: 4, asset: AK47, owned: false },
+    { id: 4, asset: M3, owned: false },
     { id: 5, asset: AK47, owned: false },
     { id: 6, asset: AK47, owned: false },
     { id: 7, asset: AK47, owned: false },
