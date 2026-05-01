@@ -1,9 +1,9 @@
-import { MAP_GLB_BASE64 } from "../../assets/world/map.js";
-import { AK47 } from "../../assets/weapon/ak47.js";
-import { P90 } from "../../assets/weapon/p90.js";
-import { AWP } from "../../assets/weapon/awp.js";
-import { KNIFE } from "../../assets/weapon/knife.js";
-import { ZOMBIE } from "../../assets/enemies/zombie.js";
+import { MAP_GLB_BASE64 } from "./map.js";
+import { AK47 } from "../../app/assets/weapon/ak47.js";
+import { P90 } from "../../app/assets/weapon/p90.js";
+import { AWP } from "../../app/assets/weapon/awp.js";
+import { KNIFE } from "../../app/assets/weapon/knife.js";
+import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 
 export const GAME_ASSETS = {
   world: {

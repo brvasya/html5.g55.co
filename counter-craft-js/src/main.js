@@ -1,13 +1,13 @@
 import * as THREE from "three";
-import { createPreloader } from "./preloader.js";
-import { createPlayer } from "./player.js";
-import { createWeaponSystem } from "./weapon.js";
-import { createWorld } from "./world.js";
-import { createEnemies } from "./enemies.js";
-import { createHud } from "./hud.js";
-import { createSounds } from "./sounds.js";
-import { createImpactParticles } from "./impactParticles.js";
-import { createBulletHoles } from "./bulletHoles.js";
+import { createPreloader } from "../../app/engine/preloader.js";
+import { createPlayer } from "../../app/engine/player.js";
+import { createWeaponSystem } from "../../app/engine/weapon.js";
+import { createWorld } from "../../app/engine/world.js";
+import { createEnemies } from "../../app/engine/enemies.js";
+import { createHud } from "../../app/engine/hud.js";
+import { createSounds } from "../../app/engine/sounds.js";
+import { createImpactParticles } from "../../app/engine/impactParticles.js";
+import { createBulletHoles } from "../../app/engine/bulletHoles.js";
 import { GAME_ASSETS } from "./gameConfig.js";
 
 const CONFIG = {
