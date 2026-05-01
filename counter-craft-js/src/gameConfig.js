@@ -5,6 +5,14 @@ import { AWP } from "../../app/assets/weapon/awp.js";
 import { KNIFE } from "../../app/assets/weapon/knife.js";
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 
+export const GAME_CONFIG = {
+  wave: {
+    baseEnemies: 3,
+    enemiesPerWave: 3,
+    maxEnemies: 30
+  }
+};
+
 export const GAME_ASSETS = {
   world: {
     map: MAP_GLB_BASE64,

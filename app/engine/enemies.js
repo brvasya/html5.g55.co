@@ -170,7 +170,7 @@ export function createEnemies({
   }
 
   function spawnWave(wave) {
-    const count = Math.min(3 + wave * 3, 30);
+    const count = Math.min(config.wave.baseEnemies + wave * config.wave.enemiesPerWave, config.wave.maxEnemies);
 
     if (!floorObjects || floorObjects.length === 0) {
       console.warn("No G55FLR floor objects found for enemy spawning");

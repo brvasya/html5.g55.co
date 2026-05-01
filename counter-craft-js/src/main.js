@@ -8,9 +8,10 @@ import { createHud } from "../../app/engine/hud.js";
 import { createSounds } from "../../app/engine/sounds.js";
 import { createImpactParticles } from "../../app/engine/impactParticles.js";
 import { createBulletHoles } from "../../app/engine/bulletHoles.js";
-import { GAME_ASSETS } from "./gameConfig.js";
+import { GAME_CONFIG, GAME_ASSETS } from "./gameConfig.js";
 
 const CONFIG = {
+  ...GAME_CONFIG,
   playerHeight: 1.75,
   gravity: 25,
   jumpPower: 10,
