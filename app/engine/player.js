@@ -239,9 +239,14 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     inputState.mouseDeltaX = THREE.MathUtils.lerp(inputState.mouseDeltaX, 0, 1 - Math.exp(-30 * delta));
     inputState.mouseDeltaY = THREE.MathUtils.lerp(inputState.mouseDeltaY, 0, 1 - Math.exp(-30 * delta));
 
-    if (!isPlaying) return;
-
     groundY = getGroundY();
+
+    if (groundY !== null && !isPlaying) {
+      baseCameraY = groundY + config.playerHeight;
+      camera.position.y = baseCameraY;
+    }
+
+    if (!isPlaying) return;
 
     const hasGround = groundY !== null;
     const targetGroundCameraY = hasGround ? groundY + config.playerHeight : baseCameraY;
