@@ -1,9 +1,9 @@
 export const ZOMBIE = {
 rotation: [0, 0, 0],
 scale: [0.01, 0.01, 0.01],
-healthMultiplier: 1,
-speedMultiplier: 1,
-damageMultiplier: 1,
+enemyHealth: 100,
+enemySpeed: 1.5,
+enemyDamage: 10,
 attackDistance: 1.7,
 attackDamageDelay: 0.5,
 anim: {walk: [0, 40, true], attack: [45, 89, false], death: [95, 143, false]},
