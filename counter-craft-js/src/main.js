@@ -23,10 +23,6 @@ const CONFIG = {
   walkMultiplier: 0.55,
   mouseSensitivity: 0.0022,
   dragSensitivity: 0.006,
-  enemyHealth: 100,
-  enemySpeed: 1.55,
-  enemyDamage: 8,
-  enemyAttackDistance: 1.65,
   enemyAttackCooldown: 900,
   arenaSize: 42
 };
