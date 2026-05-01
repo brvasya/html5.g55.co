@@ -12,8 +12,8 @@ import { GAME_ASSETS } from "./gameConfig.js";
 
 const CONFIG = {
   playerHeight: 1.75,
-  gravity: 26,
-  jumpPower: 8,
+  gravity: 25,
+  jumpPower: 10,
   playerSpeed: 8.5,
   groundAcceleration: 55,
   airAcceleration: 12,
@@ -613,7 +613,7 @@ function shoot() {
 
       if (killed) {
         sounds.playEnemyDie();
-        state.score += 100;
+        state.score += 100 + state.wave * 10;
 
         if (enemies.count === 0) {
           showWaveComplete();
@@ -665,7 +665,7 @@ function handleMeleeHit(shot) {
 
   if (killed) {
     sounds.playEnemyDie();
-    state.score += 100;
+    state.score += 100 + state.wave * 10;
 
     if (enemies.count === 0) {
       showWaveComplete();
