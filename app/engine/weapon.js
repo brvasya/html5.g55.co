@@ -122,7 +122,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVel
 
   function getAmmoPrice(slot) {
     if (slot.isMelee) return 0;
-    return 100;
+    return slot.magazineSize;
   }
 
   function makeSlot(id, asset, options = {}) {
