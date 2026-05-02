@@ -1,11 +1,16 @@
 import { MAP_GLB_BASE64 } from "./map.js";
+//weapon
 import { AK47 } from "../../app/assets/weapon/ak47.js";
 import { P90 } from "../../app/assets/weapon/p90.js";
 import { AWP } from "../../app/assets/weapon/awp.js";
 import { KNIFE } from "../../app/assets/weapon/knife.js";
 import { M3 } from "../../app/assets/weapon/m3.js";
+//enemies
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 import { HUSK } from "../../app/assets/enemies/husk.js";
+import { CREEPER } from "../../app/assets/enemies/creeper.js";
+import { ENDERMAN } from "../../app/assets/enemies/enderman.js";
+import { CAVESPIDER } from "../../app/assets/enemies/caveSpider.js";
 
 export const GAME_CONFIG = {
   wave: {
@@ -14,7 +19,7 @@ export const GAME_CONFIG = {
     maxEnemies: 30
   },
     enemySpawn: {
-    types: ["zombie", "husk"]
+    types: [/*"zombie", "husk", "creeper", "enderman",*/ "caveSpider"]
   }
 };
 
@@ -52,7 +57,10 @@ export const GAME_ASSETS = {
   enemies: {
     types: {
       zombie: { asset: ZOMBIE },
-      husk: { asset: HUSK }
+      husk: { asset: HUSK },
+      creeper: { asset: CREEPER },
+      enderman: { asset: ENDERMAN },
+      caveSpider: { asset: CAVESPIDER },
     }
   }
 };

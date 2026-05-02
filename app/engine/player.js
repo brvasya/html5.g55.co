@@ -52,6 +52,10 @@ export function createPlayer({ THREE, camera, config, colliders }) {
   const groundRayOrigin = new THREE.Vector3();
   const groundRayDirection = new THREE.Vector3(0, -1, 0);
 
+  const ceilingRaycaster = new THREE.Raycaster();
+  const ceilingRayOrigin = new THREE.Vector3();
+  const ceilingRayDirection = new THREE.Vector3(0, 1, 0);
+
   const wallRaycaster = new THREE.Raycaster();
   const wallRayOrigin = new THREE.Vector3();
   const wallMove = new THREE.Vector3();
@@ -330,8 +334,14 @@ export function createPlayer({ THREE, camera, config, colliders }) {
       velocity.z = 0;
     }
 
+    const oldBaseCameraY = baseCameraY;
+
     verticalVelocity -= config.gravity * delta;
     baseCameraY += verticalVelocity * delta;
+
+    if (verticalVelocity > 0 && hitsCeiling(oldBaseCameraY, baseCameraY)) {
+      verticalVelocity = 0;
+    }
 
     groundY = getGroundY();
 
@@ -382,6 +392,34 @@ export function createPlayer({ THREE, camera, config, colliders }) {
     camera.rotation.z -= cameraRollApplied;
     camera.rotation.z += cameraRollOffset;
     cameraRollApplied = cameraRollOffset;
+  }
+
+  function hitsCeiling(fromY, toY) {
+    const moveDistance = Math.max(0, toY - fromY);
+
+    ceilingRayOrigin.set(
+      camera.position.x,
+      fromY - 0.1,
+      camera.position.z
+    );
+
+    ceilingRaycaster.set(ceilingRayOrigin, ceilingRayDirection);
+    ceilingRaycaster.far = moveDistance + 0.22;
+
+    const hits = ceilingRaycaster.intersectObjects(colliders, true);
+
+    for (const hit of hits) {
+      if (!hit.face) continue;
+
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+
+      if (normal.y > -0.45) continue;
+
+      baseCameraY = hit.point.y - 0.12;
+      return true;
+    }
+
+    return false;
   }
 
   function getGroundY() {
