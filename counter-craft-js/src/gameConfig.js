@@ -19,7 +19,7 @@ export const GAME_CONFIG = {
     maxEnemies: 30
   },
     enemySpawn: {
-    types: [/*"zombie", "husk", "creeper", "enderman",*/ "caveSpider"]
+    types: [/*"zombie", "husk", "creeper",*/ "enderman", "caveSpider"]
   }
 };
 

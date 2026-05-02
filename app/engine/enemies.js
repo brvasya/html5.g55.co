@@ -40,6 +40,7 @@ export function createEnemies({
   const obstacleRaycaster = new THREE.Raycaster();
   const obstacleRayOrigin = new THREE.Vector3();
   const obstacleRayDirection = new THREE.Vector3();
+  const enemyBounds = new THREE.Box3();
 
   const modelCache = new Map();
   const audioCache = new Map();
@@ -555,29 +556,50 @@ export function createEnemies({
 
     obstacleRayDirection.copy(direction).normalize();
 
-    obstacleRayOrigin.set(
-      enemy.position.x,
-      enemy.position.y + NAV_TUNING.obstacleRayHeight,
-      enemy.position.z
-    );
+    const enemyHeight = getEnemyHeight(enemy) * 0.95;
+    const rayHeights = [
+      NAV_TUNING.obstacleRayHeight,
+      enemyHeight * 0.6,
+      enemyHeight
+    ];
 
-    obstacleRaycaster.set(obstacleRayOrigin, obstacleRayDirection);
-    obstacleRaycaster.near = 0;
-    obstacleRaycaster.far = NAV_TUNING.obstacleRayDistance;
+    for (const height of rayHeights) {
+      obstacleRayOrigin.set(
+        enemy.position.x,
+        enemy.position.y + height,
+        enemy.position.z
+      );
 
-    const hits = obstacleRaycaster.intersectObjects(colliders, true);
+      obstacleRaycaster.set(obstacleRayOrigin, obstacleRayDirection);
+      obstacleRaycaster.near = 0;
+      obstacleRaycaster.far = NAV_TUNING.obstacleRayDistance;
 
-    for (const hit of hits) {
-      if (!hit.face) continue;
+      const hits = obstacleRaycaster.intersectObjects(colliders, true);
 
-      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      for (const hit of hits) {
+        if (!hit.face) continue;
 
-      if (normal.y >= TERRAIN_TUNING.minWalkableNormalY) continue;
+        const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
 
-      return true;
+        if (normal.y >= TERRAIN_TUNING.minWalkableNormalY) continue;
+
+        return true;
+      }
     }
 
     return false;
+  }
+
+  function getEnemyHeight(enemy) {
+    const model = enemy.userData.model || enemy.userData.fallback;
+
+    if (!model) return 1.8;
+
+    enemyBounds.setFromObject(model);
+
+    if (enemyBounds.isEmpty()) return 1.8;
+
+    return enemyBounds.max.y - enemyBounds.min.y;
   }
 
   function getFlatDistance(a, b) {
