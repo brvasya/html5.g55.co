@@ -580,13 +580,13 @@ function shoot() {
   if (!shot.ok) {
     if (shot.reason === "empty") {
       sounds.playEmpty();
-      reload();
     }
     return;
   }
 
   addViewPunch();
   sounds.playShoot(weapon.getCurrentAsset());
+  if (!shot.isMelee && shot.ammo === 0) reload();
 
   if (shot.isMelee) {
     handleMeleeHit(shot);
