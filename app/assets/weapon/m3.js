@@ -9,7 +9,7 @@ behavior: {
 magazineSize: 1,
 reserveAmmo: 90,
 damage: 35,
-fireCooldownMs: 90,
+fireCooldownMs: 120,
 pellets: 8,
 spread: 0.1,
 },
