@@ -5,15 +5,16 @@ import { AWP } from "../../app/assets/weapon/awp.js";
 import { KNIFE } from "../../app/assets/weapon/knife.js";
 import { M3 } from "../../app/assets/weapon/m3.js";
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
+import { HUSK } from "../../app/assets/enemies/husk.js";
 
 export const GAME_CONFIG = {
   wave: {
-    baseEnemies: 3,
+    baseEnemies: 30,
     enemiesPerWave: 3,
     maxEnemies: 30
   },
     enemySpawn: {
-    types: ["zombie"]
+    types: ["zombie", "husk"]
   }
 };
 
@@ -50,7 +51,8 @@ export const GAME_ASSETS = {
 
   enemies: {
     types: {
-      zombie: { asset: ZOMBIE }
+      zombie: { asset: ZOMBIE },
+      husk: { asset: HUSK }
     }
   }
 };
