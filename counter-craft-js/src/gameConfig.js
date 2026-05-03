@@ -11,6 +11,7 @@ import { HUSK } from "../../app/assets/enemies/husk.js";
 import { CREEPER } from "../../app/assets/enemies/creeper.js";
 import { ENDERMAN } from "../../app/assets/enemies/enderman.js";
 import { CAVESPIDER } from "../../app/assets/enemies/caveSpider.js";
+import { CHICKENJOCKEY } from "../../app/assets/enemies/chickenJockey.js";
 
 export const GAME_CONFIG = {
   wave: {
@@ -19,7 +20,7 @@ export const GAME_CONFIG = {
     maxEnemies: 30
   },
     enemySpawn: {
-    types: [/*"zombie", "husk", "creeper",*/ "enderman", "caveSpider"]
+    types: ["zombie", "husk", "creeper", "enderman", "caveSpider", "chickenJockey"]
   }
 };
 
@@ -61,6 +62,7 @@ export const GAME_ASSETS = {
       creeper: { asset: CREEPER },
       enderman: { asset: ENDERMAN },
       caveSpider: { asset: CAVESPIDER },
+      chickenJockey: { asset: CHICKENJOCKEY },
     }
   }
 };
