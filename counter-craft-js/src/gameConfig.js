@@ -5,6 +5,7 @@ import { P90 } from "../../app/assets/weapon/p90.js";
 import { AWP } from "../../app/assets/weapon/awp.js";
 import { KNIFE } from "../../app/assets/weapon/knife.js";
 import { M3 } from "../../app/assets/weapon/m3.js";
+import { M249 } from "../../app/assets/weapon/m249.js";
 //enemies
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 import { HUSK } from "../../app/assets/enemies/husk.js";
@@ -42,7 +43,6 @@ skyColorTop: 0x6fb8ff,
 skyColorMid: 0xa8d8ff,
 skyColorHorizon: 0xd8f0ff,
 fogColor: 0xd8f0ff,
-cloudColor: 0xffffff,
 sunColor: 0xfff4b0,
 sunGlowColor: 0xffe7a0,
 fogNear: 10,
@@ -55,7 +55,7 @@ weaponSlots: [
 { id: 2, asset: P90, owned: false },
 { id: 3, asset: AWP, owned: false },
 { id: 4, asset: M3, owned: false },
-{ id: 5, asset: AK47, owned: false },
+{ id: 5, asset: M249, owned: false },
 { id: 6, asset: AK47, owned: false },
 { id: 7, asset: AK47, owned: false },
 { id: 8, asset: AK47, owned: false },
