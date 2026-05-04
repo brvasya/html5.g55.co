@@ -7,6 +7,7 @@ import { KNIFE } from "../../app/assets/weapon/knife.js";
 import { M3 } from "../../app/assets/weapon/m3.js";
 import { M249 } from "../../app/assets/weapon/m249.js";
 import { DEAGLE } from "../../app/assets/weapon/deagle.js";
+import { USP } from "../../app/assets/weapon/usp.js";
 //enemies
 import { ZOMBIE } from "../../app/assets/enemies/zombie.js";
 import { HUSK } from "../../app/assets/enemies/husk.js";
@@ -58,7 +59,7 @@ weaponSlots: [
 { id: 4, asset: M3, owned: false },
 { id: 5, asset: M249, owned: false },
 { id: 6, asset: DEAGLE, owned: false },
-{ id: 7, asset: AK47, owned: false },
+{ id: 7, asset: USP, owned: false },
 { id: 8, asset: AK47, owned: false },
 { id: 9, asset: KNIFE, owned: true }
 ],
