@@ -1,28 +1,34 @@
-import { WORLD } from "./assets/world/map.js";
+import { WORLD } from "./assets/world/gm_metro_cso2.js";
 //weapon tier1
-import { PISTOL } from "./assets/weapon/pistol.js";
-import { BURST_PISTOL } from "./assets/weapon/burst_pistol.js";
-import { MAGNUM } from "./assets/weapon/magnum.js";
+import { PISTOL } from "./assets/weapon/v_usp.js";
+import { BURST_PISTOL } from "./assets/weapon/v_glock18.js";
+import { MAGNUM } from "./assets/weapon/v_deagle.js";
 //weapon tier2
-import { SMG } from "./assets/weapon/smg.js";
-import { ASSAULT_RIFLE } from "./assets/weapon/assault_rifle.js";
-import { HEAVY_RIFLE } from "./assets/weapon/heavy_rifle.js";
+import { SMG } from "./assets/weapon/v_p90.js";
+import { ASSAULT_RIFLE } from "./assets/weapon/v_ak47.js";
+import { HEAVY_RIFLE } from "./assets/weapon/v_aug.js";
 //weapon tier3
-import { SHOTGUN } from "./assets/weapon/shotgun.js";
-import { SNIPER_RIFLE } from "./assets/weapon/sniper_rifle.js";
-import { MACHINE_GUN } from "./assets/weapon/machine_gun.js";
+import { SHOTGUN } from "./assets/weapon/v_m3.js";
+import { SNIPER_RIFLE } from "./assets/weapon/v_awp.js";
+import { MACHINE_GUN } from "./assets/weapon/v_m249.js";
 //enemies
-import { ENEMY } from "./assets/enemies/enemy.js";
+import { BONNIE } from "./assets/enemies/bonnie.js";
+import { CHICA } from "./assets/enemies/chica.js";
+import { FOXY } from "./assets/enemies/foxy.js";
+import { FREDDY } from "./assets/enemies/freddy.js";
 
 export const GAME_CONFIG = {
 wave: {
 baseEnemies: 6,
 enemiesPerWave: 3,
-maxEnemies: 30
+maxEnemies: 20
 },
 enemySpawn: {
 types: [
-"enemy"
+"bonnie",
+"chica",
+"foxy",
+"freddy"
 ]
 }
 };
@@ -46,7 +52,10 @@ weaponSlots: [
 
 enemies: {
 types: {
-enemy: { asset: ENEMY }
+bonnie: { asset: BONNIE },
+chica: { asset: CHICA },
+foxy: { asset: FOXY },
+freddy: { asset: FREDDY }
 }
 }
 };

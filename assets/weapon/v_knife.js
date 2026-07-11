@@ -14,6 +14,6 @@ anim: {
 idle: [0, 0],
 shoot: [5, 35]
 },
-model: "./assets/weapon/knife.glb",
-fireSound: "./assets/weapon/knife.ogg"
+model: "./assets/weapon/v_knife.glb",
+fireSound: "./assets/weapon/v_knife.ogg"
 };

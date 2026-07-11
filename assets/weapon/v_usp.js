@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 35],
 reload: [40, 140]
 },
-model: "./assets/weapon/pistol.glb",
-fireSound: "./assets/weapon/pistol.ogg"
+model: "./assets/weapon/v_usp.glb",
+fireSound: "./assets/weapon/v_usp.ogg"
 };

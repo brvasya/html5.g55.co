@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 33],
 reload: [37, 102]
 },
-model: "./assets/weapon/magnum.glb",
-fireSound: "./assets/weapon/magnum.ogg"
+model: "./assets/weapon/v_deagle.glb",
+fireSound: "./assets/weapon/v_deagle.ogg"
 };

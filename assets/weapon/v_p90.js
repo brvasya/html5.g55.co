@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 20],
 reload: [25, 160]
 },
-model: "./assets/weapon/smg.glb",
-fireSound: "./assets/weapon/smg.ogg"
+model: "./assets/weapon/v_p90.glb",
+fireSound: "./assets/weapon/v_p90.ogg"
 };

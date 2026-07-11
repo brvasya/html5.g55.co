@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 21],
 reload: [25, 115]
 },
-model: "./assets/weapon/assault_rifle.glb",
-fireSound: "./assets/weapon/assault_rifle.ogg"
+model: "./assets/weapon/v_ak47.glb",
+fireSound: "./assets/weapon/v_ak47.ogg"
 };

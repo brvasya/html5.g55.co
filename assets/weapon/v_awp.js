@@ -22,6 +22,6 @@ idle: [0, 0],
 shoot: [5, 46],
 reload: [50, 137]
 },
-model: "./assets/weapon/sniper_rifle.glb",
-fireSound: "./assets/weapon/sniper_rifle.ogg"
+model: "./assets/weapon/v_awp.glb",
+fireSound: "./assets/weapon/v_awp.ogg"
 };

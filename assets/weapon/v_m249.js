@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 20],
 reload: [25, 166]
 },
-model: "./assets/weapon/machine_gun.glb",
-fireSound: "./assets/weapon/machine_gun.ogg"
+model: "./assets/weapon/v_m249.glb",
+fireSound: "./assets/weapon/v_m249.ogg"
 };

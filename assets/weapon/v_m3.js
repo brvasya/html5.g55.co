@@ -10,7 +10,7 @@ magazineSize: 1,
 damage: 25,
 fireCooldownMs: 120,
 reloadSpeed: 1,
-pellets: 12,
+pellets: 6,
 spread: 0.1,
 },
 shellEject: {
@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 15],
 reload: [16, 42]
 },
-model: "./assets/weapon/shotgun.glb",
-fireSound: "./assets/weapon/shotgun.ogg"
+model: "./assets/weapon/v_m3.glb",
+fireSound: "./assets/weapon/v_m3.ogg"
 };

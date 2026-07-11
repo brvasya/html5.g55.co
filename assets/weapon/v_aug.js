@@ -22,6 +22,6 @@ idle: [0, 0],
 shoot: [5, 35],
 reload: [40, 172]
 },
-model: "./assets/weapon/heavy_rifle.glb",
-fireSound: "./assets/weapon/heavy_rifle.ogg"
+model: "./assets/weapon/v_aug.glb",
+fireSound: "./assets/weapon/v_aug.ogg"
 };
