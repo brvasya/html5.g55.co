@@ -15,8 +15,6 @@ export function createWorld({ THREE, scene, worldConfig }) {
   const SKY_COLOR_MID = skyConfig.skyColorMid;
   const SKY_COLOR_HORIZON = skyConfig.skyColorHorizon;
   const FOG_COLOR = skyConfig.fogColor;
-  const SUN_COLOR = skyConfig.sunColor;
-  const SUN_GLOW_COLOR = skyConfig.sunGlowColor;
 
   createDaytimeSky();
 
@@ -106,7 +104,6 @@ export function createWorld({ THREE, scene, worldConfig }) {
     scene.fog = new THREE.Fog(FOG_COLOR, skyConfig.fogNear, skyConfig.fogFar);
 
     createGradientSkyDome();
-    createSquareSun();
   }
 
   function createGradientSkyDome() {
@@ -146,43 +143,6 @@ export function createWorld({ THREE, scene, worldConfig }) {
     skyDome.renderOrder = -1000;
     scene.add(skyDome);
     skyObjects.push(skyDome);
-  }
-
-  function createSquareSun() {
-    const sunGroup = new THREE.Group();
-    sunGroup.name = "SquareSun";
-    sunGroup.position.set(160, 185, -320);
-    sunGroup.lookAt(0, 40, 0);
-
-    const glow = new THREE.Mesh(
-      new THREE.PlaneGeometry(82, 82),
-      new THREE.MeshBasicMaterial({
-        color: SUN_GLOW_COLOR,
-        transparent: true,
-        opacity: 0.18,
-        depthWrite: false,
-        fog: false
-      })
-    );
-    glow.name = "SquareSunGlow";
-    glow.renderOrder = -900;
-    sunGroup.add(glow);
-
-    const sun = new THREE.Mesh(
-      new THREE.PlaneGeometry(42, 42),
-      new THREE.MeshBasicMaterial({
-        color: SUN_COLOR,
-        depthWrite: false,
-        fog: false
-      })
-    );
-    sun.name = "SquareSunCore";
-    sun.position.z = 0.1;
-    sun.renderOrder = -899;
-    sunGroup.add(sun);
-
-    scene.add(sunGroup);
-    skyObjects.push(sunGroup);
   }
 
   function getRandomFloorPoint(maxTries = 20) {
