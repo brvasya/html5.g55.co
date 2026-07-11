@@ -2,6 +2,7 @@
   --logo-width: 248px;
   --logo-height: 63px;
   --g55-blue: #0099cc;
+  --preloader: 85px;
 
   position: fixed;
   inset: 0;
@@ -17,7 +18,7 @@
 #preloader::before {
   content: "";
   position: absolute;
-  top: 50%;
+  top: calc(50% - var(--preloader)/2 - 5px);
   left: 50%;
   width: var(--logo-width);
   height: var(--logo-height);
@@ -34,15 +35,12 @@
 
 .preloader-panel {
   position: absolute;
-  top: calc(50% + 15px + var(--logo-height));
-  left: 50%;
-  width: var(--logo-width);
-  height: var(--logo-height);
+  inset: auto 10px 10px;
+  height: var(--preloader);
   padding: 35px 10px 10px;
   background: #222;
   border-radius: 5px;
   box-sizing: border-box;
-  transform: translate(-50%, -50%);
 }
 
 .preloader-title,
@@ -59,7 +57,7 @@
 .preloader-bar {
   height: 100%;
   background: #111;
-  border: 3px solid #111;
+  border: 5px solid #111;
   border-radius: 5px;
   box-sizing: border-box;
   overflow: hidden;
