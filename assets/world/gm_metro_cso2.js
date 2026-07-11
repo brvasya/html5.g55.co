@@ -8,8 +8,6 @@ skyColorTop: 0x6fb8ff,
 skyColorMid: 0xa8d8ff,
 skyColorHorizon: 0xd8f0ff,
 fogColor: 0xd8f0ff,
-sunColor: 0xfff4b0,
-sunGlowColor: 0xffe7a0,
 fogNear: 10,
 fogFar: 100
 },
