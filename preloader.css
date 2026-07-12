@@ -1,7 +1,6 @@
 #preloader {
   --logo-width: 248px;
   --logo-height: 63px;
-  --g55-blue: #0099cc;
   --preloader: 85px;
 
   position: fixed;
