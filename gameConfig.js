@@ -18,6 +18,8 @@ import { FOXY } from "./assets/enemies/foxy.js";
 import { FREDDY } from "./assets/enemies/freddy.js";
 
 export const GAME_CONFIG = {
+gameTitle: "GAME_TITLE",
+
 wave: {
 baseEnemies: 6,
 enemiesPerWave: 3,
