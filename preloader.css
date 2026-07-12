@@ -10,7 +10,6 @@
   background: radial-gradient(#666, #333);
   color: #fff;
   font: bold 13px Roboto, sans-serif;
-  text-transform: uppercase;
   overflow: hidden;
   transition: opacity .35s ease, visibility .35s ease;
 }
@@ -72,7 +71,7 @@
 
 .preloader-title::after {
   content: "";
-  animation: loading 2s steps(1) infinite;
+  animation: loading 1s steps(1) infinite;
 }
 
 @keyframes loading {
