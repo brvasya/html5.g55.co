@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [0, 20],
 reload: [21, 96]
 },
-model: "./assets/weapon/v_glock18.glb",
-fireSound: "./assets/weapon/v_glock18.ogg"
+model: "./assets/weapon/cscz/v_glock18.glb",
+fireSound: "./assets/weapon/cscz/v_glock18.ogg"
 };

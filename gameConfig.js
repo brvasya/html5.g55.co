@@ -1,16 +1,16 @@
 import { WORLD } from "./assets/world/gm_metro_cso2_night.js";
 //weapon tier1
-import { PISTOL } from "./assets/weapon/v_usp.js";
-import { BURST_PISTOL } from "./assets/weapon/v_glock18.js";
-import { MAGNUM } from "./assets/weapon/v_deagle.js";
+import { PISTOL } from "./assets/weapon/cscz/v_usp.js";
+import { BURST_PISTOL } from "./assets/weapon/cscz/v_glock18.js";
+import { MAGNUM } from "./assets/weapon/cscz/v_deagle.js";
 //weapon tier2
-import { SMG } from "./assets/weapon/v_p90.js";
-import { ASSAULT_RIFLE } from "./assets/weapon/v_ak47.js";
-import { HEAVY_RIFLE } from "./assets/weapon/v_aug.js";
+import { SMG } from "./assets/weapon/cscz/v_p90.js";
+import { ASSAULT_RIFLE } from "./assets/weapon/cscz/v_ak47.js";
+import { HEAVY_RIFLE } from "./assets/weapon/cscz/v_aug.js";
 //weapon tier3
-import { SHOTGUN } from "./assets/weapon/v_m3.js";
-import { SNIPER_RIFLE } from "./assets/weapon/v_awp.js";
-import { MACHINE_GUN } from "./assets/weapon/v_m249.js";
+import { SHOTGUN } from "./assets/weapon/cscz/v_m3.js";
+import { SNIPER_RIFLE } from "./assets/weapon/cscz/v_awp.js";
+import { MACHINE_GUN } from "./assets/weapon/cscz/v_m249.js";
 //enemies
 import { BONNIE } from "./assets/enemies/bonnie.js";
 import { CHICA } from "./assets/enemies/chica.js";

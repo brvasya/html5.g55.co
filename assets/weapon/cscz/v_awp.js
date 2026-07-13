@@ -22,6 +22,6 @@ idle: [0, 0],
 shoot: [5, 46],
 reload: [50, 137]
 },
-model: "./assets/weapon/v_awp.glb",
-fireSound: "./assets/weapon/v_awp.ogg"
+model: "./assets/weapon/cscz/v_awp.glb",
+fireSound: "./assets/weapon/cscz/v_awp.ogg"
 };

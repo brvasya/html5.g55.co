@@ -21,6 +21,6 @@ idle: [0, 0],
 shoot: [5, 15],
 reload: [16, 42]
 },
-model: "./assets/weapon/v_m3.glb",
-fireSound: "./assets/weapon/v_m3.ogg"
+model: "./assets/weapon/cscz/v_m3.glb",
+fireSound: "./assets/weapon/cscz/v_m3.ogg"
 };
