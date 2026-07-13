@@ -1,6 +1,6 @@
 import { WORLD } from "./assets/world/gm_metro_cso2_night.js";
 //weapon tier1
-import { PISTOL } from "./assets/weapon/cscz/v_usp.js";
+import { PISTOL } from "./assets/weapon/bo2/c_bo2_57.js";
 import { BURST_PISTOL } from "./assets/weapon/cscz/v_glock18.js";
 import { MAGNUM } from "./assets/weapon/cscz/v_deagle.js";
 //weapon tier2
