@@ -1,4 +1,4 @@
-import { WORLD } from "./assets/world/gm_metro_cso2.js";
+import { WORLD } from "./assets/world/gm_metro_cso2_night.js";
 //weapon tier1
 import { PISTOL } from "./assets/weapon/v_usp.js";
 import { BURST_PISTOL } from "./assets/weapon/v_glock18.js";
@@ -18,7 +18,7 @@ import { FOXY } from "./assets/enemies/foxy.js";
 import { FREDDY } from "./assets/enemies/freddy.js";
 
 export const GAME_CONFIG = {
-gameTitle: "GAME_TITLE",
+gameTitle: "FNAF Shooter: Metro",
 
 wave: {
 baseEnemies: 6,
