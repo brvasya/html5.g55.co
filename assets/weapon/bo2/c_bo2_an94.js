@@ -1,0 +1,26 @@
+export const ASSAULT_RIFLE = {
+name: "Assault Rifle",
+view: {
+posOffset: [0, -1, 2],
+rotOffset: [0, -Math.PI, 0],
+scl: [1, 1, 1]
+},
+behavior: {
+magazineSize: 30,
+damage: 35,
+fireCooldownMs: 120,
+reloadSpeed: 3,
+pellets: 1,
+spread: 0.05,
+},
+shellEject: {
+boneName: "tag_bullet",
+},
+anim: {
+idle: [0, 0],
+shoot: [0, 15],
+reload: [20, 230]
+},
+model: "./assets/weapon/bo2/c_bo2_an94.glb",
+fireSound: "./assets/weapon/bo2/c_bo2_an94.ogg"
+};
