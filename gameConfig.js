@@ -1,4 +1,4 @@
-import { WORLD } from "./assets/world/gm_metro_cso2.js";
+import { WORLD } from "./assets/world/gm_digitalcircus.js";
 //weapon tier1
 import { PISTOL } from "./assets/weapon/bo2/c_bo2_tac45.js";
 import { BURST_PISTOL } from "./assets/weapon/bo2/c_bo2_kard.js";
@@ -16,7 +16,7 @@ import { JAX } from "./assets/enemies/jax.js";
 import { POMNI } from "./assets/enemies/pomni.js";
 
 export const GAME_CONFIG = {
-gameTitle: "FNAF Shooter: Metro",
+gameTitle: "Digital Circus Shooter",
 
 wave: {
 baseEnemies: 6,
