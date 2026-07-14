@@ -472,6 +472,7 @@ export function createWeaponSystem({ THREE, weaponScene, weaponCamera, playerVel
 
       makeMaterialCrisp(THREE, object.material);
       registerFlashMaterial(object.material);
+      [].concat(object.material).forEach(material => { material.alphaTest = 0.5; material.needsUpdate = true; });
     });
 
     rig.add(model);
