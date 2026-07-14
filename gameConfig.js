@@ -1,4 +1,4 @@
-import { WORLD } from "./assets/world/gm_metro_cso2_night.js";
+import { WORLD } from "./assets/world/gm_metro_cso2.js";
 //weapon tier1
 import { PISTOL } from "./assets/weapon/bo2/c_bo2_tac45.js";
 import { BURST_PISTOL } from "./assets/weapon/bo2/c_bo2_kard.js";
@@ -12,10 +12,8 @@ import { SHOTGUN } from "./assets/weapon/bo2/c_bo2_870.js";
 import { SNIPER_RIFLE } from "./assets/weapon/bo2/c_bo2_xpr50.js";
 import { MACHINE_GUN } from "./assets/weapon/bo2/c_bo2_deathmachine1.js";
 //enemies
-import { BONNIE } from "./assets/enemies/bonnie.js";
-import { CHICA } from "./assets/enemies/chica.js";
-import { FOXY } from "./assets/enemies/foxy.js";
-import { FREDDY } from "./assets/enemies/freddy.js";
+import { JAX } from "./assets/enemies/jax.js";
+import { POMNI } from "./assets/enemies/pomni.js";
 
 export const GAME_CONFIG = {
 gameTitle: "FNAF Shooter: Metro",
@@ -27,10 +25,8 @@ maxEnemies: 20
 },
 enemySpawn: {
 types: [
-"bonnie",
-"chica",
-"foxy",
-"freddy"
+"jax",
+"pomni"
 ]
 }
 };
@@ -54,10 +50,8 @@ weaponSlots: [
 
 enemies: {
 types: {
-bonnie: { asset: BONNIE },
-chica: { asset: CHICA },
-foxy: { asset: FOXY },
-freddy: { asset: FREDDY }
+jax: { asset: JAX },
+pomni: { asset: POMNI }
 }
 }
 };
