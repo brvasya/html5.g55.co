@@ -1,22 +1,21 @@
 import { WORLD } from "./assets/world/gm_digitalcircus.js";
 //weapon tier1
-import { PISTOL } from "./assets/weapon/bo2/c_bo2_tac45.js";
+import { PISTOL } from "./assets/weapon/bo2/c_bo2_57.js";
 import { BURST_PISTOL } from "./assets/weapon/bo2/c_bo2_kard.js";
 import { MAGNUM } from "./assets/weapon/bo2/c_bo2_executioner1.js";
 //weapon tier2
-import { SMG } from "./assets/weapon/bo2/c_bo2_vector.js";
+import { SMG } from "./assets/weapon/bo2/c_bo2_pdw57.js";
 import { ASSAULT_RIFLE } from "./assets/weapon/bo2/c_bo2_an94.js";
 import { HEAVY_RIFLE } from "./assets/weapon/bo2/c_bo2_scarh.js";
 //weapon tier3
-import { SHOTGUN } from "./assets/weapon/bo2/c_bo2_870.js";
+import { SHOTGUN } from "./assets/weapon/bo2/c_bo2_ksg12.js";
 import { SNIPER_RIFLE } from "./assets/weapon/bo2/c_bo2_xpr50.js";
 import { MACHINE_GUN } from "./assets/weapon/bo2/c_bo2_deathmachine1.js";
 //enemies
-import { JAX } from "./assets/enemies/jax.js";
-import { POMNI } from "./assets/enemies/pomni.js";
+import { HUGGY_FN } from "./assets/enemies/huggy_fn.js";
 
 export const GAME_CONFIG = {
-gameTitle: "Digital Circus Shooter",
+gameTitle: "Poppy Strike 6",
 
 wave: {
 baseEnemies: 6,
@@ -25,8 +24,7 @@ maxEnemies: 20
 },
 enemySpawn: {
 types: [
-"jax",
-"pomni"
+"huggy_fn"
 ]
 }
 };
@@ -50,8 +48,7 @@ weaponSlots: [
 
 enemies: {
 types: {
-jax: { asset: JAX },
-pomni: { asset: POMNI }
+huggy_fn: { asset: HUGGY_FN }
 }
 }
 };
