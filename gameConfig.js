@@ -1,4 +1,4 @@
-import { WORLD } from "./assets/world/gm_digitalcircus.js";
+import { WORLD } from "./assets/world/gm_office_cso2_night.js";
 //weapon tier1
 import { PISTOL } from "./assets/weapon/bo2/c_bo2_57.js";
 import { BURST_PISTOL } from "./assets/weapon/bo2/c_bo2_kard.js";

@@ -1,6 +1,6 @@
 export const HUGGY_FN = {
 rotation: [0, 0, 0],
-scale: [1.7, 1.7, 1.7],
+scale: [1.8, 1.8, 1.8],
 enemyHealth: 100,
 enemySpeed: 1.5,
 enemyDamage: 10,
