@@ -310,7 +310,7 @@ function setupOverlayButtons() {
 
   dom.moreGamesButton = document.createElement("a");
   dom.moreGamesButton.id = "moreGamesButton";
-  dom.moreGamesButton.href = `https://g55.co/?utm_source=${encodeURIComponent(document.title)}&utm_medium=referral&utm_campaign=moreGamesButton`;
+  dom.moreGamesButton.href = `https://g55.co/?utm_source=moreGamesButton&utm_medium=${encodeURIComponent(document.title)}`;
   dom.moreGamesButton.textContent = "More Games";
   dom.moreGamesButton.className = "cs-button";
   dom.moreGamesButton.target = "_blank";
