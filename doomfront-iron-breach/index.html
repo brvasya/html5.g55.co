@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#121511">
+  <meta name="description" content="Fight through industrial bunkers, badlands, a spaceport, and the Overlord's fortress in Doomfront: Iron Breach, a sci-fi first-person shooter with six enemy types, five animated weapons, and five expansive sectors.">
+  <title>Doomfront: Iron Breach</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23121511'/%3E%3Cpath d='M14 12h36v10H38v20h12v10H14V42h12V22H14z' fill='%23e0a24a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=22">
+</head>
+<body>
+  <main id="game" aria-label="Doomfront: Iron Breach first-person shooter">
+    <canvas id="view" tabindex="0" aria-label="Game view. WASD to move, mouse or arrow keys to turn, click or Space to fire."></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+    <div id="topbar"><div class="sector"><span class="status-light"></span><span id="sectorNumber">SECTOR 01</span><b id="sectorName">FOUNDRY</b></div><div class="top-actions"><button id="sound" title="Toggle sound" aria-label="Toggle sound">SOUND ON</button><button id="fullscreen" title="Fullscreen" aria-label="Enter fullscreen">⛶</button><button id="pause" title="Pause (Esc)" aria-label="Pause game">Ⅱ</button></div></div>
+    <div id="mission"><span class="mission-mark">◇</span><span id="objective">CLEAR THE FOUNDRY</span><b id="killCounter">0 / 25</b></div>
+    <div id="extractionHud" hidden><svg id="extractionArrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 27 27 16 21 5 27Z"/></svg><div><span>EXTRACTION <b id="extractionDistance"></b></span><small id="extractionTurn">STRAIGHT AHEAD</small></div></div>
+    <div id="bossHud" hidden><span>OVERLORD</span><i><em id="bossBar"></em></i></div>
+    <div id="hostilesHud" class="hud-cell kills"><span class="hud-label">HOSTILES</span><div class="hud-value"><b id="remaining">25</b></div><small id="timer">00:00</small></div>
+    <div id="message" role="status" aria-live="polite"></div>
+    <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div id="hitmarker" aria-hidden="true">×</div>
+    <div id="hud">
+      <div class="hud-group hud-left">
+        <div class="hud-cell health"><span class="hud-label">HEALTH</span><div class="hud-value"><b id="health">100</b><small>%</small></div><i><em id="healthbar"></em></i></div>
+        <div class="hud-cell armor"><span class="hud-label">ARMOR</span><div class="hud-value"><b id="armor">50</b><small>%</small></div><i><em id="armorbar"></em></i></div>
+      </div>
+      <div class="hud-group hud-right">
+        <div class="hud-cell ammo"><div class="ammo-heading"><span id="weaponName">PUMP SHOTGUN</span><small id="weaponHint">01 / 05</small></div><div class="hud-value"><b id="ammo">32</b><small id="ammoReserve">SHELLS</small></div><i><em id="ammobar"></em></i></div>
+      </div>
+    </div>
+    <div id="touchControls"><div id="joystick" aria-label="Movement joystick"><span id="stick"></span></div><div id="lookZone" aria-label="Swipe to look"></div><button id="touchSwitch" aria-label="Switch weapon">1 / 5</button><button id="touchFire" aria-label="Fire weapon">FIRE</button></div>
+    <div id="overlay" class="overlay">
+      <div class="menu-panel" id="menuPanel">
+        <div class="eyebrow"><span aria-hidden="true"></span><img class="publisher-logo" src="assets/g55-co-logo.png" width="248" height="63" alt="G55.CO"><span aria-hidden="true"></span></div>
+        <h1><span class="series-title">DOOMFRONT:</span> <strong class="game-subtitle">IRON BREACH</strong></h1>
+        <div class="menu-subtitle" id="menuSubtitle">OUTPOST 09 · CONTAINMENT LOST</div>
+        <div class="menu-divider"></div>
+        <p id="menuText">Storm five sectors, from industrial bunkers to the badlands and spaceport. Bring down the Overlord.</p>
+        <div class="menu-actions">
+          <div class="start-action">
+            <button id="start" class="primary" disabled><span id="startLabel">LOADING 0%</span><span aria-hidden="true">▸</span></button>
+            <div id="loadTrack"><span id="loadProgress"></span></div>
+          </div>
+          <a id="moreGamesButton" class="primary" href="https://g55.co/" target="_blank" rel="noopener">MORE GAMES</a>
+        </div>
+        <div id="controls"><div><kbd>W A S D</kbd><span>MOVE</span></div><div><kbd>MOUSE</kbd><span>AIM</span></div><div><kbd>CLICK</kbd><span>FIRE</span></div><div><kbd>1 — 5</kbd><span>WEAPON</span></div></div>
+        <div class="extra-controls">SHIFT — RUN &nbsp; · &nbsp; R — RELOAD &nbsp; · &nbsp; M — MAP &nbsp; · &nbsp; ESC — PAUSE</div>
+      </div>
+      <div class="overlay-footer"><span>SECTOR 01 / FOUNDRY</span><span>DOOMFRONT: IRON BREACH</span></div>
+    </div>
+    <div id="bottomHint">WASD <span>MOVE</span> &nbsp; MOUSE <span>AIM</span> &nbsp; CLICK / SPACE <span>FIRE</span> &nbsp; 1 — 5 <span>WEAPON</span> &nbsp; M <span>MAP</span></div>
+  </main>
+  <script src="core.js?v=20"></script>
+  <script src="game.js?v=20"></script>
+</body>
+</html>
