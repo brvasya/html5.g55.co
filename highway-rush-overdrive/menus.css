@@ -1,0 +1,311 @@
+/* Menus occupy the viewport, with actions in a separate bottom row. */
+.screen{display:grid;place-items:center}
+.screen.shade{background:linear-gradient(115deg,#0a1028ed,#101c32e8)}
+#menu{background:linear-gradient(90deg,#0d142ced,#141b3280 48%,#0d142cdc)}
+.screen .menu-content,.screen .modal{width:100%;height:100%;max-width:1160px;max-height:none;min-width:0;min-height:0;margin:0 auto;padding:clamp(18px,4vh,44px) clamp(22px,4vw,64px) max(64px,env(safe-area-inset-bottom));overflow:visible}
+.screen .modal{border:0;border-radius:0;background:none;box-shadow:none}
+.screen .menu-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:'identity details' 'actions actions';gap:20px clamp(24px,6vw,90px);align-items:center}
+.menu-identity{grid-area:identity;min-width:0}
+.menu-details{grid-area:details;min-width:0;width:100%;max-width:420px;justify-self:end;display:grid;gap:clamp(12px,2.8vh,24px)}
+.menu-actions{grid-area:actions}
+#menu .brand{width:clamp(70px,8vw,100px);margin:0 0 clamp(14px,3vh,28px)}
+#menu .game-title h1{font-size:clamp(44px,min(7.6vw,12vh),100px)}
+#menu .game-title h1 span{margin-top:12px}
+#menu .tagline{margin:20px 0 0;line-height:1.4}
+#menu .menu-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:0;font-size:12px;letter-spacing:.035em;line-height:1.3}
+#menu .menu-stats b{font-size:clamp(18px,2.4vw,28px);overflow-wrap:anywhere}
+#menu .menu-goal{margin:0;padding-left:12px}
+#menu .menu-goal b{font-size:18px;line-height:1.3}
+#menu .garage-progress{max-width:none;margin:0;font-size:12px;line-height:1.5}
+.screen-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;width:100%;max-width:760px;justify-self:center;align-self:end;min-width:0}
+.screen-actions .primary,.screen-actions .more-games{width:100%;max-width:none;min-height:52px;margin:0;padding:0 20px;font-size:15px;letter-spacing:.06em}
+.screen-actions>.controls-copy,.screen-actions>.text-actions{grid-column:1/-1;justify-content:center;align-items:center;max-width:none;margin:0;gap:10px 20px;line-height:1.3}
+.screen-actions .controls-copy{font-size:12px}
+.screen-actions .controls-copy button,.screen-actions .text-actions button{font-size:14px;padding:4px 0}
+.screen-actions kbd{font-size:11px}
+.screen .pause-layout{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:24px}
+.pause-heading{align-self:center}
+.screen .modal h2{font-size:clamp(34px,8vh,72px);margin:12px 0 16px;line-height:1.05}
+.screen .end-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:'summary progress' 'actions actions';align-items:center;gap:24px clamp(24px,5vw,70px)}
+.end-summary{grid-area:summary;min-width:0}
+.end-progress{grid-area:progress;min-width:0;text-align:left;line-height:1.45}
+.end-actions{grid-area:actions}
+.end-layout .end-level{margin:0 0 14px;font-size:14px}
+.end-layout .end-score{font-size:clamp(40px,10vh,94px);margin:0 0 20px;overflow-wrap:anywhere}
+.end-layout .end-stats{font-size:12px;gap:12px}
+.end-layout .end-stats b{font-size:clamp(18px,2.5vw,28px);overflow-wrap:anywhere}
+.end-layout .challenge-result{margin:0;padding:16px 0;font-size:18px;line-height:1.4}
+.end-layout #end-unlock{margin:14px 0 0;max-width:none;font-size:14px}
+.end-layout #end-tip{margin:18px 0 0;font-size:16px;line-height:1.5;color:#c5d3e8}
+.screen .help-layout{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:20px;text-align:left}
+.help-heading{text-align:center}
+.help-heading h2{margin:8px 0 0!important}
+.help-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 36px;align-content:center;min-width:0;min-height:0}
+.help-content>div{min-width:0}
+.help-content h3{font-size:14px;letter-spacing:.06em;color:var(--cyan);margin:0 0 8px;line-height:1.3}
+.help-content p{font-size:16px;line-height:1.45;margin:0;color:#c9d6e9}
+.help-content .help-pickups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin:0}
+.help-content .help-pickups p{font-size:14px;line-height:1.4}
+.help-content .help-pickups b{font-size:12px;margin-bottom:2px}
+.help-content .help-safety{grid-column:1/-1;border-top:1px solid #ffffff26;padding-top:14px;font-size:14px}
+.help-layout #help-close{justify-self:center;margin:0;width:min(100%,335px);min-height:48px}
+#game[data-screen]:not([data-screen='playing']) .utility{top:auto;bottom:max(16px,env(safe-area-inset-bottom));right:max(20px,env(safe-area-inset-right));flex-direction:row}
+#menu .menu-footer{bottom:24px;left:clamp(22px,4vw,64px);right:130px;font-size:10px}
+
+@media(orientation:portrait){
+ .screen .menu-content,.screen .end-layout{grid-template-columns:minmax(0,1fr);gap:14px;max-width:560px;padding:clamp(16px,3vh,30px) 24px 64px}
+ .screen .menu-content{grid-template-areas:'identity' 'details' 'actions';grid-template-rows:auto minmax(0,1fr) auto}
+ .menu-identity{text-align:center}
+ #menu .brand{width:80px;margin-bottom:12px}
+ #menu .game-title{transform-origin:center}
+ #menu .game-title h1{font-size:clamp(42px,min(16vw,9vh),74px)}
+ #menu .game-title h1 span{margin-top:8px}
+ #menu .tagline{margin-top:12px;font-size:12px}
+ .menu-details{justify-self:center;gap:12px;max-width:400px}
+ #menu .menu-goal b{font-size:16px}
+ #menu .menu-stats b{font-size:22px;margin-top:4px}
+ .screen-actions{gap:10px 12px}
+ .screen-actions .primary,.screen-actions .more-games{min-height:46px;padding:0 14px;font-size:14px;letter-spacing:.025em}
+ .screen-actions .primary span,.screen-actions .more-games span{font-size:23px}
+ .screen-actions>.controls-copy,.screen-actions>.text-actions{gap:6px 12px}
+ .screen-actions .controls-copy{font-size:11px}
+ .screen .end-layout{grid-template-areas:'summary' 'progress' 'actions';grid-template-rows:minmax(0,1fr) auto auto}
+ .end-layout .end-score{margin-bottom:14px;font-size:clamp(40px,9vh,78px)}
+ .end-layout .end-level{margin-bottom:10px}
+ .end-layout .end-stats b{font-size:22px}
+ .end-layout .challenge-result{font-size:16px;padding:10px 0}
+ .end-layout #end-unlock{font-size:12px;margin-top:9px}
+ .end-layout #end-tip{font-size:14px;margin-top:10px}
+ .screen .help-layout{padding:18px 22px 64px;gap:14px}
+ .help-content{gap:16px 18px}
+ .help-content p{font-size:14px;line-height:1.4}
+ .help-content .help-pickups{grid-template-columns:1fr;gap:5px}
+ .help-content .help-pickups p{font-size:14px;line-height:1.3}
+ .help-content .help-pickups b{display:inline;font-size:12px;margin:0 5px 0 0}
+ .help-content .help-safety{padding-top:10px;line-height:1.35}
+ #menu .menu-footer span:first-child{display:none}
+}
+
+@media(max-height:600px){
+ .screen .menu-content,.screen .modal{padding-top:16px;padding-bottom:54px;gap:14px 26px}
+ .menu-details{gap:12px}
+ #menu .brand{width:68px;margin-bottom:10px}
+ #menu .tagline{display:none}
+ #menu .menu-goal b{font-size:16px}
+ #menu .menu-stats b{font-size:20px;margin-top:4px}
+ .screen-actions{gap:8px 14px}
+ .screen-actions .primary,.screen-actions .more-games{min-height:42px;font-size:14px;padding:0 16px}
+ .screen-actions>.controls-copy,.screen-actions>.text-actions{gap:6px 14px}
+ .screen-actions .controls-copy button,.screen-actions .text-actions button{padding:3px 0}
+ .screen .modal h2{font-size:clamp(30px,7vh,44px);margin:7px 0 10px}
+ .end-layout .end-level{font-size:12px;margin-bottom:8px}
+ .end-layout .end-score{font-size:clamp(36px,9vh,54px);margin-bottom:14px}
+ .end-layout .end-stats b{font-size:20px;margin-top:4px}
+ .end-layout .challenge-result{font-size:14px;padding:10px 0}
+ .end-layout #end-unlock{font-size:12px;margin-top:9px}
+ .end-layout #end-tip{font-size:14px;margin-top:12px}
+ .help-content{gap:12px 24px}
+ .help-content p{font-size:14px;line-height:1.35}
+ .help-content .help-pickups p{font-size:14px}
+ .help-layout #help-close{min-height:40px;font-size:14px}
+ #menu .menu-footer{bottom:18px}
+}
+
+@media(max-height:470px) and (orientation:landscape){
+ .screen .menu-content,.screen .modal{padding:12px 24px 48px;gap:10px 28px}
+ #menu .game-title h1{font-size:clamp(36px,11vh,52px)}
+ #menu .game-title h1 span{margin-top:8px}
+ .menu-details{gap:8px;max-width:360px}
+ #menu .menu-stats{gap:10px;font-size:12px}
+ #menu .menu-stats b{font-size:18px;margin-top:2px}
+ #menu .menu-goal b{font-size:14px;margin-top:3px}
+ #menu .garage-progress{line-height:1.3}
+ .screen-actions{max-width:680px;gap:7px 14px}
+ .screen-actions .primary,.screen-actions .more-games{min-height:38px}
+ .screen-actions .primary span,.screen-actions .more-games span{font-size:24px}
+ .end-layout .end-score{font-size:38px;margin-bottom:10px}
+ .end-layout .end-stats{font-size:12px;gap:8px}
+ .end-layout .end-stats b{font-size:18px}
+ .end-layout .end-level{margin-bottom:8px}
+ .screen .help-layout{gap:10px;padding-left:16px;padding-right:16px}
+ .help-heading .eyebrow{display:none}
+ .help-heading h2{font-size:28px;margin:0!important}
+ .help-content{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+ .help-content h3{font-size:13px;letter-spacing:.015em;margin-bottom:6px}
+ .help-content p{font-size:14px;line-height:1.3}
+ .help-content .help-pickups{grid-template-columns:1fr;gap:5px}
+ .help-content .help-pickups p{font-size:13px;line-height:1.3}
+ .help-content .help-pickups b{display:inline;font-size:12px;margin:0 3px 0 0}
+ .help-content .help-safety{font-size:13px;padding-top:8px}
+ .help-layout #help-close{min-height:36px}
+ #menu .menu-footer{display:none}
+ #game[data-screen]:not([data-screen='playing']) .utility{bottom:10px;right:18px}
+}
+
+@media(max-height:600px) and (orientation:portrait){
+ .screen .menu-content,.screen .end-layout,.screen .help-layout{padding:12px 20px 54px;gap:10px}
+ #menu .game-title h1{font-size:clamp(36px,8vh,48px)}
+ #menu .brand{width:64px;margin-bottom:8px}
+ .menu-details{gap:9px}
+ .screen-actions>.controls-copy>span{display:none}
+ .screen-actions .primary,.screen-actions .more-games{padding:0 12px;min-height:40px;letter-spacing:0}
+ .help-heading .eyebrow{display:none}
+ .help-heading h2{font-size:30px;margin:0!important}
+ .help-content{gap:10px 14px}
+ .help-content h3{font-size:13px;letter-spacing:.02em;margin-bottom:5px}
+ .help-content p,.help-content .help-pickups p{font-size:14px;line-height:1.3}
+ .help-content .help-safety{font-size:13px;padding-top:8px}
+ #menu .menu-footer{display:none}
+}
+
+@media(max-height:360px) and (orientation:landscape){
+ .screen .menu-content,.screen .modal{padding:6px 18px 42px;gap:6px 20px}
+ #menu .brand{width:56px;margin-bottom:7px}
+ #menu .game-title h1{font-size:32px}
+ #menu .game-title h1 span{margin-top:6px}
+ .menu-details{gap:5px}
+ #menu .menu-stats b{font-size:17px}
+ #menu .menu-goal span{font-size:12px}
+ #menu .menu-goal b{font-size:14px;margin-top:2px}
+ .screen-actions{gap:5px 12px}
+ .screen-actions .primary,.screen-actions .more-games{min-height:34px}
+ .screen-actions>.controls-copy>span{display:none}
+ .screen .modal h2{font-size:28px;margin:5px 0 7px}
+ .end-layout .end-score{font-size:34px;margin-bottom:8px}
+ .end-layout .end-stats b{font-size:17px}
+ .end-layout .challenge-result{padding:7px 0}
+ .end-layout #end-unlock,.end-layout #end-tip{margin-top:7px;line-height:1.3}
+ .help-layout .help-heading h2{font-size:22px}
+ .help-content{gap:6px 12px}
+ .help-content h3{font-size:12px;margin-bottom:4px;line-height:1.2}
+ .help-content p,.help-content .help-pickups p,.help-content .help-safety{font-size:12px;line-height:1.2}
+ .help-content .help-pickups{gap:4px}
+ .help-content .help-safety{padding-top:5px}
+ .help-layout #help-close{min-height:30px}
+ #game[data-screen]:not([data-screen='playing']) .utility{bottom:6px}
+}
+
+/* Four visible car choices share the screen with records and the next challenge. */
+#menu .menu-content{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:20px clamp(24px,5vw,64px)}
+#menu .menu-identity{display:grid;gap:clamp(16px,3vh,28px)}
+#menu .brand{margin:0;width:clamp(70px,8vw,96px)}
+#menu .game-title h1{font-size:clamp(42px,min(7vw,10vh),86px)}
+#menu .menu-stats{gap:12px}
+#menu .menu-goal{margin:0}
+#menu .garage{max-width:540px;height:100%;max-height:440px;min-height:0;grid-template-rows:auto minmax(0,1fr) auto;gap:12px}
+.garage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;line-height:1.2}
+.garage-heading h2{font-size:14px;letter-spacing:.1em;margin:0}
+#garage-count{font-size:12px;color:#b8c8df;white-space:nowrap}
+.garage-cars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;min-height:0}
+.car-card{position:relative;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;gap:4px;padding:10px 12px;min-width:0;min-height:0;text-align:left;border:1px solid #8aa1c14d;border-radius:6px;background:linear-gradient(150deg,#263751ab,#0b1425dc);transition:background .15s,border-color .15s}
+.car-card:hover{border-color:#d6eaff;background:#2b405be6}
+.car-card.selected{border-color:var(--car-accent);box-shadow:inset 0 0 0 1px var(--car-accent);background:linear-gradient(150deg,#344560dc,#102037f0)}
+.car-card:focus-visible{outline-offset:2px}
+.car-card-heading{display:flex;align-items:baseline;justify-content:space-between;gap:4px;min-width:0;line-height:1.2}
+.car-card-heading strong{font-size:16px;font-style:italic;white-space:nowrap}
+.car-state{font-size:12px;color:#c5d3e7}
+.car-card.selected .car-state{color:var(--car-accent)}
+#menu canvas.car-preview{position:static;inset:auto;display:block;width:100%;height:100%;max-height:80px;min-height:0;align-self:center;object-fit:contain;pointer-events:none;filter:drop-shadow(0 6px 7px #0006)}
+.car-card.locked .car-preview{opacity:.68}
+.car-specs{display:grid;gap:3px;line-height:1.2}
+.car-specs b{font-size:14px;letter-spacing:.02em;color:var(--car-accent)}
+.car-specs>span{font-size:12px;color:#d5dfef}
+.car-unlock{font-size:12px;line-height:1.3;color:#b8c8df;margin-top:3px}
+.car-unlock-track{height:2px;background:#99a9bf30;display:block}
+.car-unlock-track i{display:block;height:100%;background:var(--car-accent);width:0;transition:width .2s}
+#menu .garage-progress{line-height:1.3;min-height:16px;letter-spacing:0}
+
+@media(orientation:portrait){
+ #menu .menu-content{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:14px;padding:16px 22px 60px;max-width:560px}
+ #menu .menu-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;text-align:left}
+ #menu .brand{grid-column:1/-1;justify-self:center;width:70px}
+ #menu .game-title{grid-column:1/-1;text-align:center;transform-origin:center}
+ #menu .game-title h1{font-size:clamp(32px,8.5vw,47px);line-height:.95;white-space:nowrap}
+ #menu .game-title h1 br{display:none}
+ #menu .game-title h1 span{font-size:.3em;margin-top:6px;letter-spacing:.27em}
+ #menu .menu-stats{font-size:12px;gap:8px;line-height:1.2}
+ #menu .menu-stats b{font-size:18px;margin-top:4px}
+ #menu .menu-goal{padding-left:9px;align-self:center}
+ #menu .menu-goal span{font-size:12px;letter-spacing:0;line-height:1.2}
+ #menu .menu-goal b{font-size:14px;line-height:1.25;margin-top:4px}
+ #menu .garage{max-width:460px;gap:9px;align-self:center}
+ .garage-cars{gap:8px}
+ .car-card{padding:8px 10px;gap:4px}
+ .car-card-heading strong{font-size:14px}
+ .car-state{font-size:12px}
+ #menu canvas.car-preview{max-height:70px}
+ .car-specs b{font-size:14px}
+ .car-unlock{margin-top:1px}
+}
+
+@media(max-height:600px) and (orientation:landscape){
+ #menu .menu-content{gap:12px 26px}
+ #menu .menu-identity{gap:14px}
+ #menu .brand{width:64px}
+ #menu .game-title h1{font-size:clamp(34px,9vh,52px)}
+ #menu .garage{gap:8px}
+ .garage-cars{gap:7px}
+ .car-card{padding:7px 9px;gap:3px}
+ .car-card-heading strong{font-size:14px}
+ #menu canvas.car-preview{max-height:48px}
+ .car-specs{gap:2px}
+ .car-unlock{margin-top:0}
+}
+
+@media(max-height:470px) and (orientation:landscape){
+ #menu .menu-content{grid-template-columns:minmax(0,.65fr) minmax(0,1.35fr);padding:10px 22px 46px;gap:8px 24px}
+ #menu .menu-identity{gap:10px}
+ #menu .game-title h1{font-size:34px}
+ #menu .menu-stats{font-size:12px}
+ #menu .menu-stats b{font-size:16px}
+ #menu .menu-goal span{font-size:12px;letter-spacing:0}
+ #menu .menu-goal b{font-size:14px}
+ .garage-heading h2{font-size:13px}
+ .car-card{grid-template-columns:minmax(0,1fr) 72px;grid-template-rows:auto auto auto;align-content:center;gap:4px;padding:7px 9px}
+ .car-card-heading{grid-column:1/-1}
+ #menu canvas.car-preview{grid-column:2;grid-row:2/4;width:72px;height:44px;align-self:center}
+ .car-specs{grid-column:1;grid-row:2}
+ .car-specs b{font-size:12px}
+ .car-unlock{grid-column:1;grid-row:3;font-size:12px}
+ .car-unlock-track{grid-column:1/-1}
+ .car-state{font-size:12px}
+}
+
+@media(max-width:760px) and (max-height:470px) and (orientation:landscape){
+ #menu .menu-content{grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:8px 18px;padding-left:18px;padding-right:18px}
+ .car-card{grid-template-columns:minmax(0,1fr) 48px;padding:6px 7px}
+ #menu canvas.car-preview{width:48px;height:34px}
+ .car-state{font-size:12px}
+ .car-card-heading strong{font-size:14px}
+ .car-specs>span{font-size:12px;line-height:1.2}
+ .car-unlock{grid-column:1/-1}
+}
+
+@media(max-height:650px) and (orientation:portrait){
+ #menu .menu-content{padding:10px 18px 52px;gap:9px}
+ #menu .menu-identity{gap:8px}
+ #menu .brand{width:58px}
+ #menu .game-title h1{font-size:clamp(29px,8.5vw,40px)}
+ #menu .menu-stats b{font-size:16px}
+ #menu .garage{gap:7px}
+ .car-card{padding:7px 8px;gap:3px}
+ #menu canvas.car-preview{max-height:42px}
+ .car-unlock{margin-top:0}
+ .screen-actions>.controls-copy>span{display:none}
+}
+
+@media(max-height:360px) and (orientation:landscape){
+ #menu .menu-content{padding:6px 18px 42px;gap:6px 18px}
+ #menu .menu-identity{gap:7px}
+ #menu .brand{width:52px}
+ #menu .game-title h1{font-size:28px}
+ #menu .game-title h1 span{margin-top:5px}
+ #menu .menu-stats b{font-size:15px}
+ #menu .garage{gap:5px}
+ .garage-cars{gap:5px}
+ .car-card{padding:5px 7px;gap:3px}
+ .car-specs>span{line-height:1.2}
+ .car-unlock{line-height:1.2}
+ #menu .garage{grid-template-rows:auto minmax(0,1fr)}
+ #menu .garage-progress{display:none}
+}

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2,viewport-fit=cover">
+<meta name="theme-color" content="#111523">
+<meta name="description" content="Race through the city, weave through traffic, chain near misses and unleash Overdrive. An arcade highway driving game by G55.CO.">
+<title>Highway Rush: Overdrive</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23111523'/%3E%3Cpath d='M22 9L12 55M42 9l10 46M32 10v10m0 8v10m0 8v9' stroke='%2326e6ef' stroke-width='5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="menus.css">
+</head>
+<body>
+<main id="game" aria-label="Highway Rush: Overdrive">
+<canvas id="world" aria-label="3D highway driving game"></canvas>
+<canvas id="effects" aria-hidden="true"></canvas>
+<div id="vignette"></div>
+<div id="hud" hidden>
+  <div class="top-left"><div class="eyebrow" id="district">RIVERSIDE EXPRESSWAY</div><div class="distance"><span id="distance">0.00</span><small> KM</small></div><div class="level-status"><strong id="level-label">LEVEL 1</strong><span id="next-level">0.60 KM TO LEVEL 2</span></div><div class="level-track" id="level-progress" role="progressbar" aria-label="Distance to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="level-fill"></i></div><div class="run-challenge" id="run-challenge"><div class="challenge-heading"><span id="challenge-label">RUN CHALLENGE</span><b id="challenge-count">0/6</b></div><span id="challenge-title">Make 6 near misses</span><div class="challenge-track" id="challenge-progress" role="progressbar" aria-label="Run challenge" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="challenge-fill"></i></div></div><div id="active-effects"></div></div>
+  <div class="top-right"><div class="score-label">SCORE</div><div id="score">000000</div><div class="best">BEST <span id="hud-best">0</span></div></div>
+  <div class="bottom-left"><div class="meter-label"><strong>OVERDRIVE</strong><span id="boost-hint">SPACE / SHIFT</span></div><button id="boost-button" aria-label="Activate Overdrive"><span id="boost-fill"></span></button></div>
+  <div class="bottom-right"><div class="speed"><span id="speed">0</span><small>km/h</small></div><div id="combo">×1 <span>MULTIPLIER</span></div><div id="combo-track" aria-hidden="true"><i id="combo-fill"></i></div></div>
+  <div id="callout" aria-live="polite"></div>
+  <div id="level-banner" role="status" aria-live="polite"><strong id="level-banner-title">LEVEL 2</strong><span id="level-banner-detail">138 KM/H · TRAFFIC INCREASING</span></div>
+  <button id="pause-button" class="icon-button" aria-label="Pause game">Ⅱ</button>
+</div>
+<div class="screen" id="menu">
+ <div class="menu-content">
+  <div class="menu-identity">
+   <img class="brand" src="assets/g55-logo.png" alt="G55.CO">
+   <div class="game-title"><h1>HIGHWAY <br>RUSH<span>OVERDRIVE</span></h1></div>
+   <div class="menu-stats"><span>PERSONAL BEST <b id="menu-best">0</b></span><span>LONGEST RUN <b id="menu-distance">0.00 km</b></span></div>
+   <div class="menu-goal"><span>RUN CHALLENGE · +500 POINTS</span><b id="menu-challenge">Make 6 near misses</b></div>
+  </div>
+  <div class="menu-details garage">
+   <div class="garage-heading"><h2>YOUR GARAGE</h2><span id="garage-count">1 / 4 UNLOCKED</span></div>
+   <div class="garage-cars" role="group" aria-label="Choose your car">
+    <button class="car-card selected" data-car="crimson-s" aria-pressed="true" style="--car-accent:#ff5262"><span class="car-card-heading"><strong>Crimson S</strong><small class="car-state">SELECTED</small></span><canvas class="car-preview" width="360" height="160" aria-hidden="true"></canvas><span class="car-specs"><b>STANDARD SPEED</b><span>Standard pass points</span></span><span class="car-unlock">STARTER CAR</span><span class="car-unlock-track" aria-hidden="true"><i></i></span></button>
+    <button class="car-card locked" data-car="outlaw-v8" aria-pressed="false" aria-disabled="true" style="--car-accent:#ffad56"><span class="car-card-heading"><strong>Outlaw V8</strong><small class="car-state">LOCKED</small></span><canvas class="car-preview" width="360" height="160" aria-hidden="true"></canvas><span class="car-specs"><b>+10 KM/H</b><span>+5% pass points</span></span><span class="car-unlock">0 / 3 CHALLENGES</span><span class="car-unlock-track" aria-hidden="true"><i></i></span></button>
+    <button class="car-card locked" data-car="apex-gt" aria-pressed="false" aria-disabled="true" style="--car-accent:#5ccaff"><span class="car-card-heading"><strong>Apex GT</strong><small class="car-state">LOCKED</small></span><canvas class="car-preview" width="360" height="160" aria-hidden="true"></canvas><span class="car-specs"><b>+20 KM/H</b><span>+10% pass points</span></span><span class="car-unlock">0 / 8 CHALLENGES</span><span class="car-unlock-track" aria-hidden="true"><i></i></span></button>
+    <button class="car-card locked" data-car="phantom-x" aria-pressed="false" aria-disabled="true" style="--car-accent:#69fff1"><span class="car-card-heading"><strong>Phantom X</strong><small class="car-state">LOCKED</small></span><canvas class="car-preview" width="360" height="160" aria-hidden="true"></canvas><span class="car-specs"><b>+30 KM/H</b><span>+15% pass points</span></span><span class="car-unlock">0 / 15 CHALLENGES</span><span class="car-unlock-track" aria-hidden="true"><i></i></span></button>
+   </div>
+   <p id="garage-progress" class="garage-progress" aria-live="polite">OUTLAW V8: 0 / 3 CHALLENGES</p>
+  </div>
+  <div class="screen-actions menu-actions">
+   <button class="primary" id="start-button">START GAME <span>›</span></button>
+   <a class="more-games" target="_blank" rel="noopener noreferrer">MORE GAMES <span>↗</span></a>
+   <div class="controls-copy"><span><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> STEER</span><span><kbd>SPACE</kbd> BOOST</span><button id="help-button">How to play</button></div>
+  </div>
+ </div>
+ <div class="menu-footer"><span>RIVERSIDE · SUNSET RUN</span><span>10 LEVELS · ENDLESS</span></div>
+</div>
+<div class="screen shade" id="pause-screen" hidden>
+ <section class="modal pause-layout">
+  <div class="pause-heading"><div class="eyebrow">TAKE A BREATHER</div><h2>PAUSED</h2></div>
+  <div class="screen-actions">
+   <button class="primary" id="resume-button">RESUME <span>›</span></button>
+   <a class="more-games" target="_blank" rel="noopener noreferrer">MORE GAMES <span>↗</span></a>
+   <div class="text-actions"><button id="pause-restart">Restart</button><button id="pause-menu">Main menu</button></div>
+  </div>
+ </section>
+</div>
+<div class="screen shade" id="end-screen" hidden>
+ <section class="modal end-layout">
+  <div class="end-summary">
+   <div class="eyebrow" id="end-caption">END OF THE ROAD</div><h2 id="end-title">WIPED OUT</h2>
+   <div class="end-level">LEVEL <b id="end-level">1</b> REACHED</div><div class="end-score" id="end-score">0</div>
+   <div class="end-stats"><span>DISTANCE<b id="end-distance">0</b></span><span>NEAR MISSES<b id="end-misses">0</b></span><span>BEST COMBO<b id="end-combo">×1</b></span></div>
+  </div>
+  <div class="end-progress"><div class="challenge-result" id="end-challenge">Make 6 near misses · 0/6</div><p id="end-unlock" class="garage-progress"></p><p id="end-tip">Find the gap. Make your next run count.</p></div>
+  <div class="screen-actions end-actions">
+   <button class="primary" id="restart-button">TRY AGAIN <span>›</span></button>
+   <a class="more-games" target="_blank" rel="noopener noreferrer">MORE GAMES <span>↗</span></a>
+   <div class="text-actions"><button id="end-menu">Main menu</button></div>
+  </div>
+ </section>
+</div>
+<div class="screen shade" id="help-screen" hidden>
+ <section class="modal help help-layout">
+  <div class="help-heading"><div class="eyebrow">MAKE EVERY CLOSE CALL COUNT</div><h2>HOW TO PLAY</h2></div>
+  <div class="help-content">
+   <div><h3>CONTROLS</h3><p><b>A/D</b> or <b>←/→</b>: steer. <b>S/↓</b>: brake. Touch: drag the road or use arrows.</p></div>
+   <div><h3>OVERDRIVE</h3><p><b>Space/Shift</b> or tap meter to boost. Near misses charge boost and keep combos alive. Boosted passes earn more.</p></div>
+   <div><h3>PROGRESSION</h3><p><b>600 m</b> per level; <b>10 levels</b>, then endless. Challenges add <b>500 points</b>. Finish <b>3 / 8 / 15</b> to unlock faster cars with bonus pass points.</p></div>
+   <div><h3>POWERUPS</h3><div class="help-pickups"><p><b>SHIELD</b> One hit.</p><p><b>FOCUS</b> Slow for 3s.</p><p><b>NITRO</b> +45 charge.</p><p><b>×2</b> Points for 8s.</p></div></div>
+   <p class="help-safety">Traffic changes lanes more often at higher levels. Watch indicators. <b>Boost gives no crash protection.</b></p>
+  </div>
+  <button class="primary" id="help-close">GOT IT <span>›</span></button>
+ </section>
+</div>
+<div id="touch-controls" hidden><button id="touch-left" aria-label="Steer left">‹</button><button id="touch-right" aria-label="Steer right">›</button></div>
+<div class="utility"><button id="mute-button" class="icon-button" aria-label="Mute sound" title="Sound">♪</button><button id="fullscreen-button" class="icon-button" aria-label="Full screen" title="Full screen">⛶</button></div>
+<div id="loader"><div class="loader-title">HIGHWAY RUSH<span>OVERDRIVE</span></div><div class="load-track"><i id="load-bar"></i></div><p id="load-text">Loading the city… 0%</p></div>
+</main>
+<script type="module" src="game.js"></script>
+</body>
+</html>
