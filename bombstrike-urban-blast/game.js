@@ -1,5 +1,5 @@
-import {BombGame,COLS,ROWS,THEMES,NAMES,key} from './engine.mjs';
-import {isGameplayKey,readPlayerInputs} from './input.mjs';
+import {BombGame,COLS,ROWS,THEMES,NAMES,key} from './engine.js';
+import {isGameplayKey,readPlayerInputs} from './input.js';
 
 const game=new BombGame(),canvas=document.getElementById('arena'),ctx=canvas.getContext('2d',{alpha:false}),ui=document.getElementById('interface');
 const W=1280,H=824,T=64,OX=96,OY=60;
