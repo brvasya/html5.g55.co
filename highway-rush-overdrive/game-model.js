@@ -1,9 +1,10 @@
-import {createChallenge,getCar} from './game-progress.js';
+import {CARS,createChallenge,getCar} from './game-progress.js';
 export const LANES = [-5.25,-1.75,1.75,5.25];
 export const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 export const mix=(a,b,t)=>a+(b-a)*t;
 export const LEVEL_DISTANCE=600;
 export const MAX_LEVEL=10;
+const MAX_CAR_SPEED_BONUS=Math.max(...CARS.map(car=>car.speedBonus));
 export function levelForDistance(distance){return clamp(Math.floor(Math.max(0,distance)/LEVEL_DISTANCE)+1,1,MAX_LEVEL);}
 export function levelSettings(level){
  const step=clamp(level,1,MAX_LEVEL)-1;
@@ -21,9 +22,10 @@ export class HighwayGame {
  constructor(seed){this.rng=randomSource(seed);this.nextId=1;this.reset();}
  reset(carId=this.car?.id){
   this.car=getCar(carId);
-  this.mode='menu';this.elapsed=0;this.distance=0;this.level=1;this.difficulty=levelSettings(1);this.speed=100;this.score=0;this.playerX=LANES[1];this.playerV=0;this.charge=35;this.boost=0;this.focus=0;this.surge=0;this.shield=0;this.invincible=0;this.combo=1;this.comboTimer=0;this.maxCombo=1;this.nearMisses=0;this.boostedPasses=0;this.needlePasses=0;this.challenge=createChallenge();this.traffic=[];this.pickups=[];this.events=[];this.trafficTimer=1.9;this.pickupTimer=4;this.lastPass=null;this.safeLane=1;this.lastSafeLane=1;this.lastCrash=null;this.brake=0;this.waveAnchor=null;this.pendingWave=null;this.pattern=null;this.patternIndex=0;this.restWaves=2;
+  this.mode='menu';this.elapsed=0;this.distance=0;this.level=1;this.difficulty=levelSettings(1);this.speed=100;this.score=0;this.playerX=LANES[1];this.playerV=0;this.charge=35;this.boost=0;this.focus=0;this.surge=0;this.shield=0;this.invincible=0;this.combo=1;this.comboTimer=0;this.maxCombo=1;this.nearMisses=0;this.boostedPasses=0;this.needlePasses=0;this.runChallenges=0;this.traffic=[];this.pickups=[];this.events=[];this.trafficTimer=1.9;this.pickupTimer=4;this.lastPass=null;this.safeLane=1;this.lastSafeLane=1;this.lastCrash=null;this.brake=0;this.waveAnchor=null;this.pendingWave=null;this.pattern=null;this.patternIndex=0;this.restWaves=2;
   this.speed+=this.car.speedBonus;
   this.laneChangeTimer=2.3;
+  this.beginChallenge(0);
  }
  get baseSpeed(){return this.difficulty.speed+this.car.speedBonus;}
  get maxBoostSpeed(){return levelSettings(MAX_LEVEL).speed+this.car.speedBonus+70;}
@@ -35,7 +37,8 @@ export class HighwayGame {
   this.laneChangeTimer=Math.min(this.laneChangeTimer,this.difficulty.laneChangeInterval*.5);
   this.events.push({type:'level-up',level:next,speed:this.baseSpeed,final:next===MAX_LEVEL});
  }
- start(challengeSequence=0,carId=this.car.id){this.reset(carId);this.challenge=createChallenge(challengeSequence);this.mode='playing';this.seedTraffic();this.events.push({type:'start'});}
+ start(challengeSequence=0,carId=this.car.id){this.reset(carId);this.beginChallenge(challengeSequence);this.mode='playing';this.seedTraffic();this.events.push({type:'start'});}
+ beginChallenge(sequence){this.challenge=createChallenge(sequence);this.challengeBaseline=this[this.challenge.stat];}
  seedTraffic(){
   for(const [s,lanes,gap] of [[95,[1,3],2],[165,[0,2],1],[230,[1,3],2]])for(const lane of lanes){const car=this.spawnCar(lane,s,76,lane%4);car.escapeLane=gap;car.pattern='intro';}
   this.safeLane=2;this.waveAnchor={s:230,lane:2};
@@ -49,6 +52,7 @@ export class HighwayGame {
  activateBoost(){if(this.mode!=='playing'||this.charge<30||this.boost>0)return false;this.boost=5;this.events.push({type:'boost'});return true;}
  pause(){if(this.mode!=='playing')return false;this.mode='paused';return true;}
  resume(){if(this.mode!=='paused')return false;this.mode='playing';return true;}
+ equipCar(id){const car=CARS.find(car=>car.id===id);if(this.mode!=='paused'||!car)return false;this.car=car;return true;}
  spawnWave(){
   const settings=this.difficulty;
   if(!this.pendingWave){
@@ -63,8 +67,8 @@ export class HighwayGame {
    this.pendingWave={gap,count,kind,first:!!pattern&&pattern.left===pattern.total};
   }
   const plan=this.pendingWave,s=settings.spawnDistance+12;
-  // Leave time to react and move one lane, including a boost and the next two speed steps.
-  const closingSpeed=(Math.min(this.maxBoostSpeed,this.baseSpeed+106)-76)/3.6;
+  // Reserve a gap for a mid-run car upgrade, a boost and the next two speed steps.
+  const closingSpeed=(Math.min(levelSettings(MAX_LEVEL).speed+MAX_CAR_SPEED_BONUS+70,settings.speed+MAX_CAR_SPEED_BONUS+106)-76)/3.6;
   const gapDistance=this.waveAnchor&&plan.gap!==this.waveAnchor.lane?closingSpeed*.95+10:32;
   if(this.waveAnchor&&s-this.waveAnchor.s<gapDistance)return false;
   const free=[0,1,2,3].filter(i=>i!==plan.gap);
@@ -82,8 +86,8 @@ export class HighwayGame {
  }
  tryLaneChange(){
   if(this.level<2||this.traffic.filter(t=>t.signal>0||t.change).length>=this.difficulty.laneChangeLimit)return false;
-  // Begin signals far enough ahead for the player to accelerate into a boost.
-  const approachSpeed=Math.max(0,Math.max(this.speed,this.baseSpeed+70)-76)/3.6;
+  // Keep existing turn signals safe if the player equips a faster car during this run.
+  const approachSpeed=Math.max(0,Math.max(this.speed,this.difficulty.speed+MAX_CAR_SPEED_BONUS+70)-76)/3.6;
   const minDistance=Math.max(75,approachSpeed*(this.difficulty.signalTime+1.25)+28);
   const options=this.traffic.filter(t=>t.s>minDistance&&t.s<this.difficulty.spawnDistance+20&&(t.type<4||this.level>=4)&&t.pattern!=='intro'&&!t.signal&&!t.change&&!t.laneChanged&&!t.passed&&!t.removed);
   // Search both adjacent lanes so an invalid random choice does not waste a move.
@@ -126,12 +130,19 @@ export class HighwayGame {
   if(car.collided||car.removed||this.mode!=='playing')return;
   const near=this.nearPass(car);
   if(this.boost>0){this.boostedPasses++;if(!near){const points=Math.round(60*this.combo*(this.surge>0?2:1)*(1+this.car.passBonus));this.score+=points;this.events.push({type:'boost-pass',points,x:car.x});}}
-  this.updateChallenge();
+  this.updateChallenge(near);
  }
- updateChallenge(){
-  const challenge=this.challenge;if(challenge.complete)return;
-  challenge.progress=Math.min(challenge.target,this[challenge.stat]);
-  if(challenge.progress>=challenge.target){challenge.complete=true;this.score+=challenge.reward;this.events.push({type:'challenge-complete',points:challenge.reward});}
+ updateChallenge(near=false){
+  if(this.mode!=='playing')return;
+  const challenge=this.challenge;
+  // Count actions after activation. Combo goals require a fresh near miss, not an old run record.
+  const progress=challenge.stat==='maxCombo'?(near?Math.max(challenge.progress,this.combo):challenge.progress):this[challenge.stat]-this.challengeBaseline;
+  challenge.progress=clamp(progress,0,challenge.target);
+  if(challenge.progress>=challenge.target){
+   challenge.complete=true;this.score+=challenge.reward;this.runChallenges++;
+   this.events.push({type:'challenge-complete',points:challenge.reward,challenge:{...challenge}});
+   this.beginChallenge(challenge.sequence+1);
+  }
  }
  update(dt,input={}){
   if(this.mode!=='playing')return;
@@ -172,5 +183,5 @@ export class HighwayGame {
   if(this.mode==='playing')for(const p of this.pickups){const oldS=p.s;p.s-=travel;if(sweptHit(p.x-oldX,oldS,p.x-this.playerX,p.s,1.4,2.7)){this.collect(p);p.removed=true;}}
   this.traffic=this.traffic.filter(t=>t.s> -30&&!t.removed);this.pickups=this.pickups.filter(p=>p.s> -15&&!p.removed);
  }
- snapshot(){return{state:this.mode,car:{id:this.car.id,name:this.car.name,speedBonusKmh:this.car.speedBonus,passBonusPercent:Math.round(this.car.passBonus*100)},level:this.level,maxLevel:MAX_LEVEL,levelProgress:Math.round(this.levelProgress*100),metersToNextLevel:this.distanceToNextLevel===null?null:Math.ceil(this.distanceToNextLevel),baseSpeedKmh:this.baseSpeed,score:Math.floor(this.score),distanceMeters:Math.floor(this.distance),speedKmh:Math.round(this.speed),nearMisses:this.nearMisses,boostedPasses:this.boostedPasses,challenge:{label:this.challenge.label,progress:this.challenge.progress,target:this.challenge.target,complete:this.challenge.complete},multiplier:this.combo,overdriveCharge:Math.round(this.charge),shield:!!this.shield,focusSeconds:Math.ceil(this.focus),doubleScoreSeconds:Math.ceil(this.surge)};}
+ snapshot(){return{state:this.mode,car:{id:this.car.id,name:this.car.name,speedBonusKmh:this.car.speedBonus,passBonusPercent:Math.round(this.car.passBonus*100)},level:this.level,maxLevel:MAX_LEVEL,levelProgress:Math.round(this.levelProgress*100),metersToNextLevel:this.distanceToNextLevel===null?null:Math.ceil(this.distanceToNextLevel),baseSpeedKmh:this.baseSpeed,score:Math.floor(this.score),distanceMeters:Math.floor(this.distance),speedKmh:Math.round(this.speed),nearMisses:this.nearMisses,boostedPasses:this.boostedPasses,challengesCompleted:this.runChallenges,challenge:{sequence:this.challenge.sequence,label:this.challenge.label,progress:this.challenge.progress,target:this.challenge.target,complete:this.challenge.complete},multiplier:this.combo,overdriveCharge:Math.round(this.charge),shield:!!this.shield,focusSeconds:Math.ceil(this.focus),doubleScoreSeconds:Math.ceil(this.surge)};}
 }

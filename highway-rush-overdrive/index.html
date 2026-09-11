@@ -75,13 +75,29 @@
   </div>
  </section>
 </div>
+<div class="screen shade" id="unlock-screen" hidden>
+ <section class="modal unlock-layout" role="dialog" aria-modal="true" aria-labelledby="unlock-heading unlock-name" aria-describedby="unlock-note unlock-speed unlock-bonus">
+  <div class="unlock-art"><canvas id="unlock-preview" width="900" height="400" aria-hidden="true"></canvas></div>
+  <div class="unlock-details">
+   <div class="eyebrow" id="unlock-heading">NEW CAR UNLOCKED</div><h2 id="unlock-name">Outlaw V8</h2>
+   <p id="unlock-kind">Muscle car</p>
+   <div class="unlock-specs"><strong id="unlock-speed">+10 KM/H</strong><span id="unlock-bonus">+5% pass points</span></div>
+   <p id="unlock-earned">3 CHALLENGES COMPLETE</p><p id="unlock-note">Race paused. Continue from this spot.</p>
+   <p id="unlock-next">NEXT CHALLENGE: Make 10 near misses</p>
+  </div>
+  <div class="screen-actions unlock-actions">
+   <button class="primary" id="unlock-equip"><span id="unlock-equip-label">DRIVE THIS CAR</span><span aria-hidden="true">›</span></button>
+   <button class="secondary" id="unlock-keep">Keep current car &amp; resume</button>
+  </div>
+ </section>
+</div>
 <div class="screen shade" id="help-screen" hidden>
  <section class="modal help help-layout">
   <div class="help-heading"><div class="eyebrow">MAKE EVERY CLOSE CALL COUNT</div><h2>HOW TO PLAY</h2></div>
   <div class="help-content">
    <div><h3>CONTROLS</h3><p><b>A/D</b> or <b>←/→</b>: steer. <b>S/↓</b>: brake. Touch: drag the road or use arrows.</p></div>
    <div><h3>OVERDRIVE</h3><p><b>Space/Shift</b> or tap meter to boost. Near misses charge boost and keep combos alive. Boosted passes earn more.</p></div>
-   <div><h3>PROGRESSION</h3><p><b>600 m</b> per level; <b>10 levels</b>, then endless. Challenges add <b>500 points</b>. Finish <b>3 / 8 / 15</b> to unlock faster cars with bonus pass points.</p></div>
+   <div><h3>PROGRESSION</h3><p><b>600 m</b> per level; <b>10 levels</b>, then endless. Challenges chain for <b>+500</b> each. Finish <b>3 / 8 / 15</b> to unlock faster cars you can select during a run.</p></div>
    <div><h3>POWERUPS</h3><div class="help-pickups"><p><b>SHIELD</b> One hit.</p><p><b>FOCUS</b> Slow for 3s.</p><p><b>NITRO</b> +45 charge.</p><p><b>×2</b> Points for 8s.</p></div></div>
    <p class="help-safety">Traffic changes lanes more often at higher levels. Watch indicators. <b>Boost gives no crash protection.</b></p>
   </div>

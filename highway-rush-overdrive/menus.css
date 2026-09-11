@@ -309,3 +309,64 @@
  #menu .garage{grid-template-rows:auto minmax(0,1fr)}
  #menu .garage-progress{display:none}
 }
+
+/* Unlock choices pause the race and fit the same fullscreen layout as the menus. */
+.screen .unlock-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:'art details' 'actions actions';align-items:center;gap:20px clamp(24px,5vw,60px)}
+.unlock-art{grid-area:art;min-width:0;min-height:0;height:100%;max-height:390px;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 65%,#37c7f018,transparent 65%)}
+#unlock-preview{position:static;inset:auto;display:block;width:100%;height:100%;min-height:0;object-fit:contain;pointer-events:none;filter:drop-shadow(0 16px 14px #0007)}
+.unlock-details{grid-area:details;min-width:0;text-align:left}
+.unlock-details .eyebrow{color:var(--car-accent);font-size:12px;letter-spacing:.12em}
+.screen .unlock-layout h2{font-size:clamp(36px,6vw,68px);margin:12px 0 6px;text-transform:uppercase}
+.unlock-details p{margin:0;line-height:1.4;color:#c5d3e8}
+#unlock-kind{font-size:16px}
+.unlock-specs{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;margin:22px 0 14px}
+#unlock-speed{font-size:clamp(22px,3.5vw,36px);font-style:italic;color:var(--car-accent)}
+#unlock-bonus{font-size:16px;color:#e4f1ff}
+#unlock-earned{font-size:12px;letter-spacing:.08em;color:var(--car-accent)}
+#unlock-note{font-size:16px;margin-top:20px}
+#unlock-next{font-size:14px;margin-top:10px;color:#aebfd8}
+.unlock-actions{grid-area:actions}
+.unlock-actions .primary{gap:10px}
+#unlock-equip-label{font:inherit;letter-spacing:inherit}
+.unlock-actions .secondary{min-width:0;min-height:52px;padding:8px 16px;background:#172b46;border:1px solid #96b6df80;border-radius:4px;font-size:15px;font-weight:700;line-height:1.25}
+.unlock-actions .secondary:hover{background:#244360;border-color:#d3ebff}
+
+@media(orientation:portrait){
+ .screen .unlock-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:'details' 'art' 'actions';max-width:620px;padding:clamp(20px,5vh,46px) 24px max(64px,env(safe-area-inset-bottom));gap:16px}
+ .unlock-details{text-align:center}
+ .screen .unlock-layout h2{font-size:clamp(34px,9vw,60px)}
+ .unlock-specs{justify-content:center;margin:16px 0 10px}
+ #unlock-note{margin-top:14px}
+ #unlock-next{font-size:13px}
+ .unlock-art{width:100%;max-height:360px}
+ .unlock-actions .primary,.unlock-actions .secondary{font-size:13px;min-height:52px;padding:8px 12px}
+}
+
+@media(max-height:470px) and (orientation:landscape){
+ .screen .unlock-layout{padding:12px 24px 50px;gap:12px 24px}
+ .screen .unlock-layout h2{font-size:34px;margin:8px 0 4px}
+ .unlock-specs{gap:4px 12px;margin:10px 0 8px}
+ #unlock-speed{font-size:24px}
+ #unlock-kind,#unlock-bonus,#unlock-note{font-size:14px}
+ #unlock-note{margin-top:10px}
+ #unlock-next{font-size:12px;margin-top:6px}
+ .unlock-actions .primary,.unlock-actions .secondary{min-height:42px;font-size:13px}
+}
+
+@media(max-height:360px) and (orientation:landscape){
+ .screen .unlock-layout{padding:8px 20px 44px;gap:8px 20px}
+ .screen .unlock-layout h2{font-size:28px;margin:5px 0 3px}
+ .unlock-specs{margin:7px 0 6px}
+ #unlock-speed{font-size:22px}
+ #unlock-note{margin-top:7px;font-size:13px}
+ #unlock-earned{letter-spacing:0}
+ .unlock-actions .primary,.unlock-actions .secondary{min-height:38px}
+}
+
+@media(max-height:600px) and (orientation:portrait){
+ .screen .unlock-layout{padding:16px 20px 56px;gap:8px}
+ .screen .unlock-layout h2{font-size:34px;margin:8px 0 4px}
+ .unlock-specs{margin:10px 0 8px}
+ #unlock-note{font-size:14px;margin-top:10px}
+ #unlock-next{margin-top:6px}
+}
