@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#35271d">
+<meta name="description" content="Fight Minecraft mobs with six realistic weapons in Countercraft: Nether Strike. Trigger TNT chain reactions and clear five procedurally generated sectors.">
+<title>Countercraft: Nether Strike</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%2310150f'/%3E%3Cpath d='M10 10h44v44H10z' fill='%23b1dc62'/%3E%3Cpath d='M20 24h8v8h8v-8h8v18h-8v-5h-8v5h-8z' fill='%2310150f'/%3E%3C/svg%3E">
+<link rel="preload" href="assets/blockcraft-ui.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+<main id="game" aria-label="Countercraft: Nether Strike first-person shooter">
+<canvas id="view" tabindex="0" aria-label="Game view. WASD move. A and D strafe. Mouse or arrow keys aim. Click or Space fire. E open or close doors. R reload. B buy weapons. M map. Escape pause."></canvas>
+<div id="vignette" aria-hidden="true"></div>
+<div id="topbar"><div class="sector"><span class="status-light"></span><span id="sectorNumber">SECTOR 01</span><b id="sectorName">DUST OUTPOST</b></div><div class="top-actions"><div class="buy-action"><button id="buyButton" title="Buy weapons (B)" aria-label="Buy weapons" aria-haspopup="dialog"><kbd>B</kbd> BUY <b id="cash">$0</b></button><span id="cashGain" role="status" aria-live="polite"></span></div><button id="sound" title="Toggle sound" aria-label="Toggle sound">SOUND ON</button><button id="fullscreen" title="Fullscreen" aria-label="Enter fullscreen">⛶</button><button id="pause" title="Pause (Esc)" aria-label="Pause game">Ⅱ</button></div></div>
+<div id="mission"><span class="mission-mark">◇</span><span id="objective">CLEAR DUST OUTPOST</span><b id="killCounter">0 / 25</b></div>
+<div id="extractionHud" hidden><svg id="extractionArrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 27 27 16 21 5 27Z"/></svg><div><span>EXTRACTION <b id="extractionDistance"></b></span><small id="extractionTurn">STRAIGHT AHEAD</small></div></div>
+<div id="bossHud" hidden><span>CORRUPTED IRON GOLEM</span><i><em id="bossBar"></em></i></div>
+<div id="hostilesHud" class="hud-cell kills"><span class="hud-label">HOSTILES</span><div class="hud-value"><b id="remaining">25</b></div><small id="timer">00:00</small></div>
+<div id="message" role="status" aria-live="polite"></div>
+<button id="doorAction" hidden aria-label="Open door">E · OPEN DOOR</button>
+<div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div id="hitmarker" aria-hidden="true">×</div>
+<div id="hud"><div class="hud-group hud-left"><div class="hud-cell health"><span class="hud-label">HEALTH</span><div class="hud-value"><b id="health">100</b><small>%</small></div><i><em id="healthbar"></em></i></div><div class="hud-cell armor"><span class="hud-label">ARMOR</span><div class="hud-value"><b id="armor">50</b><small>%</small></div><i><em id="armorbar"></em></i></div></div><div class="hud-group hud-right"><div class="hud-cell ammo"><div class="ammo-heading"><span id="weaponName">GLOCK-18</span><small id="weaponHint">01 / 06</small></div><div class="hud-value"><b id="ammo">20</b><small id="ammoReserve">/ ∞</small></div><i><em id="ammobar"></em></i></div></div></div>
+<div id="touchControls"><div id="joystick" aria-label="Movement joystick"><span id="stick"></span></div><div id="lookZone" aria-label="Swipe to look"></div><button id="touchSwitch" aria-label="Switch weapon">1 / 6</button><button id="touchReload" aria-label="Reload weapon">R</button><button id="touchMap" aria-label="Toggle map">MAP</button><button id="touchFire" aria-label="Fire weapon">FIRE</button></div>
+<div id="overlay" class="overlay"><div class="menu-panel" id="menuPanel">
+<div class="eyebrow"><img class="publisher-logo" src="assets/g55-co-logo.png" width="248" height="63" alt="G55.CO"><span>ORIGINAL GAMES</span></div>
+<h1><span class="series-title">COUNTERCRAFT</span><strong class="game-subtitle">NETHER STRIKE</strong></h1>
+<div class="menu-subtitle" id="menuSubtitle">OPERATION 01 · THE FIRST BREACH</div>
+<p id="menuText">New layouts every campaign. Kill mobs. Buy weapons.<br>Retry a sector to master the same map.</p>
+<div class="menu-actions"><div class="start-action"><button id="start" class="primary" disabled><span id="startLabel">LOADING 0%</span><span aria-hidden="true">▸</span></button><div id="loadTrack"><span id="loadProgress"></span></div></div><a id="moreGamesButton" class="primary" href="https://g55.co/" target="_blank" rel="noopener">MORE GAMES</a></div>
+<div class="menu-utility" id="menuUtility" hidden><button id="pauseBuy">BUY WEAPONS</button><span id="pauseBuyDivider"> / </span><button id="restartLevel">RESTART LEVEL</button><span> / </span><button id="mainMenu">MAIN MENU</button></div>
+<div id="controls"><div><kbd>WASD</kbd><span>MOVE</span></div><div><kbd>MOUSE</kbd><span>AIM + FIRE</span></div><div><kbd>1 — 6</kbd><span>WEAPONS</span></div><div><kbd>R</kbd><span>RELOAD</span></div></div>
+<div class="extra-controls">E — DOORS &nbsp; · &nbsp; B — BUY &nbsp; · &nbsp; SHIFT — RUN &nbsp; · &nbsp; M — MAP &nbsp; · &nbsp; ESC — PAUSE</div>
+</div></div>
+<div id="buyOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="buyTitle" aria-describedby="buyHelp">
+<div class="buy-panel">
+<header class="buy-header"><div><span class="buy-eyebrow">COMBAT PAUSED</span><h2 id="buyTitle">BUY WEAPONS</h2></div><div class="buy-balance"><span>CASH</span><b id="shopCash">$0</b></div></header>
+<p id="buyHelp">Kill mobs to earn cash. Every purchase includes ammunition.</p>
+<div class="buy-grid">
+<article class="buy-card" id="weaponCard0"><div class="buy-card-heading"><h3 id="buyName0"></h3><p id="buyRole0"></p></div><canvas id="weaponIcon0" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice0" class="buy-price"></span><button id="buyWeapon0" class="buy-weapon" data-weapon="0"></button></div></article>
+<article class="buy-card" id="weaponCard1"><div class="buy-card-heading"><h3 id="buyName1"></h3><p id="buyRole1"></p></div><canvas id="weaponIcon1" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice1" class="buy-price"></span><button id="buyWeapon1" class="buy-weapon" data-weapon="1"></button></div></article>
+<article class="buy-card" id="weaponCard2"><div class="buy-card-heading"><h3 id="buyName2"></h3><p id="buyRole2"></p></div><canvas id="weaponIcon2" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice2" class="buy-price"></span><button id="buyWeapon2" class="buy-weapon" data-weapon="2"></button></div></article>
+<article class="buy-card" id="weaponCard3"><div class="buy-card-heading"><h3 id="buyName3"></h3><p id="buyRole3"></p></div><canvas id="weaponIcon3" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice3" class="buy-price"></span><button id="buyWeapon3" class="buy-weapon" data-weapon="3"></button></div></article>
+<article class="buy-card" id="weaponCard4"><div class="buy-card-heading"><h3 id="buyName4"></h3><p id="buyRole4"></p></div><canvas id="weaponIcon4" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice4" class="buy-price"></span><button id="buyWeapon4" class="buy-weapon" data-weapon="4"></button></div></article>
+<article class="buy-card" id="weaponCard5"><div class="buy-card-heading"><h3 id="buyName5"></h3><p id="buyRole5"></p></div><canvas id="weaponIcon5" width="280" height="154" aria-hidden="true"></canvas><div class="buy-card-bottom"><span id="buyPrice5" class="buy-price"></span><button id="buyWeapon5" class="buy-weapon" data-weapon="5"></button></div></article>
+</div>
+<footer class="buy-footer"><p id="buyStatus" role="status" aria-live="polite">Purchased weapons carry between sectors.</p><button id="closeBuy" class="primary">BACK TO COMBAT</button></footer>
+</div></div>
+<div id="bottomHint">WASD <span>MOVE</span> &nbsp; MOUSE <span>AIM</span> &nbsp; CLICK / SPACE <span>FIRE</span> &nbsp; E <span>DOORS</span> &nbsp; R <span>RELOAD</span> &nbsp; B <span>BUY</span> &nbsp; M <span>MAP</span></div>
+</main>
+<script src="generation.js?v=1"></script><script src="core.js?v=15"></script><script src="animation.js?v=4"></script><script src="game.js?v=17"></script>
+</body></html>
