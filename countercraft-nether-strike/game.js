@@ -479,7 +479,7 @@
     const drop=world.switchTime>0?Math.sin(world.switchTime/.22*Math.PI)*height*.5:0;
     const left=placement.left+bobX,top=placement.top+Math.max(0,idle+bobY)+drop-kick;
     ctx.drawImage(image,left,top,width,height);
-    for(let i=casings.length-1;i>=0;i--){const c=casings[i],age=world.time-c.time;if(age>.55){casings.splice(i,1);continue;}const x=W*(.58+age*.42),y=H*(.71-age*.6+age*age*1.5);ctx.save();ctx.translate(x,y);ctx.rotate(age*15+c.spin);ctx.fillStyle=c.shell?'#ba3924':'#d4ab57';ctx.fillRect(-3,-1.5,c.shell?8:6,3);ctx.fillStyle='#f5d89b';ctx.fillRect(-3,-1.5,2,3);ctx.restore();}
+    for(let i=casings.length-1;i>=0;i--){const c=casings[i],age=world.time-c.time;if(age>.55){casings.splice(i,1);continue;}const x=W*(.58+age*.42),y=H*(.71-age*.6+age*age*1.5);ctx.save();ctx.translate(x,y);ctx.rotate(age*15+c.spin);ctx.scale(2,2);ctx.fillStyle=c.shell?'#ba3924':'#d4ab57';ctx.fillRect(-3,-1.5,c.shell?8:6,3);ctx.fillStyle='#f5d89b';ctx.fillRect(-3,-1.5,2,3);ctx.restore();}
   }
   function renderTNT(prop){
     const p=world.player,cs=Math.cos(p.angle),sn=Math.sin(p.angle),r=.28,h=.58;
