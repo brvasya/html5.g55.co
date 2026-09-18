@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "format": "Indexed PNG; <=16 total palette entries; binary native alpha",
+  "actors": {
+    "cog": {
+      "cols": 3,
+      "rows": 2,
+      "frameWidth": 576,
+      "frameHeight": 576,
+      "anchorX": 288,
+      "anchorY": 544,
+      "states": [
+        "idle",
+        "walkA",
+        "walkB",
+        "fire",
+        "crouch",
+        "death"
+      ],
+      "visibleFrameBaselines": [
+        544,
+        544,
+        544,
+        544,
+        544,
+        544
+      ]
+    },
+    "drone": {
+      "cols": 3,
+      "rows": 2,
+      "frameWidth": 576,
+      "frameHeight": 576,
+      "anchorX": 288,
+      "anchorY": 544,
+      "states": [
+        "idle",
+        "walkA",
+        "walkB",
+        "fire",
+        "hurt",
+        "death"
+      ],
+      "visibleFrameBaselines": [
+        544,
+        544,
+        544,
+        544,
+        544,
+        544
+      ]
+    },
+    "wretch": {
+      "cols": 3,
+      "rows": 2,
+      "frameWidth": 576,
+      "frameHeight": 576,
+      "anchorX": 288,
+      "anchorY": 544,
+      "states": [
+        "idle",
+        "walkA",
+        "walkB",
+        "attack",
+        "hurt",
+        "death"
+      ],
+      "visibleFrameBaselines": [
+        544,
+        544,
+        544,
+        544,
+        544,
+        544
+      ]
+    }
+  },
+  "props": {
+    "city": {
+      "name": "concrete barricade",
+      "cols": 3,
+      "rows": 1,
+      "frameWidth": 576,
+      "frameHeight": 320,
+      "anchorX": 288,
+      "anchorY": 304,
+      "states": [
+        "normal",
+        "damaged",
+        "broken"
+      ]
+    },
+    "foundry": {
+      "name": "industrial generator",
+      "cols": 3,
+      "rows": 1,
+      "frameWidth": 576,
+      "frameHeight": 320,
+      "anchorX": 288,
+      "anchorY": 304,
+      "states": [
+        "normal",
+        "damaged",
+        "broken"
+      ]
+    },
+    "aqueduct": {
+      "name": "rusted pipe valve",
+      "cols": 3,
+      "rows": 1,
+      "frameWidth": 576,
+      "frameHeight": 320,
+      "anchorX": 288,
+      "anchorY": 304,
+      "states": [
+        "normal",
+        "damaged",
+        "broken"
+      ]
+    },
+    "hollow": {
+      "name": "imulsion crystal formation",
+      "cols": 3,
+      "rows": 1,
+      "frameWidth": 576,
+      "frameHeight": 320,
+      "anchorX": 288,
+      "anchorY": 304,
+      "states": [
+        "normal",
+        "damaged",
+        "broken"
+      ]
+    },
+    "citadel": {
+      "name": "war memorial pillar",
+      "cols": 3,
+      "rows": 1,
+      "frameWidth": 576,
+      "frameHeight": 320,
+      "anchorX": 288,
+      "anchorY": 304,
+      "states": [
+        "normal",
+        "damaged",
+        "broken"
+      ]
+    }
+  },
+  "layers": {
+    "city": {
+      "far": {
+        "parallax": 0.08,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          0,
+          1536,
+          255
+        ]
+      },
+      "mid": {
+        "parallax": 0.3,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          256,
+          1536,
+          512
+        ]
+      },
+      "near": {
+        "parallax": 0.62,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          512,
+          1536,
+          768
+        ]
+      }
+    },
+    "foundry": {
+      "far": {
+        "parallax": 0.08,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          0,
+          1536,
+          216
+        ]
+      },
+      "mid": {
+        "parallax": 0.3,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          216,
+          1536,
+          488
+        ]
+      },
+      "near": {
+        "parallax": 0.62,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          488,
+          1536,
+          733
+        ]
+      }
+    },
+    "aqueduct": {
+      "far": {
+        "parallax": 0.08,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          0,
+          1536,
+          255
+        ]
+      },
+      "mid": {
+        "parallax": 0.3,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          256,
+          1536,
+          512
+        ]
+      },
+      "near": {
+        "parallax": 0.62,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          512,
+          1536,
+          764
+        ]
+      }
+    },
+    "hollow": {
+      "far": {
+        "parallax": 0.08,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          0,
+          1536,
+          256
+        ]
+      },
+      "mid": {
+        "parallax": 0.3,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          256,
+          1536,
+          512
+        ]
+      },
+      "near": {
+        "parallax": 0.62,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          512,
+          1536,
+          764
+        ]
+      }
+    },
+    "citadel": {
+      "far": {
+        "parallax": 0.08,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          0,
+          1536,
+          255
+        ]
+      },
+      "mid": {
+        "parallax": 0.3,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          256,
+          1536,
+          511
+        ]
+      },
+      "near": {
+        "parallax": 0.62,
+        "repeat": "reflected",
+        "sourceCrop": [
+          0,
+          512,
+          1536,
+          768
+        ]
+      }
+    }
+  },
+  "walkPlayback": "Two opposite drawn steps, advanced by distance traveled"
+}
