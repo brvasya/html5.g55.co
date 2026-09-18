@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#120f12">
+  <meta name="description" content="Fight through five worlds in Doom Eternal: Platformer, a fast Flash-style action platformer. Double jump, dash, and send the demons back to hell.">
+  <title>Doom Eternal: Platformer</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23120f12' d='M0 0h64v64H0z'/%3E%3Cpath fill='%23ed4d23' d='M10 10h14v29l8 9 8-9V10h14v34L32 62 10 44z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Doom Eternal: Platformer game" tabindex="0"></canvas>
+  <div id="menu" class="screen menu">
+    <div class="menu-vignette"></div>
+    <header class="menu-header"><div class="publisher-lockup" aria-label="G55.CO Unofficial Fan Game"><strong>G55.CO</strong><span>|</span><em>UNOFFICIAL FAN GAME</em></div><div class="utilities"><button class="text-btn sound-button" aria-label="Toggle sound">SOUND ON</button><button class="text-btn fullscreen-button">FULLSCREEN</button></div></header>
+    <main class="menu-content">
+      <div class="eyebrow"><span></span> THE SLAYER RETURNS</div>
+      <h1>DOOM<span class="eternal">ETERNAL</span></h1>
+      <div class="subtitle">PLATFORMER</div>
+      <div class="menu-actions"><button id="play" class="btn primary preload-action" disabled><span class="preload-label">LOADING</span><span id="menu-load-percent" class="preload-percent">0%</span><i id="menu-load-fill" class="preload-fill"></i></button><button id="continue" class="text-btn continue hidden">CONTINUE · SECTOR <span id="continue-level">01</span></button><a class="btn secondary more-games" href="https://g55.co/?utm_source=moreGamesButton&amp;utm_medium=Doom%20Eternal%3A%20Platformer" target="_blank" rel="noopener">MORE GAMES <span>↗</span></a></div>
+    </main>
+    <footer class="menu-footer"><div class="controls-summary"><span><kbd>A</kbd><kbd>D</kbd> MOVE</span><span><kbd>SPACE</kbd> DOUBLE JUMP</span><span><kbd>SHIFT</kbd> DASH</span><span><kbd>CLICK</kbd> FIRE</span><span><kbd>E</kbd> GLORY KILL</span></div><div class="mobile-summary">MOVE · JUMP TWICE · DASH · FIRE</div><div class="menu-note">5 SECTORS <b>/</b> NO WAY BACK</div></footer>
+  </div>
+  <div id="hud" class="hidden">
+    <div class="hud-top"><div class="vitals"><div class="vital health"><span class="vital-label">HEALTH</span><strong id="health-value">100</strong><div class="meter"><i id="health-meter"></i></div></div><div class="vital armor"><span class="vital-label">ARMOR</span><strong id="armor-value">50</strong><div class="meter"><i id="armor-meter"></i></div></div></div><div class="mission"><span id="sector">01 / 05 · HELL ON EARTH</span><strong id="objective">BREAK THE DEMON SEALS</strong><div id="seal-count">0 / 3</div></div><button id="pause" class="pause-btn" aria-label="Pause game">Ⅱ</button></div>
+    <div id="notice" aria-live="polite"></div><div id="level-intro"><small id="intro-number"></small><strong id="intro-name"></strong></div>
+    <div id="boss-hud" class="hidden"><span>HELL'S CHAMPION</span><div class="meter"><i id="boss-meter"></i></div></div>
+    <div class="hud-bottom"><div class="weapon"><span id="weapon-name">SUPER SHOTGUN</span><div><strong id="ammo-value">∞</strong><span id="ammo-label"> SHELLS</span></div><small id="weapon-hint">1 SHOTGUN · 2 PLASMA · 3 ROCKET</small></div><div class="power"><span id="dash-label">DASH READY</span><div class="meter"><i id="dash-meter"></i></div><small>SHIFT / K</small></div><div class="score"><span id="combo">RIP &amp; TEAR</span><strong id="score-value">00000</strong><small id="kill-value">0 DEMONS SLAIN</small></div></div>
+    <div id="touch-controls"><div class="touch-move"><button data-hold="left" aria-label="Move left">◀</button><button data-hold="right" aria-label="Move right">▶</button></div><div class="touch-actions"><button data-action="weapon" class="touch-mini" aria-label="Change weapon">1 / 2 / 3</button><button data-action="glory" class="touch-mini" aria-label="Glory kill">KILL</button><button data-action="dash" aria-label="Dash">DASH</button><button data-action="jump" aria-label="Jump">JUMP</button><button data-hold="fire" class="touch-fire" aria-label="Fire weapon">FIRE</button></div></div>
+  </div>
+  <div id="overlay" class="screen overlay hidden"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><span id="dialog-kicker" class="eyebrow">TAKE A BREATH</span><h2 id="dialog-title">PAUSED</h2><p id="dialog-copy">Hell can wait.</p><div id="result-stats" class="hidden"></div><button id="dialog-primary" class="btn primary">RESUME <span>›</span></button><a class="btn secondary more-games" href="https://g55.co/?utm_source=moreGamesButton&amp;utm_medium=Doom%20Eternal%3A%20Platformer" target="_blank" rel="noopener">MORE GAMES <span>↗</span></a><div class="dialog-links"><button id="restart" class="text-btn">RESTART SECTOR</button><button id="back-menu" class="text-btn">MAIN MENU</button></div><div id="pause-help">A / D · Move &nbsp; SPACE · Double jump<br>SHIFT / K · Dash &nbsp; CLICK / J · Fire<br>E / L · Glory kill &nbsp; 1 / 2 / 3 · Weapons<br>P / ESC · Pause &nbsp; M · Sound</div></section></div>
+  <script src="game.js"></script>
+</body>
+</html>
