@@ -1,0 +1,1665 @@
+{
+  "version": 1,
+  "artStyle": "illustrated Flash cel shading, block tactical",
+  "palette": "at most 16 indexed entries, no dithering",
+  "assets": {
+    "weapon-pistol": {
+      "file": "weapon-pistol.png",
+      "width": 1536,
+      "height": 512,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 512,
+      "cellHeight": 512,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "idle",
+          "bounds": [
+            148,
+            176,
+            512,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 1,
+          "state": "fire",
+          "bounds": [
+            0,
+            102,
+            512,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 2,
+          "state": "reload",
+          "bounds": [
+            0,
+            78,
+            512,
+            512
+          ],
+          "floorY": 511
+        }
+      ],
+      "source": {
+        "file": "../originals/weapon-pistol.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "weapon-ak": {
+      "file": "weapon-ak.png",
+      "width": 1536,
+      "height": 512,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 512,
+      "cellHeight": 512,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "idle",
+          "bounds": [
+            0,
+            96,
+            512,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 1,
+          "state": "fire",
+          "bounds": [
+            0,
+            17,
+            512,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 2,
+          "state": "reload",
+          "bounds": [
+            0,
+            5,
+            512,
+            512
+          ],
+          "floorY": 511
+        }
+      ],
+      "source": {
+        "file": "../originals/weapon-ak.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "weapon-awp": {
+      "file": "weapon-awp.png",
+      "width": 1536,
+      "height": 512,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 512,
+      "cellHeight": 512,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "idle",
+          "bounds": [
+            2,
+            145,
+            511,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 1,
+          "state": "fire",
+          "bounds": [
+            4,
+            88,
+            510,
+            512
+          ],
+          "floorY": 511
+        },
+        {
+          "index": 2,
+          "state": "reload",
+          "bounds": [
+            3,
+            62,
+            512,
+            512
+          ],
+          "floorY": 511
+        }
+      ],
+      "source": {
+        "file": "../originals/weapon-awp.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "enemy-raider": {
+      "file": "enemy-raider.png",
+      "width": 1024,
+      "height": 512,
+      "columns": 4,
+      "rows": 2,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "idle",
+          "bounds": [
+            53,
+            13,
+            201,
+            245
+          ],
+          "floorY": 244
+        },
+        {
+          "index": 1,
+          "state": "walk-a",
+          "bounds": [
+            55,
+            13,
+            197,
+            248
+          ],
+          "floorY": 247
+        },
+        {
+          "index": 2,
+          "state": "walk-b",
+          "bounds": [
+            59,
+            11,
+            202,
+            249
+          ],
+          "floorY": 248
+        },
+        {
+          "index": 3,
+          "state": "attack",
+          "bounds": [
+            59,
+            13,
+            247,
+            245
+          ],
+          "floorY": 244
+        },
+        {
+          "index": 4,
+          "state": "hurt",
+          "bounds": [
+            49,
+            11,
+            221,
+            236
+          ],
+          "floorY": 235
+        },
+        {
+          "index": 5,
+          "state": "death-fall",
+          "bounds": [
+            38,
+            36,
+            199,
+            233
+          ],
+          "floorY": 232
+        },
+        {
+          "index": 6,
+          "state": "death-ground",
+          "bounds": [
+            8,
+            157,
+            252,
+            240
+          ],
+          "floorY": 239
+        },
+        {
+          "index": 7,
+          "state": "empty",
+          "bounds": null,
+          "floorY": null
+        }
+      ],
+      "source": {
+        "file": "../originals/enemy-raider.png",
+        "size": [
+          1774,
+          887
+        ],
+        "columns": 4,
+        "rows": 2
+      }
+    },
+    "enemy-creeper": {
+      "file": "enemy-creeper.png",
+      "width": 1024,
+      "height": 512,
+      "columns": 4,
+      "rows": 2,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "idle",
+          "bounds": [
+            79,
+            16,
+            177,
+            241
+          ],
+          "floorY": 240
+        },
+        {
+          "index": 1,
+          "state": "walk-a",
+          "bounds": [
+            77,
+            18,
+            182,
+            243
+          ],
+          "floorY": 242
+        },
+        {
+          "index": 2,
+          "state": "walk-b",
+          "bounds": [
+            72,
+            16,
+            178,
+            242
+          ],
+          "floorY": 241
+        },
+        {
+          "index": 3,
+          "state": "attack",
+          "bounds": [
+            46,
+            15,
+            201,
+            242
+          ],
+          "floorY": 241
+        },
+        {
+          "index": 4,
+          "state": "hurt",
+          "bounds": [
+            62,
+            14,
+            188,
+            236
+          ],
+          "floorY": 235
+        },
+        {
+          "index": 5,
+          "state": "death-fall",
+          "bounds": [
+            37,
+            12,
+            216,
+            240
+          ],
+          "floorY": 239
+        },
+        {
+          "index": 6,
+          "state": "death-ground",
+          "bounds": [
+            15,
+            161,
+            242,
+            242
+          ],
+          "floorY": 241
+        },
+        {
+          "index": 7,
+          "state": "empty",
+          "bounds": null,
+          "floorY": null
+        }
+      ],
+      "source": {
+        "file": "../originals/enemy-creeper.png",
+        "size": [
+          1774,
+          887
+        ],
+        "columns": 4,
+        "rows": 2
+      }
+    },
+    "wall-0": {
+      "file": "wall-0.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          0,
+          0,
+          397,
+          396
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "wall-1": {
+      "file": "wall-1.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          397,
+          0,
+          793,
+          396
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "wall-2": {
+      "file": "wall-2.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          793,
+          0,
+          1190,
+          396
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "wall-3": {
+      "file": "wall-3.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          1190,
+          0,
+          1586,
+          396
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "wall-4": {
+      "file": "wall-4.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          1586,
+          0,
+          1983,
+          396
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "floor-0": {
+      "file": "floor-0.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          0,
+          396,
+          397,
+          793
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "floor-1": {
+      "file": "floor-1.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          397,
+          396,
+          793,
+          793
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "floor-2": {
+      "file": "floor-2.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          793,
+          396,
+          1190,
+          793
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "floor-3": {
+      "file": "floor-3.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          1190,
+          396,
+          1586,
+          793
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "floor-4": {
+      "file": "floor-4.png",
+      "width": 256,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 256,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            256,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/terrain.png",
+        "crop": [
+          1586,
+          396,
+          1983,
+          793
+        ],
+        "size": [
+          1983,
+          793
+        ],
+        "columns": 5,
+        "rows": 2
+      }
+    },
+    "sky-far-0": {
+      "file": "sky-far-0.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-far.png",
+        "crop": [
+          0,
+          0,
+          1254,
+          251
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-far-1": {
+      "file": "sky-far-1.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-far.png",
+        "crop": [
+          0,
+          251,
+          1254,
+          501
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-far-2": {
+      "file": "sky-far-2.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-far.png",
+        "crop": [
+          0,
+          501,
+          1254,
+          752
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-far-3": {
+      "file": "sky-far-3.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-far.png",
+        "crop": [
+          0,
+          752,
+          1254,
+          1003
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-far-4": {
+      "file": "sky-far-4.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": false,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-far.png",
+        "crop": [
+          0,
+          1003,
+          1254,
+          1254
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-mid-0": {
+      "file": "sky-mid-0.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            38,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-mid.png",
+        "crop": [
+          0,
+          0,
+          1254,
+          268
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-mid-1": {
+      "file": "sky-mid-1.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            27,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-mid.png",
+        "crop": [
+          0,
+          268,
+          1254,
+          526
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-mid-2": {
+      "file": "sky-mid-2.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            19,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-mid.png",
+        "crop": [
+          0,
+          526,
+          1254,
+          775
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-mid-3": {
+      "file": "sky-mid-3.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-mid.png",
+        "crop": [
+          0,
+          775,
+          1254,
+          1007
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-mid-4": {
+      "file": "sky-mid-4.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            5,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-mid.png",
+        "crop": [
+          0,
+          1007,
+          1254,
+          1254
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-near-0": {
+      "file": "sky-near-0.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            57,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-near.png",
+        "crop": [
+          0,
+          0,
+          1254,
+          273
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-near-1": {
+      "file": "sky-near-1.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-near.png",
+        "crop": [
+          0,
+          273,
+          1254,
+          532
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-near-2": {
+      "file": "sky-near-2.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            0,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-near.png",
+        "crop": [
+          0,
+          532,
+          1254,
+          776
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-near-3": {
+      "file": "sky-near-3.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            8,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-near.png",
+        "crop": [
+          0,
+          776,
+          1254,
+          1005
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "sky-near-4": {
+      "file": "sky-near-4.png",
+      "width": 1280,
+      "height": 256,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 1280,
+      "cellHeight": 256,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            0,
+            14,
+            1280,
+            256
+          ],
+          "floorY": 255
+        }
+      ],
+      "source": {
+        "file": "../originals/sky-near.png",
+        "crop": [
+          0,
+          1005,
+          1254,
+          1254
+        ],
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 5
+      }
+    },
+    "prop-0": {
+      "file": "prop-0.png",
+      "width": 1152,
+      "height": 384,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "intact",
+          "bounds": [
+            34,
+            43,
+            336,
+            342
+          ],
+          "floorY": 341
+        },
+        {
+          "index": 1,
+          "state": "damaged",
+          "bounds": [
+            37,
+            44,
+            338,
+            343
+          ],
+          "floorY": 342
+        },
+        {
+          "index": 2,
+          "state": "broken",
+          "bounds": [
+            20,
+            239,
+            364,
+            346
+          ],
+          "floorY": 345
+        }
+      ],
+      "source": {
+        "file": "../originals/prop-0.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "prop-1": {
+      "file": "prop-1.png",
+      "width": 1152,
+      "height": 384,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "intact",
+          "bounds": [
+            29,
+            108,
+            362,
+            334
+          ],
+          "floorY": 333
+        },
+        {
+          "index": 1,
+          "state": "damaged",
+          "bounds": [
+            25,
+            109,
+            358,
+            336
+          ],
+          "floorY": 335
+        },
+        {
+          "index": 2,
+          "state": "broken",
+          "bounds": [
+            6,
+            238,
+            370,
+            347
+          ],
+          "floorY": 346
+        }
+      ],
+      "source": {
+        "file": "../originals/prop-1.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "prop-2": {
+      "file": "prop-2.png",
+      "width": 1152,
+      "height": 384,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "intact",
+          "bounds": [
+            30,
+            94,
+            355,
+            329
+          ],
+          "floorY": 328
+        },
+        {
+          "index": 1,
+          "state": "damaged",
+          "bounds": [
+            26,
+            96,
+            354,
+            329
+          ],
+          "floorY": 328
+        },
+        {
+          "index": 2,
+          "state": "broken",
+          "bounds": [
+            9,
+            218,
+            367,
+            328
+          ],
+          "floorY": 327
+        }
+      ],
+      "source": {
+        "file": "../originals/prop-2.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "prop-3": {
+      "file": "prop-3.png",
+      "width": 1152,
+      "height": 384,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "intact",
+          "bounds": [
+            32,
+            9,
+            341,
+            354
+          ],
+          "floorY": 353
+        },
+        {
+          "index": 1,
+          "state": "damaged",
+          "bounds": [
+            30,
+            8,
+            339,
+            354
+          ],
+          "floorY": 353
+        },
+        {
+          "index": 2,
+          "state": "broken",
+          "bounds": [
+            20,
+            206,
+            356,
+            348
+          ],
+          "floorY": 347
+        }
+      ],
+      "source": {
+        "file": "../originals/prop-3.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "prop-4": {
+      "file": "prop-4.png",
+      "width": 1152,
+      "height": 384,
+      "columns": 3,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "intact",
+          "bounds": [
+            83,
+            10,
+            325,
+            370
+          ],
+          "floorY": 369
+        },
+        {
+          "index": 1,
+          "state": "damaged",
+          "bounds": [
+            72,
+            10,
+            324,
+            370
+          ],
+          "floorY": 369
+        },
+        {
+          "index": 2,
+          "state": "broken",
+          "bounds": [
+            22,
+            230,
+            332,
+            370
+          ],
+          "floorY": 369
+        }
+      ],
+      "source": {
+        "file": "../originals/prop-4.png",
+        "size": [
+          2172,
+          724
+        ],
+        "columns": 3,
+        "rows": 1
+      }
+    },
+    "objective": {
+      "file": "objective.png",
+      "width": 384,
+      "height": 384,
+      "columns": 1,
+      "rows": 1,
+      "cellWidth": 384,
+      "cellHeight": 384,
+      "nativeAlpha": true,
+      "paletteEntries": 16,
+      "frames": [
+        {
+          "index": 0,
+          "state": "static",
+          "bounds": [
+            79,
+            165,
+            305,
+            361
+          ],
+          "floorY": 360
+        }
+      ],
+      "source": {
+        "file": "../originals/objective.png",
+        "size": [
+          1254,
+          1254
+        ],
+        "columns": 1,
+        "rows": 1
+      }
+    }
+  }
+}
