@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101a1e">
+  <meta name="description" content="Take Gordon Freeman through five chapters in an illustrated Half-Life 2 action platformer. Wield the crowbar, SMG, and gravity gun against the Combine.">
+  <title>Half-Life 2: Platformer</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./assets-metadata.js" defer></script>
+  <script src="./game.js" defer></script>
+</head>
+<body>
+  <main id="game" aria-label="Half-Life 2: Platformer">
+    <canvas id="world" aria-label="Game world"></canvas>
+    <div id="vignette"></div>
+    <header id="menuHeader"><div class="brand"><strong>G55.CO</strong><span>|</span><small>UNOFFICIAL FAN GAME</small></div></header>
+    <div class="utilities"><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button><button id="mute" aria-label="Mute sound" title="Sound">♫</button><button id="fullscreen" aria-label="Enter fullscreen" title="Fullscreen">⛶</button></div>
+    <section id="menu" aria-label="Game menu"><div id="menuContent"></div></section>
+    <div id="hud" hidden>
+      <div class="suit"><div class="hud-label">HEV SUIT <span id="hpNumber">100</span></div><div class="meter"><i id="hpBar"></i></div><div class="energy-label"><span>GRAVITY</span><span id="gravityNumber">100%</span></div><div class="meter energy"><i id="energyBar"></i></div></div>
+      <div class="mission"><span id="chapterLabel">CHAPTER 01 / 05</span><strong id="chapterName">CITY 17</strong><small id="objective">REACH THE RESISTANCE OUTPOST</small></div>
+      <div class="ammo"><span class="hud-label">SMG</span><strong><b id="ammoCount">30</b><small> / ∞</small></strong><span id="reloadHint">R · RELOAD</span></div>
+    </div>
+    <div id="bossHud" hidden><span>COMBINE STRIDER</span><div class="meter"><i id="bossBar"></i></div></div>
+    <div id="toast" role="status"></div>
+    <div id="chapterIntro" aria-live="polite"><span id="introNumber"></span><strong id="introTitle"></strong><small id="introText"></small></div>
+    <div id="keyboardHint"><span><b>A D</b> MOVE</span><span><b>SPACE</b> JUMP</span><span><b>J</b> CROWBAR</span><span><b>K</b> FIRE</span><span><b>L</b> GRAVITY</span></div>
+    <div id="touchControls" hidden><div class="touchMove"><button data-key="left" aria-label="Move left">◀</button><button data-key="right" aria-label="Move right">▶</button></div><div class="touchActions"><button data-key="melee" aria-label="Crowbar">HIT</button><button data-key="gravity" aria-label="Gravity pulse">GRAV</button><button data-key="shoot" aria-label="Fire SMG">FIRE</button><button data-key="jump" aria-label="Jump">JUMP</button></div></div>
+    <div id="transition"></div>
+  </main>
+</body>
+</html>
