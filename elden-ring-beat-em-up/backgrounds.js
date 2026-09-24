@@ -1,0 +1,1 @@
+window.SCENERY={"version":3,"widths":{"far":3000,"mid":3000,"near":3200,"floor":3840},"parallax":{"far":0.08,"mid":0.3,"near":0.62,"floor":1},"skyColors":{"limgrave":"#90a195","stormveil":"#596a7a","liurnia":"#19325a","caelid":"#8a1a18","leyndell":"#8ca8b4"},"floorDepth":480};
