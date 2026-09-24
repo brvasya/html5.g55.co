@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101815">
+<meta name="description" content="Enter the fog in Silent Hill 2: Beat Em Up, an unofficial illustrated arcade fan game. Five chapters, pipe combat, and a final confrontation with Pyramid Head.">
+<title>Silent Hill 2: Beat Em Up</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23101815'/%3E%3Cpath d='M16 4L29 27H3Z' fill='%23924735' stroke='%23e0d8bc' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Silent Hill 2 game area"></canvas>
+<div id="vignette"></div>
+<div id="hud" hidden>
+  <div class="vitals"><div class="hud-row"><strong>JAMES SUNDERLAND</strong><span id="healthText">100 / 100</span></div><div class="health-track"><i id="healthBar"></i></div><div class="hud-row supplies"><span>HANDGUN <b id="ammo">8 / 24</b></span><span id="staminaLabel">DODGE READY</span></div><div class="stamina-track"><i id="staminaBar"></i></div></div>
+  <div class="objective"><span id="chapterLabel">CHAPTER 01 / 05</span><strong id="areaName">SOUTH VALE</strong><small id="threats">Enter the fog</small></div>
+  <div class="score"><small>SCORE</small><strong id="scoreValue">000000</strong></div>
+</div>
+<div id="utilities"><button id="pauseButton" aria-label="Pause game" title="Pause (Esc)" hidden>Ⅱ</button><button id="muteButton" aria-label="Mute sound" title="Toggle sound">♪</button><button id="fullscreenButton" aria-label="Enter fullscreen" title="Fullscreen">⛶</button></div>
+<div id="bossHud" hidden><span>PYRAMID HEAD</span><div><i id="bossBar"></i></div></div>
+<div id="toast" aria-live="polite"></div>
+<div id="chapterIntro" hidden><span id="introNumber"></span><strong id="introTitle"></strong><small id="introSubtitle"></small></div>
+<div id="keyboardHint"><span>WASD / ARROWS <b>MOVE</b></span><span>J <b>PIPE</b></span><span>K <b>HEAVY</b></span><span>L <b>SHOOT</b></span><span>SPACE <b>DODGE</b></span><span>R <b>RELOAD</b></span></div>
+<main id="menu" class="main-menu">
+  <div class="branding"><b>G55.CO</b><span>|</span><small>UNOFFICIAL FAN GAME</small></div>
+  <section class="menu-content" aria-labelledby="menuTitle">
+    <div id="eyebrow" class="eyebrow"><i></i> A LETTER. A TOWN. A NIGHTMARE.</div>
+    <h1 id="menuTitle"><span>SILENT HILL</span><em>2</em></h1>
+    <p id="menuSubtitle" class="genre">BEAT EM UP</p>
+    <p id="menuDescription" class="description">Some things follow you into the fog.<br>Fight your way through five chapters.</p>
+    <div id="helpContent" hidden>
+      <div><kbd>WASD / ↑↓←→</kbd><span>Move through the lanes</span></div>
+      <div><kbd>J</kbd><span>Pipe combo · third hit knocks back</span></div>
+      <div><kbd>K</kbd><span>Heavy strike · breaks enemy guard</span></div>
+      <div><kbd>L / R</kbd><span>Handgun / reload · aim in your lane</span></div>
+      <div><kbd>SPACE</kbd><span>Dodge · avoid the red attack markers</span></div>
+      <p>Break scenery for supplies. Clear each area, then follow the arrow. On touchscreens, use the stick and action buttons.</p>
+    </div>
+    <div class="actions"><button id="primaryButton" class="primary" disabled><span id="primaryLabel">LOADING 0%</span><span aria-hidden="true">→</span><i id="loadBar"></i></button><a class="more-games" id="moreGames" target="_blank" rel="noopener noreferrer"><span>MORE GAMES</span><span aria-hidden="true">↗</span></a></div>
+    <div class="secondary"><button id="continueButton" hidden>CONTINUE</button><button id="helpButton">HOW TO PLAY</button><button id="mainMenuButton" hidden>MAIN MENU</button></div>
+  </section>
+  <div class="menu-caption"><span id="menuChapter">01 / 05</span><i></i><strong id="menuLocation">SOUTH VALE</strong></div>
+  <footer><span>A FAN-MADE ARCADE REIMAGINING</span><span>KEYBOARD + TOUCH</span></footer>
+</main>
+<div id="touchControls" hidden>
+  <div id="stick" aria-label="Movement stick"><i></i><span></span></div>
+  <div class="touch-actions"><button data-action="reload" class="reload">RELOAD</button><button data-action="shoot" class="shoot">SHOOT</button><button data-action="heavy" class="heavy">HEAVY</button><button data-action="dodge" class="dodge">DODGE</button><button data-action="attack" class="attack">PIPE</button></div>
+</div>
+<div id="fade"></div>
+<script src="assets/catalog.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
