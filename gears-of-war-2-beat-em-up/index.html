@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#10171c"><meta name="description" content="Fight through five chapters of a Gears of War 2 fan-made arcade beat em up. Keyboard and touch controls.">
+<title>Gears of War 2: Beat Em Up</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2310171c'/%3E%3Cpath d='M8 7h17v5H13v3h10v10H8z' fill='%23db473f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Gears of War 2 game arena"></canvas>
+<div id="vignette"></div>
+<div class="utilities"><button id="pause" aria-label="Pause game" hidden>Ⅱ</button><button id="sound" aria-label="Mute sound">SOUND ON</button><button id="fullscreen" aria-label="Toggle fullscreen">⛶</button></div>
+<header id="brand"><strong>G55.CO</strong><i>|</i><span>UNOFFICIAL FAN GAME</span></header>
+<section id="menu" aria-label="Game menu">
+ <div id="menuBody">
+  <div id="eyebrow">DELTA SQUAD // JACINTO</div>
+  <h1 id="heroTitle"><span>GEARS</span><span>OF WAR <b>2</b></span></h1>
+  <div id="genre">BEAT EM UP</div>
+  <h2 id="menuTitle" hidden></h2>
+  <p id="menuText">Take the fight underground.</p>
+  <div id="help" hidden><div><kbd>W A S D</kbd><span>Move • or arrow keys</span></div><div><kbd>J</kbd><span>Melee • three-hit combo</span></div><div><kbd>K</kbd><span>Chainsaw • costs 35 fury</span></div><div><kbd>L</kbd><span>Fire Lancer • hold to shoot</span></div><div><kbd>SPACE</kbd><span>Dodge • brief protection</span></div><div><kbd>R</kbd><span>Reload • 12-round magazine</span></div><p>Match the enemy's lane. Watch for red attack warnings, break supplies, and move right when the arena is clear. Cleared areas stay open if you need to return for supplies.</p><small>Touch: drag the left stick; use the action buttons on the right.</small></div>
+  <div class="actions"><button id="primary" class="primary" disabled><span id="loadFill"></span><span id="primaryText">LOADING 0%</span><span aria-hidden="true">→</span></button><a id="more" class="more" target="_blank" rel="noopener noreferrer">MORE GAMES <span aria-hidden="true">↗</span></a></div>
+  <div class="secondary"><button id="continue" hidden>CONTINUE</button><button id="how">HOW TO PLAY</button><button id="main" hidden>MAIN MENU</button></div>
+ </div>
+ <div id="menuChapter"><small>CAMPAIGN // 05 CHAPTERS</small><span>JACINTO → THE HOLLOW</span></div>
+ <footer><span>A FAN-MADE ARCADE REIMAGINING</span><span>KEYBOARD + TOUCH</span></footer>
+</section>
+<div id="hud" hidden>
+ <div class="health"><div><strong>MARCUS FENIX</strong><span id="hpText">100 / 100</span></div><div class="bar"><span id="hpFill"></span></div><div class="fury"><span id="furyFill"></span></div><small id="ammo">LANCER 12 / 72</small><small id="furyLabel">CHAINSAW 100%</small></div>
+ <div class="mission"><small id="chapterText"></small><strong id="areaText"></strong><span id="threatText"></span></div>
+ <div class="score"><small>SCORE</small><strong id="score">000000</strong></div>
+ <div id="bossHud" hidden><span id="bossName"></span><div class="bar"><span id="bossFill"></span></div></div>
+ <div id="callout"></div><div id="combo"></div>
+ <div id="keyHint">WASD MOVE <i>J</i> MELEE <i>K</i> CHAINSAW <i>L</i> FIRE <i>SPACE</i> DODGE <i>R</i> RELOAD</div>
+</div>
+<div id="touch" hidden><div id="stick" aria-label="Movement joystick"><span id="stickKnob"></span></div><div class="touchActions"><button data-action="reload" class="minor">RELOAD</button><button data-action="dodge" class="minor">DODGE</button><button data-action="saw">SAW</button><button data-action="shoot">FIRE</button><button data-action="melee" class="hit">STRIKE</button></div></div>
+<div id="transition"><small id="transitionNumber"></small><strong id="transitionTitle"></strong></div>
+<script src="art.js"></script><script src="game.js"></script>
+</body></html>
