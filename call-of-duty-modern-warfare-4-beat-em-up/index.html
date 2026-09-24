@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#111b1b">
+<meta name="description" content="A five-chapter modern military arcade beat em up. Fight, shoot, dodge, and break through enemy lines.">
+<title>Call of Duty Modern Warfare 4: Beat Em Up</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23111b1b'/%3E%3Cpath d='M14 45V19l12 15 6-10 6 10 12-15v26' fill='none' stroke='%23b7d16b' stroke-width='6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Modern Warfare 4 beat em up game"></canvas>
+<div id="shade"></div>
+<div class="brand" id="brand"><strong>G55.CO</strong><span>|</span><small>UNOFFICIAL FAN GAME</small></div>
+<div id="utilities"><button id="pause" aria-label="Pause game" title="Pause (Esc)">Ⅱ</button><button id="sound" aria-label="Mute sound" title="Sound (M)">SOUND ON</button><button id="fullscreen" aria-label="Enter fullscreen" title="Fullscreen">⛶</button></div>
+<main id="menu" aria-live="polite">
+<section class="main-panel" id="main-panel">
+<div class="eyebrow"><i></i> TASK FORCE // DEPLOYMENT READY</div>
+<h1><span class="franchise">CALL OF DUTY</span><span class="warfare">MODERN<br>WARFARE <b>4</b></span></h1>
+<div class="genre">BEAT EM UP</div>
+<p class="intro">Close quarters. No backup.<br>Fight through five hostile territories.</p>
+<div class="actions"><button class="primary" id="start" disabled><span id="start-label">LOADING 0%</span><span aria-hidden="true">→</span></button><a class="more" target="_blank" rel="noopener">MORE GAMES <span aria-hidden="true">↗</span></a></div>
+<div class="secondary"><button id="help">HOW TO PLAY</button><button id="continue" hidden>CONTINUE RUN</button></div>
+</section>
+<section class="modal-panel" id="modal-panel" hidden>
+<div class="eyebrow" id="modal-kicker"></div><h2 id="modal-title"></h2><div id="modal-copy"></div>
+<div class="actions"><button class="primary" id="modal-primary"></button><a class="more" target="_blank" rel="noopener">MORE GAMES <span aria-hidden="true">↗</span></a></div>
+<div class="secondary"><button id="modal-secondary"></button></div>
+</section>
+<div class="menu-bottom"><span>FIVE CHAPTERS <i>/</i> ONE OPERATOR</span><span>KEYBOARD + TOUCH</span></div>
+</main>
+<div id="hud" hidden>
+<div class="operator-status"><div class="hud-label">GHOST <span id="hp-label">100 / 100</span></div><div class="health-track"><i id="hp-bar"></i></div><div class="resources"><span>RIFLE <b id="ammo">12 / 60</b></span><span>OVERDRIVE <b id="special">0%</b></span></div></div>
+<div class="mission"><small id="chapter-label"></small><strong id="area-label"></strong><span id="objective"></span></div>
+<div class="score"><small>SCORE</small><strong id="score">000000</strong></div>
+</div>
+<div id="boss-hud" hidden><span id="boss-name"></span><div><i id="boss-bar"></i></div></div>
+<div id="toast"></div>
+<div id="keyboard-hint"><span><b>WASD</b> MOVE</span><span><b>J</b> STRIKE</span><span><b>K</b> KICK</span><span><b>L</b> FIRE</span><span><b>SPACE</b> DODGE</span><span><b>R</b> RELOAD</span><span><b>E</b> OVERDRIVE</span></div>
+<div id="touch" hidden><div id="stick" aria-label="Move joystick"><i id="stick-knob"></i></div><div class="touch-actions"><button data-action="shoot" class="touch-small">FIRE</button><button data-action="reload" class="touch-small">RELOAD</button><button data-action="special" class="touch-small" id="touch-special">BURST</button><button data-action="punch">STRIKE</button><button data-action="kick">KICK</button><button data-action="dodge">DODGE</button></div></div>
+<div id="fade"></div>
+<script src="catalog.js"></script><script src="audio.js"></script><script src="game.js"></script>
+</body>
+</html>
