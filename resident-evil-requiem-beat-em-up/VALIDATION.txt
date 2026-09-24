@@ -1,0 +1,44 @@
+VALIDATION — VERSION 1.2
+
+Passed:
+- JavaScript syntax checks.
+- Deterministic campaign simulation using normal player actions through
+  all five chapters and all 68 enemies, including the five bosses.
+- Point-blank gunfire, ammunition conservation, reload and healing.
+- Pause state preservation, one-time drops, chapter retries and checkpoints.
+- Free backtracking without recreating defeated enemies or broken props.
+- Real Canvas drawing functions exercised with Skia, with scene images
+  inspected for all five environments, props and character sprites.
+- Local asset decoding, all animation cells populated, PNG palette limits,
+  transparency, file references and portable archive structure.
+- Client event handlers exercised for keyboard, touch controls, joystick
+  release, menu navigation, mute toggles, pause, blur, death, chapter
+  transition and victory. DOM and audio were mocked in this test.
+- Eleven distinct sound synthesis buffers: finite samples, nonzero RMS,
+  peaks below clipping, mute/voice cleanup and suspension recovery logic.
+
+Version 1.2 palette checks:
+- Audited all 20 background exports against their full-color originals.
+- Corrected nine opaque layers where padded palette indices were packed
+  into 4-bit PNGs as an unrelated bright color, creating sharp outlines.
+- Verified valid palette indices before packing and at most 16 palette
+  entries in every 4-bit background PNG. Dimensions and alpha masks are
+  unchanged, including the transparent foreground windows.
+- Inspected corrected renders of all five chapters at 1280 x 720 using
+  the actual Canvas rendering code with a mocked DOM. Floor coverage and
+  layer order passed in every chapter.
+
+Version 1.1 background checks (retained):
+- Floor coverage and layer order checked in all five chapters at 1280 x 720,
+  390 x 844, 844 x 390 and 1920 x 500, at the start, middle and end.
+- Transparent Chapter 2 and Chapter 5 foreground windows verified in the
+  PNG alpha channel and in rendered scenes with the rear layers visible.
+- Chapter 4 doorway measures 192 world units against the 170-unit player;
+  storefronts and streetlamps are reduced from the original foreground.
+
+Limit:
+Actual browser playback and audible output were not verified. The local
+browser executable was unavailable, and the connected browser blocked
+local-file access. The rendering and interface checks above are not a
+substitute for a full browser playtest. Fullscreen behavior, browser audio
+policies and final DOM/CSS layout should be checked in the target browser.

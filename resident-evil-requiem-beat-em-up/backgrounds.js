@@ -1,0 +1,1 @@
+window.SCENERY={version:2,widths:{far:2600,mid:2500,near:2400,floor:2900},widthsByTheme:{city:{near:3000}},parallax:{far:.08,mid:.30,near:.62,floor:1},skyColors:{hotel:'#273a51',ward:'#14292f',isolation:'#171d22',city:'#343d52',ark:'#112233'},floorDepth:480,floorUnderlap:64};
