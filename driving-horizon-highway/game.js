@@ -342,7 +342,7 @@ const moodColor2 = new THREE.Color();
 const sunDirection = new THREE.Vector3(-.32, .72, -.62).normalize();
 const moonDirection = new THREE.Vector3();
 const dryRoadColor = new THREE.Color(0x2a2e32);
-const dryPatchColor = new THREE.Color(0x202429);
+const dryPatchColor = new THREE.Color(0x282c30);
 const DAY_CYCLE_SECONDS = 240; // one full 24-hour cycle in four real minutes
 const DAY_KEYS = [
   { h: 0.0,  top:0x071326, horizon:0x16213a, fog:0x1a2940, cloud:0x35455b, hemi:.26, sun:0.00, exposure:.58 },
@@ -381,7 +381,7 @@ const mats = {
   water: new THREE.MeshStandardMaterial({ color: 0x4e8ba2, roughness: .34, metalness: .12 }),
   industrial: new THREE.MeshStandardMaterial({ color: 0x7a858c, roughness: .78, metalness: .16 }),
   rust: new THREE.MeshStandardMaterial({ color: 0x9c5a38, roughness: .84, metalness: .06 }),
-  wornRoad: new THREE.MeshBasicMaterial({ color: 0x14181c, transparent: true, opacity: .16, depthWrite: false }),
+  wornRoad: new THREE.MeshBasicMaterial({ color: 0x14181c, transparent: true, opacity: .065, depthWrite: false }),
   gravel: new THREE.MeshStandardMaterial({ color: 0x8f826b, roughness: 1 }),
   grassBlade: new THREE.MeshStandardMaterial({ color: 0x4b753f, roughness: 1, side: THREE.DoubleSide }),
   flower: new THREE.MeshBasicMaterial({ color: 0xf2d66f, side: THREE.DoubleSide }),
@@ -435,7 +435,10 @@ function disableStaticShadowCasting(group) {
   return group;
 }
 
-function makeTextPanel(width, height, lines, background = '#176aa5', foreground = '#ffffff') {
+const textPanelMaterials = new Map();
+function textPanelMaterial(lines, background = '#176aa5', foreground = '#ffffff') {
+  const key = JSON.stringify([lines, background, foreground]);
+  if (textPanelMaterials.has(key)) return textPanelMaterials.get(key);
   const canvas = document.createElement('canvas');
   canvas.width = 512; canvas.height = 256;
   const ctx = canvas.getContext('2d');
@@ -445,11 +448,15 @@ function makeTextPanel(width, height, lines, background = '#176aa5', foreground 
   lines.forEach((line, i) => {
     const size = i === 0 ? 62 : 42;
     ctx.font = `900 ${size}px Arial, sans-serif`;
-    ctx.fillText(line, 256, lines.length === 1 ? 128 : 92 + i * 78);
+    ctx.fillText(line, 256, lines.length === 1 ? 128 : 92 + i * 78, 460);
   });
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+  textPanelMaterials.set(key, mat);
+  return mat;
+}
+function makeTextPanel(width, height, lines, background = '#176aa5', foreground = '#ffffff') {
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height), textPanelMaterial(lines, background, foreground));
   panel.castShadow = false;
   return panel;
 }
@@ -464,8 +471,9 @@ function roadPitchAtZ() { return 0; }
 function createRoadSegment(i) {
   const g = new THREE.Group();
   const seamlessDepth = SEG_LEN + .9;
-  const grass = box(132, .06, seamlessDepth, mats.grass); grass.position.y = -.08; g.add(grass);
-  const shoulder = box(ROAD_W + 3.2, .08, seamlessDepth, mats.shoulder); shoulder.position.y = -.025; g.add(shoulder);
+  const grass = box(132, .06, seamlessDepth, mats.grass.clone()); grass.position.y = -.08; g.add(grass);
+  const shoulder = box(ROAD_W + 3.2, .08, seamlessDepth, mats.shoulder.clone()); shoulder.position.y = -.025; g.add(shoulder);
+  g.userData.groundMaterials = [grass.material, shoulder.material];
   const road = box(ROAD_W, .09, seamlessDepth, mats.road); road.position.y = .03; g.add(road);
 
   // Repeated road decoration is instanced. This preserves the detailed road but
@@ -487,8 +495,8 @@ function createRoadSegment(i) {
     }
   }
 
-  for (let n = 0; n < 4; n++) {
-    patchSpecs.push([1.0 + Math.random() * 2.8, .018, 1.5 + Math.random() * 4.5,
+  for (let n = 0; n < 2; n++) {
+    patchSpecs.push([.45 + Math.random() * 1.3, .012, 2.5 + Math.random() * 6,
       (Math.random() - .5) * 13.5, .102, (Math.random() - .5) * (SEG_LEN - 4), (Math.random() - .5) * .16]);
   }
   if (i % 3 === 0) {
@@ -782,7 +790,7 @@ function createBillboard() {
   const g = new THREE.Group();
   const p1 = box(.24, 4, .24, mats.dark); p1.position.set(-2.8, 2, 0); g.add(p1);
   const p2 = p1.clone(); p2.position.x = 2.8; g.add(p2);
-  const panel = box(6.6, 2.6, .25, new THREE.MeshStandardMaterial({ color: 0x222831, roughness: .7 })); panel.position.y = 4.6; g.add(panel);
+  const panel = box(6.6, 2.6, .25, cityRoofMat); panel.position.y = 4.6; g.add(panel);
   const face = makeTextPanel(6.35, 2.35, ['DRIVE', 'THE OPEN ROAD'], '#e72f7c'); face.position.set(0, 4.6, .136); g.add(face);
   return g;
 }
@@ -818,19 +826,19 @@ function createUtilityPole() {
   return g;
 }
 
-function createRoadsideSign() {
+function createRoadsideSign(zoneIndex = 0) {
   const g = new THREE.Group();
   const post1 = box(.14, 3.1, .14, mats.pole); post1.position.set(-1.05, 1.55, 0); g.add(post1);
   const post2 = post1.clone(); post2.position.x = 1.05; g.add(post2);
   const panel = box(3.2, 1.65, .16, mats.signBlue); panel.position.y = 3.15; g.add(panel);
-  const face = makeTextPanel(3.0, 1.45, ['SCENIC', 'ROUTE'], '#176aa5'); face.position.set(0, 3.15, .091); g.add(face);
+  const face = makeTextPanel(3.0, 1.45, environmentZones[zoneIndex].name.split(' '), '#176aa5'); face.position.set(0, 3.15, .091); g.add(face);
   return g;
 }
 
 function createFarmBuilding(scale = 1) {
   const g = new THREE.Group();
   const body = box(5.8 * scale, 3.0 * scale, 5.0 * scale, mats.concrete); body.position.y = 1.5 * scale; g.add(body);
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x8e3f35, roughness: .82 });
+  const roofMat = mats.rust;
   const roof = new THREE.Mesh(new THREE.ConeGeometry(4.3 * scale, 2.0 * scale, 4), roofMat); roof.position.y = 3.7 * scale; roof.rotation.y = Math.PI / 4; roof.scale.z = .8; g.add(roof);
   const door = box(1.8 * scale, 2.0 * scale, .12, mats.dark); door.position.set(0, 1.05 * scale, -2.56 * scale); g.add(door);
   return g;
@@ -852,7 +860,7 @@ function createGrassTuft(scale = 1) {
 }
 function createFencePiece(scale = 1) {
   const g = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: 0x806a4e, roughness: 1 });
+  const wood = mats.trunk;
   for (const x of [-1.8, 1.8]) { const post = box(.13, 1.15, .13, wood); post.position.set(x, .57, 0); g.add(post); }
   for (const y of [.45, .88]) { const rail = box(3.7, .10, .10, wood); rail.position.y = y; g.add(rail); }
   g.scale.setScalar(scale); return g;
@@ -871,255 +879,329 @@ for (let i = 0; i < 62; i++) createForegroundDetail(-10 - Math.random() * 640, M
 const environmentZones = [
   { name: 'OPEN COUNTRY', grass: 0x557a48, shoulder: 0xc9bca2, leaves: 0x3d7444, bush: 0x527f45, rock: 0x8d8d83 },
   { name: 'PINE RIDGE', grass: 0x385a3d, shoulder: 0xa99c82, leaves: 0x28553a, bush: 0x35633d, rock: 0x737970 },
-  { name: 'RED ROCK', grass: 0x777149, shoulder: 0xc59b68, leaves: 0x68713c, bush: 0x79743f, rock: 0xa76547 },
+  { name: 'RED ROCK', grass: 0xa58a61, shoulder: 0xc59b68, leaves: 0x68713c, bush: 0x79743f, rock: 0xa76547 },
   { name: 'INDUSTRIAL BELT', grass: 0x59665a, shoulder: 0xa79f8d, leaves: 0x49604e, bush: 0x526453, rock: 0x777b79 },
   { name: 'HORIZON CITY', grass: 0x4a5550, shoulder: 0x878b8b, leaves: 0x3f5848, bush: 0x46584c, rock: 0x686d72 }
 ].map(z => ({ ...z, grassColor: new THREE.Color(z.grass), shoulderColor: new THREE.Color(z.shoulder), leavesColor: new THREE.Color(z.leaves), bushColor: new THREE.Color(z.bush), rockColor: new THREE.Color(z.rock) }));
 const ZONE_LENGTH = 1400;
-function currentZoneIndex() { return Math.floor(state.distance / ZONE_LENGTH) % environmentZones.length; }
+function zoneAtDistance(distance) { return Math.floor(Math.max(0, distance) / ZONE_LENGTH) % environmentZones.length; }
+function routeDistanceAtZ(z) { return state.distance + PLAYER_Z - z; }
+function currentZoneIndex() { return zoneAtDistance(state.distance); }
 function currentZone() { return environmentZones[currentZoneIndex()]; }
 
 function disposeGroupGeometry(group) {
-  group.traverse(o => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+  const disposed = new Set();
+  group.traverse(o => {
+    if (o.isMesh && o.geometry && !disposed.has(o.geometry)) { disposed.add(o.geometry); o.geometry.dispose(); }
+    if (o.isInstancedMesh) o.dispose();
+  });
   while (group.children.length) group.remove(group.children[0]);
 }
 
+// Each roadside group keeps the palette of the route position where it is met.
+// Shared materials and instancing keep dense forests/frontage inexpensive to recycle.
+const zoneMaterials = environmentZones.map(z => ({
+  ground: new THREE.MeshStandardMaterial({ color: z.grass, roughness: 1 }),
+  leaves: new THREE.MeshStandardMaterial({ color: z.leaves, roughness: 1 }),
+  rock: new THREE.MeshStandardMaterial({ color: z.rock, roughness: 1 })
+}));
+const fieldMat = new THREE.MeshStandardMaterial({ color: 0x8d9857, roughness: 1 });
+const pavementMat = new THREE.MeshStandardMaterial({ color: 0x656d73, roughness: 1 });
+const tunnelShadeMat = new THREE.MeshBasicMaterial({ color: 0x111925, transparent: true, opacity: .24, depthWrite: false });
+const poolCanvas = document.createElement('canvas'); poolCanvas.width = poolCanvas.height = 64;
+const poolCtx = poolCanvas.getContext('2d');
+const poolGradient = poolCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+poolGradient.addColorStop(0, 'rgba(255,219,145,.9)'); poolGradient.addColorStop(.4, 'rgba(255,211,128,.4)'); poolGradient.addColorStop(1, 'rgba(255,211,128,0)');
+poolCtx.fillStyle = poolGradient; poolCtx.fillRect(0, 0, 64, 64);
+const poolTexture = new THREE.CanvasTexture(poolCanvas); poolTexture.colorSpace = THREE.SRGBColorSpace;
+const lampPoolMat = new THREE.MeshBasicMaterial({ map: poolTexture, transparent: true, opacity: 0, depthWrite: false });
+const tunnelPoolMat = lampPoolMat.clone(); tunnelPoolMat.opacity = .25;
+// Two fixed, shadow-free lights illuminate nearby road/vehicles, not one light per prop.
+const roadLampLights = Array.from({ length: 2 }, () => {
+  const light = new THREE.PointLight(0xffd59a, 0, 33, 1.6); scene.add(light); return light;
+});
+const lampWorldPosition = new THREE.Vector3();
+function addRoadLamp(parent, x, z, tunnel = false) {
+  const height = tunnel ? 6.35 : 7.2;
+  if (!tunnel) {
+    addInstancedBoxes(parent, [[.16, height, .16, x, height / 2, z], [2.8, .15, .15, x - Math.sign(x) * 1.3, height, z]], mats.pole);
+  }
+  const lx = tunnel ? x : x - Math.sign(x) * 2.5;
+  addInstancedBoxes(parent, [[.8, .10, .4, lx, height - .1, z]], cityLampMat, false, false);
+  const anchor = new THREE.Object3D(); anchor.position.set(lx, height - .35, z);
+  anchor.userData.roadLamp = true; anchor.userData.tunnelLamp = tunnel; parent.add(anchor);
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(15, 27), tunnel ? tunnelPoolMat : lampPoolMat);
+  pool.rotation.x = -Math.PI / 2; pool.position.set(lx, .137, z); parent.add(pool);
+}
+function collectFeatureDetails(g) {
+  g.userData.lamps = []; g.userData.rotors = [];
+  g.traverse(o => {
+    if (o.userData.roadLamp) g.userData.lamps.push(o);
+    if (o.userData.spinRotor) g.userData.rotors.push(o);
+  });
+}
+function updateRoadLighting() {
+  const candidates = [];
+  for (const group of [...zoneFeatures, ...majorFeatures]) {
+    if (group.position.z < -180 || group.position.z > 180) continue;
+    for (const anchor of group.userData.lamps || []) {
+      anchor.getWorldPosition(lampWorldPosition);
+      if (Math.abs(lampWorldPosition.z - PLAYER_Z) < 38) candidates.push({ position: lampWorldPosition.clone(), tunnel: anchor.userData.tunnelLamp });
+    }
+  }
+  candidates.sort((a, b) => Math.abs(a.position.z - PLAYER_Z) - Math.abs(b.position.z - PLAYER_Z));
+  roadLampLights.forEach((light, i) => {
+    const item = candidates[i];
+    if (!item) { light.intensity = 0; return; }
+    light.position.copy(item.position);
+    const fade = 1 - THREE.MathUtils.smoothstep(Math.abs(item.position.z - PLAYER_Z), 22, 38);
+    light.intensity = (item.tunnel ? 65 : 95 * nightFactor) * fade;
+  });
+}
+function addShapeInstances(parent, geometry, specs, material) {
+  const mesh = new THREE.InstancedMesh(geometry, material, specs.length);
+  specs.forEach(([x, y, z, sx, sy, sz, ry = 0], i) => {
+    _instanceDummy.position.set(x, y, z); _instanceDummy.scale.set(sx, sy, sz); _instanceDummy.rotation.set(0, ry, 0); _instanceDummy.updateMatrix();
+    mesh.setMatrixAt(i, _instanceDummy.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); mesh.receiveShadow = true; parent.add(mesh);
+  return mesh;
+}
 function createSiloCluster() {
   const g = new THREE.Group();
-  const cylMat = new THREE.MeshStandardMaterial({ color: 0xc8ced0, roughness: .52, metalness: .32 });
   for (const x of [-2.1, 2.1]) {
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 5.4, 12), cylMat); body.position.set(x, 2.7, 0); body.castShadow = true; g.add(body);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.55, 1.15, 12), mats.rust); roof.position.set(x, 5.95, 0); roof.castShadow = true; g.add(roof);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 5.4, 12), mats.trailer); body.position.set(x, 2.7, 0); g.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.55, 1.15, 12), mats.rust); roof.position.set(x, 5.95, 0); g.add(roof);
   }
   return g;
 }
-
-function createPineStand() {
-  const g = new THREE.Group();
-  for (let i = 0; i < 7; i++) {
-    const t = createTree(.85 + Math.random() * .85);
-    t.position.set((Math.random() - .5) * 12, 0, (Math.random() - .5) * 13);
-    g.add(t);
-  }
-  return g;
-}
-
-function createRockMonument() {
-  const g = new THREE.Group();
-  for (let i = 0; i < 5; i++) {
-    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(2.4 + Math.random() * 2.7, 0), mats.rock);
-    r.position.set((i - 2) * 3.2 + (Math.random() - .5) * 2, 1.4 + Math.random() * 2.4, (Math.random() - .5) * 5);
-    r.scale.y = 1.0 + Math.random() * 1.8; r.rotation.set(Math.random(), Math.random(), Math.random()); r.castShadow = true; g.add(r);
-  }
-  return g;
-}
-
-function createIndustrialYard() {
-  const g = new THREE.Group();
-  const hall = box(11, 4.2, 7.5, mats.industrial); hall.position.y = 2.1; g.add(hall);
-  const roof = box(11.5, .35, 8, mats.dark); roof.position.y = 4.38; g.add(roof);
-  for (const x of [-3.3, 0, 3.3]) {
-    const door = box(2.2, 2.6, .12, mats.dark); door.position.set(x, 1.35, -3.82); g.add(door);
-  }
-  for (const x of [-5.6, 5.6]) {
-    const stack = new THREE.Mesh(new THREE.CylinderGeometry(.48, .7, 8.8, 10), mats.rust); stack.position.set(x, 4.4, 1.8); stack.castShadow = true; g.add(stack);
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff493d })); beacon.position.set(x, 8.9, 1.8); g.add(beacon);
-  }
-  return g;
-}
-
-function createCityBlock(side = 1) {
-  const g = new THREE.Group();
-  const bodyA = [], bodyB = [], roofs = [], windows = [], lamps = [];
-  const buildingCount = 5;
-
-  for (let i = 0; i < buildingCount; i++) {
-    const w = 4.8 + Math.random() * 5.5;
-    const d = 5.0 + Math.random() * 7.0;
-    const h = 8.0 + Math.random() * 20.0;
-    const bx = (Math.random() - .5) * 17;
-    const bz = (i - (buildingCount - 1) / 2) * 8.2 + (Math.random() - .5) * 3.0;
-    (i % 2 ? bodyA : bodyB).push([w, h, d, bx, h * .5, bz]);
-    roofs.push([w * .46, .55, d * .42, bx, h + .28, bz]);
-
-    // Long illuminated bands face the highway. A few bands per tower give a
-    // convincing skyline at speed while keeping draw calls low through instancing.
-    const faceX = bx - side * (w * .5 + .035);
-    const rows = Math.max(2, Math.min(6, Math.floor(h / 4.2)));
-    for (let r = 0; r < rows; r++) {
-      windows.push([.055, .54, d * .68, faceX, 2.0 + r * ((h - 3.0) / Math.max(1, rows - 1)), bz]);
-    }
-  }
-
-  addInstancedBoxes(g, bodyA, cityWallMatA, false, true);
-  addInstancedBoxes(g, bodyB, cityWallMatB, false, true);
-  addInstancedBoxes(g, roofs, cityRoofMat, false, true);
-  addInstancedBoxes(g, windows, cityWindowMat, false, false);
-
-  // Highway-edge street lamps become especially readable in dark weather.
-  for (const z of [-11, 0, 11]) {
-    const x = -side * 10.5;
-    const pole = box(.16, 6.5, .16, mats.pole); pole.position.set(x, 3.25, z); g.add(pole);
-    const arm = box(1.8, .12, .12, mats.pole); arm.position.set(x - side * .82, 6.25, z); g.add(arm);
-    lamps.push([.58, .10, .34, x - side * 1.62, 6.18, z]);
-  }
-  addInstancedBoxes(g, lamps, cityLampMat, false, false);
-
-  // One compact neon marker per block gives the zone a distinct arcade identity.
-  if (Math.random() < .72) {
-    const sign = makeTextPanel(4.3, 1.25, ['HORIZON', 'CITY'], '#214b83', '#dff4ff');
-    sign.position.set(-side * 8.7, 7.1, 0);
-    sign.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
-    g.add(sign);
-  }
-  return g;
-}
-
 function createWindTurbine() {
   const g = new THREE.Group();
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.32, .65, 14, 10), mats.trailer); mast.position.y = 7; mast.castShadow = true; g.add(mast);
-  const rotor = new THREE.Group(); rotor.position.set(0, 14.1, -.02); rotor.userData.spinRotor = true;
-  const hub = new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 8), mats.trailer); rotor.add(hub);
-  for (let a = 0; a < 3; a++) {
-    const blade = box(.34, 5.9, .16, mats.trailer); blade.position.y = 2.95; blade.rotation.z = a * Math.PI * 2 / 3; blade.geometry.translate(0, -2.95, 0); rotor.add(blade);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.32, .65, 16, 10), mats.trailer); mast.position.y = 8; g.add(mast);
+  const rotor = new THREE.Group(); rotor.position.set(0, 16, 0); rotor.userData.spinRotor = true;
+  for (let i = 0; i < 3; i++) {
+    const blade = box(.32, 6, .16, mats.trailer); blade.geometry.translate(0, 3, 0); blade.rotation.z = i * Math.PI * 2 / 3; rotor.add(blade);
   }
-  g.add(rotor);
+  g.add(rotor); return g;
+}
+function addFence(parent, x, length = 76) {
+  const specs = [[.12, .12, length, x, .55, 0], [.12, .12, length, x, 1.05, 0]];
+  for (let z = -length / 2; z <= length / 2; z += 6) specs.push([.18, 1.35, .18, x, .65, z]);
+  addInstancedBoxes(parent, specs, mats.trunk);
+}
+function createCountryBlock(side, index) {
+  const g = new THREE.Group(), rows = [];
+  for (let x = -10; x <= 18; x += 3.5) rows.push([1.6, .04, 73, x, -.015, 0]);
+  addInstancedBoxes(g, rows, fieldMat); addFence(g, -side * 17);
+  if (index % 3 === 0) {
+    const barn = createFarmBuilding(1.8); barn.position.set(side * 5, 0, -14); barn.rotation.y = side * Math.PI / 2; g.add(barn);
+    const silos = createSiloCluster(); silos.position.set(side * 9, 0, 12); g.add(silos);
+  } else if (index % 3 === 1) {
+    const turbine = createWindTurbine(); turbine.position.x = side * 15; g.add(turbine);
+  }
   return g;
 }
-
-
-function buildZoneFeature(container, zoneIndex, side) {
-  disposeGroupGeometry(container);
-  let obj;
-  if (zoneIndex === 0) obj = Math.random() < .5 ? createSiloCluster() : createWindTurbine();
-  else if (zoneIndex === 1) obj = createPineStand();
-  else if (zoneIndex === 2) obj = createRockMonument();
-  else if (zoneIndex === 3) obj = createIndustrialYard();
-  else obj = createCityBlock(side);
-  obj.position.x = side * (zoneIndex === 4 ? (28 + Math.random() * 15) : (22 + Math.random() * 22));
-  obj.rotation.y = side < 0 ? .08 : -.08;
-  disableStaticShadowCasting(obj);
-  container.add(obj);
-  container.userData.rotors = [];
-  obj.traverse(o => { if (o.userData.spinRotor) container.userData.rotors.push(o); });
-  container.userData.side = side;
-  container.userData.zoneIndex = zoneIndex;
-}
-
-function createZoneFeature(z, side) {
-  const g = new THREE.Group();
-  g.position.z = z;
-  buildZoneFeature(g, currentZoneIndex(), side);
-  world.add(g); zoneFeatures.push(g);
-}
-for (let i = 0; i < 12; i++) createZoneFeature(-90 - i * 62, i % 2 ? -1 : 1);
-
-function createSceneryItem(z, side) {
-  const r = Math.random();
-  let obj, kind, minOffset = 14, spread = 26;
-  if (r < .44) { obj = createTree(.65 + Math.random() * .9); kind = 'tree'; }
-  else if (r < .63) { obj = createBushCluster(.7 + Math.random() * .75); kind = 'bush'; minOffset = 12; }
-  else if (r < .76) { obj = createRockCluster(.65 + Math.random() * .75); kind = 'rock'; minOffset = 13; }
-  else if (r < .86) { obj = createUtilityPole(); kind = 'pole'; minOffset = 16; spread = 10; }
-  else if (r < .94) { obj = createRoadsideSign(); kind = 'sign'; minOffset = 12; spread = 8; }
-  else if (r < .985) { obj = createBillboard(); kind = 'billboard'; minOffset = 17; spread = 13; }
-  else { obj = createFarmBuilding(.75 + Math.random() * .55); kind = 'building'; minOffset = 24; spread = 28; }
-  obj.userData.side = side;
-  obj.userData.kind = kind;
-  obj.userData.minOffset = minOffset;
-  obj.userData.spread = spread;
-  obj.userData.offset = minOffset + Math.random() * spread;
-  obj.userData.baseRotation = kind === 'sign' || kind === 'billboard' ? (Math.random() * .10 - .05) : Math.random() * .7 - .35;
-  obj.position.z = z;
-  disableStaticShadowCasting(obj);
-  world.add(obj);
-  scenery.push(obj);
-}
-for (let i = 0; i < 88; i++) createSceneryItem(-Math.random() * 650, Math.random() < .5 ? -1 : 1);
-
-function createOverheadGantry(z) {
-  const g = new THREE.Group();
-  const left = box(.34, 6.8, .34, mats.pole); left.position.set(-10.6, 3.4, 0); g.add(left);
-  const right = left.clone(); right.position.x = 10.6; g.add(right);
-  const beam = box(21.5, .30, .34, mats.pole); beam.position.y = 6.5; g.add(beam);
-  const sign1 = box(6.3, 2.0, .20, mats.signBlue); sign1.position.set(-3.8, 5.65, 0); g.add(sign1);
-  const sign2 = box(5.2, 2.0, .20, mats.signBlue); sign2.position.set(3.8, 5.65, 0); g.add(sign2);
-  const face1 = makeTextPanel(6.05, 1.75, ['HORIZON', 'NORTH'], '#176aa5'); face1.position.set(-3.8, 5.65, .111); g.add(face1);
-  const face2 = makeTextPanel(4.95, 1.75, ['EXIT 27', 'SCENIC'], '#176aa5'); face2.position.set(3.8, 5.65, .111); g.add(face2);
-  g.position.z = z;
-  world.add(g); roadFeatures.push(g);
-}
-for (const z of [-175, -390, -605]) createOverheadGantry(z);
-
-
-function createOverpass(z) {
-  const g = new THREE.Group();
-  for (const x of [-11.4, 11.4]) {
-    const pier = box(1.15, 6.0, 1.2, mats.concrete); pier.position.set(x, 3.0, 0); g.add(pier);
-    const foot = box(2.4, .45, 2.4, mats.concrete); foot.position.set(x, .23, 0); g.add(foot);
+function createPineStand() {
+  const g = new THREE.Group(), trunks = [], lower = [], upper = [];
+  for (let i = 0; i < 36; i++) {
+    const x = -13 + Math.random() * 42, z = -36 + Math.random() * 72, s = 1.1 + Math.random() * 1.1;
+    const groundY = Math.max(0, (Math.abs(x) - 8) * .10);
+    trunks.push([.35 * s, 3 * s, .35 * s, x, groundY + 1.5 * s, z]);
+    lower.push([x, groundY + 4.5 * s, z, 2.4 * s, 6 * s, 2.4 * s]);
+    upper.push([x, groundY + 6.5 * s, z, 1.8 * s, 5 * s, 1.8 * s]);
   }
-  const deck = box(29, .85, 5.8, mats.concrete); deck.position.y = 6.05; g.add(deck);
-  for (const x of [-13.5, 13.5]) { const barrier = box(.45, 1.0, 5.8, mats.concrete); barrier.position.set(x, 6.78, 0); g.add(barrier); }
-  for (const x of [-8, -4, 0, 4, 8]) { const girder = box(.20, .46, 5.7, mats.dark); girder.position.set(x, 5.48, 0); g.add(girder); }
-  for (const x of [-5.2, -1.75, 1.75, 5.2]) { const mark = box(.12, .025, 5.8, mats.lane); mark.position.set(x, 6.51, 0); mark.castShadow = false; g.add(mark); }
-  const overpassLampMat = new THREE.MeshStandardMaterial({ color: 0xf4e7c8, emissive: 0xffd38a, emissiveIntensity: .22 });
-  nightMaterials.push(overpassLampMat);
-  for (const x of [-7, 0, 7]) { const lamp = box(.72, .06, .22, overpassLampMat); lamp.position.set(x, 5.33, 0); lamp.castShadow = false; g.add(lamp); }
-  const shadow = box(19.3, .02, 5.4, mats.skid); shadow.position.set(0, .13, 0); shadow.castShadow = false; g.add(shadow);
-  disableStaticShadowCasting(g);
-  g.position.z = z; world.add(g); majorFeatures.push(g);
+  addInstancedBoxes(g, trunks, mats.trunk);
+  addShapeInstances(g, new THREE.ConeGeometry(1, 1, 7), lower.concat(upper), zoneMaterials[1].leaves);
+  addShapeInstances(g, new THREE.DodecahedronGeometry(1, 0), [[8, -1.4, 0, 21, 5, 38],[-8, -1.2, 17, 7, 3.4, 14]], zoneMaterials[1].ground);
+  return g;
 }
-
-
-function createTunnel(z) {
-  const g = new THREE.Group();
-  const length = 34;
-  for (const x of [-10.1, 10.1]) { const wall = box(1.6, 7.2, length, mats.concrete); wall.position.set(x, 3.6, 0); g.add(wall); }
-  const roof = box(21.8, 1.0, length, mats.concrete); roof.position.y = 7.05; g.add(roof);
-  for (const zz of [-length/2, length/2]) {
-    const beam = box(21.8, .7, .7, mats.dark); beam.position.set(0, 6.4, zz); g.add(beam);
+function createRockMonument(side) {
+  const g = new THREE.Group(), rocks = [];
+  for (let i = 0; i < 7; i++) {
+    const height = 9 + Math.random() * 14;
+    rocks.push([side * (2 + Math.random() * 15), height * .52, -32 + i * 10, 9 + Math.random() * 6, height, 12 + Math.random() * 6, Math.random() * .3]);
   }
-  const lightMat = new THREE.MeshStandardMaterial({ color: 0xffe9b8, emissive: 0xffd889, emissiveIntensity: .7, roughness: .35 });
-  nightMaterials.push(lightMat);
-  for (let zz = -13; zz <= 13; zz += 6.5) {
-    for (const x of [-5.3, 0, 5.3]) { const light = box(1.25, .09, .32, lightMat); light.position.set(x, 6.43, zz); light.castShadow = false; g.add(light); }
-    for (const side of [-1, 1]) {
-      const stripe = box(.10, .16, 5.2, mats.tunnelStripe); stripe.position.set(side * 9.26, 1.35, zz); stripe.castShadow = false; g.add(stripe);
-      const panel = box(.05, 2.2, 5.1, mats.dark); panel.position.set(side * 9.24, 3.45, zz); panel.castShadow = false; g.add(panel);
+  addShapeInstances(g, new THREE.DodecahedronGeometry(1, 0), rocks, zoneMaterials[2].rock);
+  addShapeInstances(g, new THREE.DodecahedronGeometry(1, 0), [[side * 14, -1.5, 0, 28, 7, 44]], zoneMaterials[2].ground);
+  return g;
+}
+function createIndustrialYard(side) {
+  const g = new THREE.Group();
+  addInstancedBoxes(g, [[42, .10, 76, 4 * side, -.025, 0]], pavementMat);
+  addInstancedBoxes(g, [[15, 8, 28, 8 * side, 4, -12]], mats.industrial);
+  addInstancedBoxes(g, [[16, .45, 29, 8 * side, 8.2, -12]], cityRoofMat);
+  const doors = [], containers = [], yardMarks = [], fence = [];
+  for (const z of [-21, -12, -3]) {
+    doors.push([.15, 4, 5.5, side * .4, 2, z]);
+    yardMarks.push([13, .025, .15, -side * 7, .08, z]);
+  }
+  for (let i = 0; i < 7; i++) containers.push([5.7, 2.6, 2.5, side * (2 + (i % 2) * 6), 1.3 + (i > 4 ? 2.6 : 0), 13 + (i % 3) * 3]);
+  for (let z = -36; z <= 36; z += 6) fence.push([.12, 2, .12, -side * 17, 1, z]);
+  fence.push([.12, .08, 75, -side * 17, 1.8, 0]);
+  addInstancedBoxes(g, doors, mats.dark); addInstancedBoxes(g, containers, mats.rust); addInstancedBoxes(g, yardMarks, mats.lane); addInstancedBoxes(g, fence, mats.pole);
+  for (const z of [-23, -7]) {
+    const stack = new THREE.Mesh(new THREE.CylinderGeometry(.65, .95, 17, 10), mats.rust); stack.position.set(side * 16, 8.5, z); g.add(stack);
+    addInstancedBoxes(g, [[1.1, .3, 1.1, side * 16, 17, z]], mats.reflectorRed, false, false);
+  }
+  return g;
+}
+function createCityBlock(side) {
+  const g = new THREE.Group(), bodyA = [], bodyB = [], roofs = [], windows = [];
+  addInstancedBoxes(g, [[43, .12, 77, side * 4, -.015, 0]], pavementMat);
+  addInstancedBoxes(g, [[3.5, .11, 77, -side * 16, .03, 0], [.3, .24, 77, -side * 18, .06, 0]], mats.concrete);
+  for (let i = 0; i < 7; i++) {
+    const front = i < 4, bx = side * (front ? -5 : 17), bz = front ? -28.5 + i * 19 : -25 + (i - 4) * 25;
+    const w = front ? 13 : 15, d = front ? 17 : 19, h = front ? 12 + Math.random() * 13 : 30 + Math.random() * 28;
+    (i % 2 ? bodyA : bodyB).push([w, h, d, bx, h / 2, bz]);
+    roofs.push([w * .65, .8, d * .65, bx, h + .4, bz]);
+    for (let y = 2.6; y < h - 1; y += 3.1) {
+      for (let col = -1; col <= 1; col++) windows.push([.06, 1.15, 3.3, bx - side * (w / 2 + .035), y, bz + col * 4.7]);
+      for (let col = -1; col <= 1; col++) windows.push([2.1, 1.15, .06, bx + col * 3.8, y, bz + d / 2 + .035]);
     }
   }
-  for (const zz of [-8, 8]) {
-    const fan = new THREE.Group(); fan.position.set(0, 6.15, zz); fan.userData.spinFan = true;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(.68, .08, 6, 16), mats.dark); ring.rotation.x = Math.PI / 2; fan.add(ring);
-    for (let a = 0; a < 4; a++) { const blade = box(.10, .62, .05, mats.dark); blade.position.y = .31; blade.rotation.z = a * Math.PI / 2; blade.geometry.translate(0, -.31, 0); fan.add(blade); }
-    g.add(fan);
-  }
-  g.userData.kind = 'tunnel';
-  g.userData.halfLength = length * .5;
-  g.userData.fans = [];
-  g.traverse(o => { if (o.userData.spinFan) g.userData.fans.push(o); });
-  disableStaticShadowCasting(g);
-  g.position.z = z; world.add(g); majorFeatures.push(g);
+  addInstancedBoxes(g, bodyA, cityWallMatA); addInstancedBoxes(g, bodyB, cityWallMatB);
+  addInstancedBoxes(g, roofs, cityRoofMat); addInstancedBoxes(g, windows, cityWindowMat, false, false);
+  return g;
 }
+function buildZoneFeature(container, zoneIndex, side) {
+  disposeGroupGeometry(container);
+  const index = Math.floor(routeDistanceAtZ(container.position.z) / 76);
+  const obj = zoneIndex === 0 ? createCountryBlock(side, index) : zoneIndex === 1 ? createPineStand() : zoneIndex === 2 ? createRockMonument(side) : zoneIndex === 3 ? createIndustrialYard(side) : createCityBlock(side);
+  obj.position.x = side * 32;
+  if (zoneIndex === 1 && side < 0) obj.scale.x = -1;
+  container.add(obj);
+  // Lamps stand at the highway edge, independently of building setbacks.
+  if (zoneIndex >= 3) for (const z of [-19, 19]) addRoadLamp(container, side * 12, z);
+  disableStaticShadowCasting(container); collectFeatureDetails(container);
+  container.userData.side = side; container.userData.zoneIndex = zoneIndex;
+  container.userData.routeDistance = routeDistanceAtZ(container.position.z);
+}
+function createZoneFeature(z, side) {
+  const g = new THREE.Group(); g.position.z = z; g.userData.initialZ = z;
+  buildZoneFeature(g, zoneAtDistance(routeDistanceAtZ(z)), side); world.add(g); zoneFeatures.push(g);
+}
+for (let i = 0; i < 20; i++) createZoneFeature(24 - Math.floor(i / 2) * 76, i % 2 ? -1 : 1);
 
-
-function createServiceStation(z) {
+function buildSceneryItem(container, zi, side) {
+  disposeGroupGeometry(container);
+  const r = Math.random(); let obj, kind;
+  if (r > .93) { obj = createRoadsideSign(zi); kind = 'sign'; }
+  else if (zi === 1 || (zi === 0 && r < .35)) { obj = createTree(zi === 1 ? 1.2 + Math.random() * .6 : .8 + Math.random() * .5); kind = 'tree'; }
+  else if (zi === 2) { obj = createRockCluster(.9 + Math.random() * 1.1); kind = 'rock'; }
+  else if (zi === 3) { obj = createUtilityPole(); kind = 'pole'; }
+  else { obj = createBushCluster(.7 + Math.random() * .4); kind = 'bush'; }
+  obj.traverse(o => { if (o.material === mats.leaves || o.material === mats.bush) o.material = zoneMaterials[zi].leaves; if (o.material === mats.rock) o.material = zoneMaterials[zi].rock; });
+  const offset = kind === 'sign' ? 12.8 : zi >= 3 ? 13.5 : 14.5 + Math.random() * 4;
+  obj.position.x = side * offset;
+  container.add(obj); disableStaticShadowCasting(container);
+  container.userData.side = side; container.userData.kind = kind; container.userData.zoneIndex = zi;
+  container.userData.routeDistance = routeDistanceAtZ(container.position.z);
+}
+function createSceneryItem(z, side) {
+  const g = new THREE.Group(); g.position.z = z; g.userData.initialZ = z;
+  buildSceneryItem(g, zoneAtDistance(routeDistanceAtZ(z)), side); world.add(g); scenery.push(g);
+}
+for (let i = 0; i < 48; i++) createSceneryItem(-i * 14, i % 2 ? -1 : 1);
+function updateGantrySign(g) {
+  const zi = zoneAtDistance(routeDistanceAtZ(g.position.z));
+  g.userData.faces[0].material = textPanelMaterial(environmentZones[zi].name.split(' '));
+  g.userData.faces[1].material = textPanelMaterial(['NEXT', environmentZones[(zi + 1) % 5].name]);
+  g.userData.zoneIndex = zi;
+}
+function createOverheadGantry(z) {
   const g = new THREE.Group();
-  const building = box(9, 3.7, 6.5, mats.concrete); building.position.set(24, 1.85, 0); g.add(building);
-  const glass = box(6.8, 1.7, .12, mats.glass); glass.position.set(24, 2.05, -3.3); g.add(glass);
-  const canopy = box(12.5, .45, 6.5, mats.trailer); canopy.position.set(15.7, 4.3, 0); g.add(canopy);
-  for (const x of [12.0, 19.4]) { const post = box(.32, 4.2, .32, mats.pole); post.position.set(x, 2.1, 0); g.add(post); }
-  for (const x of [13.6, 17.4]) { const pump = box(.8, 1.5, .7, mats.dark); pump.position.set(x, .75, 0); g.add(pump); }
-  const stationLightMat = new THREE.MeshStandardMaterial({ color: 0xf5e9c8, emissive: 0xffd999, emissiveIntensity: .25 });
-  nightMaterials.push(stationLightMat);
-  for (const x of [13.2,15.7,18.2]) { const lamp=box(1.2,.06,.32,stationLightMat); lamp.position.set(x,4.05,-1.3); g.add(lamp); }
-  const sign = box(2.2, 5.5, .45, mats.signBlue); sign.position.set(29.8, 2.75, -2.6); g.add(sign);
-  disableStaticShadowCasting(g);
-  g.position.z = z; world.add(g); majorFeatures.push(g);
+  addInstancedBoxes(g, [[.3, 7.8, .3, -10.6, 3.9, 0],[.3, 7.8, .3, 10.6, 3.9, 0],[21.5, .25, .3, 0, 7.5, 0]], mats.pole);
+  const faces = [makeTextPanel(6.1, 1.8, ['OPEN', 'COUNTRY']), makeTextPanel(6.1, 1.8, ['NEXT', 'PINE RIDGE'])];
+  faces.forEach((face, i) => { face.position.set(i ? 3.8 : -3.8, 6.55, .18); g.add(face); });
+  g.userData.faces = faces; g.userData.initialZ = z; g.position.z = z; updateGantrySign(g);
+  world.add(g); roadFeatures.push(g);
 }
-createOverpass(-245);
-createTunnel(-525);
-createServiceStation(-805);
+for (const z of [-180, -440, -700]) createOverheadGantry(z);
+
+function createOverpass(zoneIndex) {
+  const g = new THREE.Group(), industrial = zoneIndex === 3, city = zoneIndex === 4;
+  const specs = [[1.2, 7.4, 1.4, -12, 3.7, 0],[1.2, 7.4, 1.4, 12, 3.7, 0]];
+  if (industrial) {
+    specs.push([45, .45, 4, 0, 7.4, 0]);
+    for (const z of [-1.3, 1.3]) {
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(.65, .65, 48, 10), mats.rust); pipe.rotation.z = Math.PI / 2; pipe.position.set(0, 8.2, z); g.add(pipe);
+    }
+  } else {
+    specs.push([60, .7, 7, 0, 7.3, 0],[60, .9, .35, 0, 8.05, -3.4],[60, .9, .35, 0, 8.05, 3.4]);
+    if (city) {
+      addInstancedBoxes(g, [[38, 2.3, 2.8, -8, 9.55, 0]], mats.trailer);
+      addInstancedBoxes(g, Array.from({length: 12}, (_,i)=>[1.6, .85, .08, -24 + i * 3, 9.85, 1.44]), cityWindowMat, false, false);
+    } else {
+      addShapeInstances(g, new THREE.DodecahedronGeometry(1, 0), [[-35, 0, 0, 20, 8, 14],[35, 0, 0, 20, 8, 14]], zoneMaterials[zoneIndex].ground);
+    }
+  }
+  addInstancedBoxes(g, specs, industrial ? mats.industrial : mats.concrete);
+  g.userData.halfLength = 15; return g;
+}
+function createTunnel(zoneIndex) {
+  const g = new THREE.Group(), length = zoneIndex === 1 ? 160 : 190;
+  const walls = [[1.6, 7.5, length, -10.1, 3.75, 0],[1.6, 7.5, length, 10.1, 3.75, 0],[22, 1.0, length, 0, 7.15, 0]];
+  const trim = [], stripes = [], rocks = [];
+  for (let z = -length / 2; z <= length / 2; z += 20) {
+    trim.push([21.8, .28, .45, 0, 6.5, z]);
+    for (const side of [-1, 1]) {
+      stripes.push([.055, .15, 16, side * 9.27, 1.1, z + 2]);
+      rocks.push([side * 19, 1, z, 8, 11 + Math.random() * 6, 15]);
+    }
+    // A rock ridge covers the roof; its underside stays above the portal.
+    rocks.push([0, 13.5, z, 13, 5.5 + Math.random(), 16]);
+    if (z > -length / 2 && z < length / 2) addRoadLamp(g, 0, z, true);
+  }
+  addInstancedBoxes(g, walls, mats.concrete); addInstancedBoxes(g, trim, mats.dark); addInstancedBoxes(g, stripes, mats.tunnelStripe, false, false);
+  addShapeInstances(g, new THREE.DodecahedronGeometry(1, 0), rocks, zoneMaterials[zoneIndex].rock);
+  addInstancedBoxes(g, [[18.5, .005, length, 0, .125, 0]], tunnelShadeMat, false, false);
+  g.userData.halfLength = length / 2; return g;
+}
+function createServiceStation() {
+  const g = new THREE.Group();
+  addInstancedBoxes(g, [[27, .1, 40, 25, -.01, 0]], pavementMat);
+  addInstancedBoxes(g, [[12, 4.5, 9, 30, 2.25, -8]], mats.concrete);
+  addInstancedBoxes(g, [[.14, 2, 7, 23.9, 2.2, -8]], cityWindowMat, false, false);
+  addInstancedBoxes(g, [[12.5, .45, 10, 18, 5.2, 9],[.3, 5, .3, 12.3, 2.5, 9],[.3, 5, .3, 23.7, 2.5, 9]], mats.trailer);
+  addInstancedBoxes(g, [[.8, 1.5, .7, 15, .75, 9],[.8, 1.5, .7, 20, .75, 9]], mats.dark);
+  const sign = makeTextPanel(4, 2, ['HORIZON', 'SERVICES']); sign.position.set(14, 5.3, 18); g.add(sign);
+  addRoadLamp(g, 13, -14); addRoadLamp(g, 13, 14); g.userData.halfLength = 22; return g;
+}
+// Authored route beats: farms -> forest tunnel -> canyon -> pipe bridge -> city rail.
+const majorRoute = [
+  [440, 'overpass'], [1000, 'station'], [2130, 'tunnel'], [3400, 'tunnel'],
+  [3950, 'overpass'], [4560, 'overpass'], [5200, 'station'], [6100, 'overpass'], [6620, 'overpass']
+];
+let nextMajorFeature = 0;
+function buildNextMajorFeature(container) {
+  disposeGroupGeometry(container);
+  const [offset, kind] = majorRoute[nextMajorFeature % majorRoute.length];
+  const distance = Math.floor(nextMajorFeature / majorRoute.length) * ZONE_LENGTH * environmentZones.length + offset;
+  nextMajorFeature++;
+  const zi = zoneAtDistance(distance);
+  const obj = kind === 'tunnel' ? createTunnel(zi) : kind === 'station' ? createServiceStation() : createOverpass(zi);
+  container.add(obj); container.position.set(0, 0, PLAYER_Z + state.distance - distance);
+  container.userData.kind = kind; container.userData.zoneIndex = zi; container.userData.routeDistance = distance;
+  container.userData.halfLength = obj.userData.halfLength;
+  disableStaticShadowCasting(container); collectFeatureDetails(container);
+}
+for (let i = 0; i < 4; i++) {
+  const g = new THREE.Group(); buildNextMajorFeature(g); world.add(g); majorFeatures.push(g);
+}
+function blendRouteGround(distance, output, property) {
+  const d = Math.max(0, distance), zi = zoneAtDistance(d), progress = d % ZONE_LENGTH;
+  const blend = THREE.MathUtils.smoothstep(progress, ZONE_LENGTH - 210, ZONE_LENGTH);
+  output.copy(environmentZones[zi][property]).lerp(environmentZones[(zi + 1) % 5][property], blend);
+}
+function resetRouteScenery() {
+  roadSegments.forEach((g, i) => { g.position.z = -i * SEG_LEN; });
+  zoneFeatures.forEach(g => { g.position.z = g.userData.initialZ; buildZoneFeature(g, zoneAtDistance(routeDistanceAtZ(g.position.z)), g.userData.side); });
+  scenery.forEach(g => { g.position.set(0, 0, g.userData.initialZ); g.visible = true; g.scale.setScalar(1); buildSceneryItem(g, 0, g.userData.side); });
+  roadFeatures.forEach(g => { g.position.z = g.userData.initialZ; updateGantrySign(g); });
+  nextMajorFeature = 0; majorFeatures.forEach(buildNextMajorFeature);
+  foregroundDetails.forEach((g, i) => { g.position.z = -i * 10.5; g.visible = true; });
+  updateRoad(0, 0); updateEnvironment(1); updateMood(0);
+}
 
 function carMaterial(color) { return new THREE.MeshPhysicalMaterial({ color, roughness: .22, metalness: .62, clearcoat: .82, clearcoatRoughness: .12 }); }
 
@@ -2026,23 +2108,51 @@ function commitRunProgress() {
 
 const trafficColors = [0x29b6f6, 0xffc342, 0xef5350, 0x7e57c2, 0x66bb6a, 0xe0e4e8, 0x263238, 0xff7043];
 
-function pickTrafficKind() {
+function routePacing(distance = state.distance) {
+  const progress = Math.max(0, distance) % ZONE_LENGTH;
+  // Arrival and landmark approaches have room to read the scenery. Traffic
+  // builds in the middle, then eases before the next environment.
+  if (progress < 300) return { phase: 'arrival', density: .78 };
+  if (progress < 650) return { phase: 'traffic', density: 1.05 };
+  if (progress < 980) return { phase: 'landmark', density: .86 };
+  if (progress < 1170) return { phase: 'traffic', density: 1.0 };
+  return { phase: 'recovery', density: .72 };
+}
+function pickTrafficKind(distance = state.distance) {
   if (state.event?.type === 'convoy' && Math.random() < .65) return 'truck';
-  const r = Math.random();
-  if (r < .14) return 'truck';
-  if (r < .30) return 'sport';
-  if (r < .45) return 'suv';
-  if (r < .56) return 'van';
+  const weights = [
+    [.12, .18, .23, .13], [.10, .12, .30, .14], [.14, .26, .20, .10],
+    [.29, .08, .12, .28], [.10, .22, .15, .20]
+  ][zoneAtDistance(distance)];
+  let r = Math.random();
+  for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r < 0) return ['truck', 'sport', 'suv', 'van'][i]; }
   return 'sedan';
 }
-
-function spawnTraffic(forceZ = null, forcedKind = null, forcedLane = null) {
-  const kind = forcedKind || pickTrafficKind();
-  const color = trafficColors[Math.floor(Math.random() * trafficColors.length)];
+function chooseTrafficLane(z, ignore = null) {
+  const lanes = [0, 1, 2, 3].sort(() => Math.random() - .5);
+  return lanes.find(lane => !traffic.some(t => t !== ignore && Math.abs(t.mesh.position.z - z) < 23 && Math.abs(t.laneOffset - laneXs[lane]) < 1.4)) ?? lanes[0];
+}
+function createTrafficVehicle(kind, color) {
   const mesh = kind === 'truck' ? createTruck(color) : kind === 'suv' ? createSUV(color) : kind === 'van' ? createVan(color) : createCar(color);
   if (kind === 'sport') mesh.scale.set(.96, .86, .98);
-  const laneIndex = forcedLane ?? Math.floor(Math.random() * laneXs.length);
+  return mesh;
+}
+function disposeTrafficVehicle(mesh) {
+  const shared = new Set(Object.values(mats)), materials = new Set();
+  mesh.traverse(o => {
+    if (!o.isMesh) return;
+    for (const mat of Array.isArray(o.material) ? o.material : [o.material]) if (mat && !shared.has(mat)) materials.add(mat);
+  });
+  world.remove(mesh);
+  disposeGroupGeometry(mesh);
+  materials.forEach(mat => mat.dispose());
+}
+function spawnTraffic(forceZ = null, forcedKind = null, forcedLane = null) {
   const z = forceZ ?? (-220 - Math.random() * 130);
+  const kind = forcedKind || pickTrafficKind(routeDistanceAtZ(z));
+  const color = trafficColors[Math.floor(Math.random() * trafficColors.length)];
+  const mesh = createTrafficVehicle(kind, color);
+  const laneIndex = forcedLane ?? chooseTrafficLane(z);
   let baseSpeed;
   if (kind === 'truck') baseSpeed = 72 + Math.random() * 58;
   else if (kind === 'sport') baseSpeed = 145 + Math.random() * 90;
@@ -2052,7 +2162,7 @@ function spawnTraffic(forceZ = null, forcedKind = null, forcedLane = null) {
   mesh.position.set(roadCenterAtZ(z) + laneXs[laneIndex], roadHeightAtZ(z), z);
   world.add(mesh);
   traffic.push({
-    mesh, kind, baseSpeed,
+    mesh, kind, baseSpeed, routeZone: zoneAtDistance(routeDistanceAtZ(z)),
     laneIndex, laneOffset: laneXs[laneIndex], targetLane: laneIndex,
     laneChangeTimer: 2.5 + Math.random() * 5.5,
     nearChecked: false, wreckDodgeChecked: false, passed: false,
@@ -2409,7 +2519,7 @@ function awardRisk(label, basePoints = 500, nitroGain = .10, comboGain = .22) {
 }
 
 function clearTraffic() {
-  for (const t of traffic) world.remove(t.mesh);
+  for (const t of traffic) disposeTrafficVehicle(t.mesh);
   traffic.length = 0;
 }
 
@@ -2434,8 +2544,7 @@ function resetGame() {
   state.wreckDodges = 0; state.pileupEscapes = 0; state.cleanKm = 0; state.nextCleanDistance = 1000; state.highSpeedTime = 0;
   state.progressBaseMeters = progressionProfile.totalDistance; state.lastProgressSave = 0;
   player.position.x = roadCenterAtZ(PLAYER_Z); player.position.y = roadHeightAtZ(PLAYER_Z); player.rotation.set(0, 0, 0);
-  zoneFeatures.forEach((feature, i) => buildZoneFeature(feature, 0, i % 2 ? -1 : 1));
-  scenery.forEach(item => { item.visible = true; item.scale.setScalar(1); });
+  resetRouteScenery();
   clearTraffic();
   for (let i = 0; i < 10; i++) spawnTraffic(-70 - i * 32 - Math.random() * 20);
   
@@ -2720,41 +2829,30 @@ function updateRoad(dt, worldSpeed) {
     seg.position.y = 0;
     seg.rotation.set(0, 0, 0);
   }
+  for (const seg of roadSegments) {
+    blendRouteGround(routeDistanceAtZ(seg.position.z), seg.userData.groundMaterials[0].color, 'grassColor');
+    blendRouteGround(routeDistanceAtZ(seg.position.z), seg.userData.groundMaterials[1].color, 'shoulderColor');
+  }
   for (const item of scenery) {
     item.position.z += worldSpeed * dt;
-    if (item.position.z > 60) {
-      item.position.z -= 650 + Math.random() * 120;
-      item.userData.side = Math.random() < .5 ? -1 : 1;
-      item.userData.offset = item.userData.minOffset + Math.random() * item.userData.spread;
-      if (item.userData.kind === 'sign' || item.userData.kind === 'billboard') item.userData.baseRotation = Math.random() * .10 - .05;
-      const zi = currentZoneIndex();
-      if (zi === 3 && (item.userData.kind === 'tree' || item.userData.kind === 'bush')) item.visible = Math.random() < .42;
-      else if (zi === 4 && (item.userData.kind === 'tree' || item.userData.kind === 'bush')) item.visible = Math.random() < .16;
-      else if (zi === 4 && (item.userData.kind === 'rock' || item.userData.kind === 'building')) item.visible = false;
-      else item.visible = true;
-      if (zi === 1 && item.userData.kind === 'tree') item.scale.setScalar(.95 + Math.random() * .38); else item.scale.setScalar(1);
+    if (item.position.z > 80) {
+      item.position.z -= 672;
+      buildSceneryItem(item, zoneAtDistance(routeDistanceAtZ(item.position.z)), item.userData.side);
     }
-    item.position.x = item.userData.side * item.userData.offset;
-    item.position.y = 0;
-    item.rotation.y = item.userData.baseRotation;
   }
   for (const feature of roadFeatures) {
     feature.position.z += worldSpeed * dt;
-    if (feature.position.z > 45) feature.position.z -= 645;
-    feature.position.x = 0;
-    feature.position.y = 0;
+    if (feature.position.z > 70) { feature.position.z -= 780; updateGantrySign(feature); }
   }
   for (const feature of majorFeatures) {
     feature.position.z += worldSpeed * dt;
-    if (feature.position.z > 58) feature.position.z -= 900;
-    feature.position.x = 0; feature.position.y = 0; feature.rotation.set(0, 0, 0);
+    if (feature.position.z > feature.userData.halfLength + 90) buildNextMajorFeature(feature);
   }
   for (const feature of zoneFeatures) {
     feature.position.z += worldSpeed * dt;
-    if (feature.position.z > 70) {
-      feature.position.z -= 760 + Math.random() * 95;
-      const side = Math.random() < .5 ? -1 : 1;
-      buildZoneFeature(feature, currentZoneIndex(), side);
+    if (feature.position.z > 92) {
+      feature.position.z -= 760;
+      buildZoneFeature(feature, zoneAtDistance(routeDistanceAtZ(feature.position.z)), feature.userData.side);
     }
   }
   for (const detail of foregroundDetails) {
@@ -2766,10 +2864,11 @@ function updateRoad(dt, worldSpeed) {
       detail.rotation.y = (Math.random() - .5) * .25;
     }
     detail.position.x = detail.userData.side * detail.userData.offset;
-    detail.visible = currentZoneIndex() !== 4;
+    const detailZone = zoneAtDistance(routeDistanceAtZ(detail.position.z));
+    detail.visible = detailZone < 3 && (detail.userData.kind !== 'fence' || detailZone === 0);
   }
   for (const feature of zoneFeatures) for (const rotor of feature.userData.rotors || []) rotor.rotation.z -= dt * .72;
-  for (const feature of majorFeatures) for (const fan of feature.userData.fans || []) fan.rotation.z += dt * 2.2;
+  updateRoadLighting();
   // Extremely slow background parallax preserves the feeling of a vast landscape.
   // Steering shifts the nearer ridge slightly more than the far horizon.
   for (let i = 0; i < ridgeLayers.length; i++) {
@@ -3216,10 +3315,11 @@ function laneIsClear(t, laneIndex) {
 }
 
 function desiredTrafficCount() {
-  let count = Math.min(18, 10 + Math.floor(state.time / 18));
+  let count = Math.round(Math.min(17, 10 + Math.floor(state.time / 24)) * routePacing().density);
   if (state.event?.type === 'rush') count += 3;
   if (state.event?.type === 'convoy') count = Math.max(count, 17);
-  return Math.min(20, count);
+  if (state.event?.type === 'fog') count = Math.min(count, 12);
+  return Math.max(7, Math.min(19, count));
 }
 
 const TRAFFIC_NEAR_SPAWN = -105;
@@ -3244,6 +3344,18 @@ function trafficSpawnZ(ignore = null) {
 
 function recycleTraffic(t, forceZ = null) {
   t.mesh.position.z = forceZ ?? trafficSpawnZ(t);
+  const routeZone = zoneAtDistance(routeDistanceAtZ(t.mesh.position.z));
+  if (routeZone !== t.routeZone) {
+    const kind = pickTrafficKind(routeDistanceAtZ(t.mesh.position.z));
+    if (kind !== t.kind) {
+      const mesh = createTrafficVehicle(kind, trafficColors[Math.floor(Math.random() * trafficColors.length)]);
+      mesh.position.copy(t.mesh.position);
+      disposeTrafficVehicle(t.mesh); t.mesh = mesh; t.kind = kind; world.add(mesh);
+      t.halfWidth = kind === 'truck' ? 1.25 : kind === 'van' ? 1.14 : kind === 'suv' ? 1.10 : 1.03;
+      t.halfLength = kind === 'truck' ? 3.45 : kind === 'van' ? 2.55 : kind === 'suv' ? 2.35 : 2.15;
+    }
+    t.routeZone = routeZone;
+  }
   let laneIndex = Math.floor(Math.random() * laneXs.length);
   for (let tries = 0; tries < 7; tries++) {
     if (laneIsClear(t, laneIndex)) break;
@@ -3504,7 +3616,7 @@ function updateTraffic(dt, worldSpeed) {
     if (dz > TRAFFIC_DESPAWN_BEHIND || t.mesh.position.z < TRAFFIC_DESPAWN_AHEAD) {
       const desired = desiredTrafficCount();
       if (traffic.length > desired + 2) {
-        world.remove(t.mesh);
+        disposeTrafficVehicle(t.mesh);
         traffic.splice(i, 1);
         continue;
       }
@@ -3600,7 +3712,7 @@ function updateEvents(dt) {
       state.nextEventTime = state.time + 18 + Math.random() * 13;
       showMessage('OPEN ROAD', 620);
     }
-  } else if (state.time >= state.nextEventTime) {
+  } else if (state.time >= state.nextEventTime && routePacing().phase === 'traffic') {
     startEvent();
   }
 }
@@ -3611,18 +3723,21 @@ function updateEnvironment(dt) {
   state.zoneIndex = zi;
   const z = environmentZones[zi];
   const blend = 1 - Math.pow(.025, dt);
-  mats.grass.color.lerp(z.grassColor, blend);
+  blendRouteGround(state.distance, moodColor, 'grassColor');
+  mats.grass.color.lerp(moodColor, blend);
   mats.shoulder.color.lerp(z.shoulderColor, blend);
   mats.leaves.color.lerp(z.leavesColor, blend);
   mats.bush.color.lerp(z.bushColor, blend);
   mats.grassBlade.color.lerp(z.leavesColor, blend * .82);
   mats.rock.color.lerp(z.rockColor, blend);
+  const mountainBlend = THREE.MathUtils.smoothstep(state.distance % ZONE_LENGTH, ZONE_LENGTH - 250, ZONE_LENGTH);
   const mountainPalette = mountainZonePalettes[zi];
+  const nextMountainPalette = mountainZonePalettes[(zi + 1) % environmentZones.length];
   for (let i = 0; i < ridgeWeatherColors.length; i++) {
-    mountainTargetColors[i].setHex(mountainPalette[i]);
+    mountainTargetColors[i].setHex(mountainPalette[i]).lerp(moodColor.setHex(nextMountainPalette[i]), mountainBlend);
     ridgeWeatherColors[i].lerp(mountainTargetColors[i], blend * .55);
   }
-  mountainTargetColors[3].setHex(mountainPalette[3]);
+  mountainTargetColors[3].setHex(mountainPalette[3]).lerp(moodColor.setHex(nextMountainPalette[3]), mountainBlend);
   treeLineMaterial.color.lerp(mountainTargetColors[3], blend * .55);
   treeLineZoneOpacity = THREE.MathUtils.lerp(treeLineZoneOpacity, mountainPalette[4], blend * .55);
   if (state.mode === 'playing' && state.distance > 120 && state.announcedZone !== zi) {
@@ -3689,9 +3804,9 @@ function updateMood(dt = 0) {
   const fogBankTarget = state.event?.type === 'fog' ? 1 : 0;
   const fogBankBlend = 1 - Math.pow(.004, Math.max(dt, .016));
   fogBankFactor = THREE.MathUtils.lerp(fogBankFactor, fogBankTarget, fogBankBlend);
-  scene.fog.density = THREE.MathUtils.lerp(baseFogDensity, .0185, fogBankFactor);
+  scene.fog.density = THREE.MathUtils.lerp(baseFogDensity, .0145, fogBankFactor);
 
-  hemi.intensity = lerpN(a.hemi, b.hemi);
+  hemi.intensity = lerpN(a.hemi, b.hemi) + nightFactor * .22;
   hemi.color.set(0x8ca8d0).lerp(new THREE.Color(0xd8efff), daylightFactor);
   hemi.groundColor.set(0x263240).lerp(new THREE.Color(0x7a674e), daylightFactor);
 
@@ -3708,11 +3823,11 @@ function updateMood(dt = 0) {
   sunGlow.material.opacity = .25 + sunVisibility * .48;
 
   moonLight.visible = nightFactor > .015;
-  moonLight.intensity = nightFactor * .72;
+  moonLight.intensity = nightFactor * .85;
   moonDisc.visible = nightFactor > .08 && moonDirection.y > -.08;
   moonDisc.material.toneMapped = false;
   stars.visible = nightFactor > .02;
-  stars.material.opacity = Math.pow(nightFactor, 1.65) * .92;
+  stars.material.opacity = Math.pow((1 - THREE.MathUtils.smoothstep(sunElevation, -.40, -.12)), 1.5) * .82;
 
   colorLerp(moodColor, a.cloud, b.cloud);
   for (const mat of cloudMaterials) {
@@ -3720,7 +3835,10 @@ function updateMood(dt = 0) {
     mat.opacity = THREE.MathUtils.lerp(.42, .54, daylightFactor) + fogBankFactor * .08;
   }
   for (const sh of cloudShadows) sh.material.opacity = .072 * daylightFactor * (1 - fogBankFactor * .65);
-  for (const mat of nightMaterials) mat.emissiveIntensity = .18 + nightFactor * 2.15 + fogBankFactor * .65;
+  for (const mat of nightMaterials) mat.emissiveIntensity = .18 + nightFactor * 1.7 + fogBankFactor * .4;
+  lampPoolMat.opacity = nightFactor * .40;
+  tunnelPoolMat.opacity = .23 + nightFactor * .12;
+  updateRoadLighting();
 
   // Mountains retain their zone identity while progressively merging into the
   // dusk/night haze with distance.
