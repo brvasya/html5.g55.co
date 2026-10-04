@@ -898,7 +898,10 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   }
 
   function clearModel() {
-    if (mixer) mixer.stopAllAction();
+    if (mixer) {
+      mixer.stopAllAction();
+      if (model) mixer.uncacheRoot(model);
+    }
 
     // Detach the shared effect sprite before disposing the current weapon tree.
     // Otherwise disposeModel() would dispose the reusable muzzle flash material.
@@ -927,15 +930,15 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   }
 
   function disposeModel(root) {
+    const skeletons = new Set();
+    const materials = new Set();
     root.traverse(object => {
-      if (object.material) {
-        if (Array.isArray(object.material)) {
-          object.material.forEach(material => material.dispose());
-        } else {
-          object.material.dispose();
-        }
-      }
+      if (object.isSkinnedMesh) skeletons.add(object.skeleton);
+      if (object.material) [].concat(object.material).forEach(material => materials.add(material));
     });
+    // Keep cached geometry/maps and the separate, persistent hands model.
+    skeletons.forEach(skeleton => skeleton.dispose());
+    materials.forEach(material => material.dispose());
   }
 
   function setupAnimations(clips) {

@@ -162,11 +162,27 @@ const weaponCamera = new THREE.PerspectiveCamera(
 );
 weaponScene.add(weaponCamera);
 
-const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setPixelRatio(1);
-renderer.setSize(window.innerWidth, window.innerHeight);
+const renderSettings = {
+  maxPixelRatio: 1,
+  maxRenderPixels: 1600 * 900,
+  minRenderScale: 0.8,
+  shadowMapSize: 1024,
+  shadowUpdateHz: 30,
+  menuFps: 30
+};
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
 renderer.autoClear = false;
+let renderScale = 1;
+let renderWidth = 0, renderHeight = 0, renderPixelRatio = 0;
+let frameRequest = 0, lastFrameTime = 0, lastMenuFrameTime = -Infinity;
+let activeRendering = false, renderInvalidated = true;
+let shadowsDirty = true, lastShadowTime = -Infinity;
+let resolutionSampleMs = 0, resolutionSampleFrames = 0, fastRenderMs = 0;
+let resolutionSettleUntil = 0;
+applyRenderSize();
 document.body.appendChild(renderer.domElement);
 
 const hud = createHud();
@@ -402,7 +418,7 @@ function setupLights() {
   sun.shadow.bias = -0.00025;
   sun.shadow.normalBias = 0.06;
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(renderSettings.shadowMapSize, renderSettings.shadowMapSize);
   scene.add(sun);
 
   // The separate pass keeps weapons clear of nearby walls. Its lights mirror
@@ -476,6 +492,7 @@ function setupInput() {
   dom.fullscreenButton.addEventListener("click", toggleFullscreen);
   document.addEventListener("fullscreenchange", () => {
     dom.fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
+    onResize();
   });
   dom.fullscreenButton.hidden = typeof document.documentElement.requestFullscreen !== "function";
   window.addEventListener("resize", onResize);
@@ -582,7 +599,23 @@ function setupInput() {
   };
   window.addEventListener("blur", interruptInput);
   window.addEventListener("pagehide", interruptInput);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) interruptInput(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      interruptInput();
+      cancelAnimationFrame(frameRequest);
+      frameRequest = 0;
+      clock.stop();
+    } else {
+      lastFrameTime = 0;
+      lastMenuFrameTime = -Infinity;
+      resetResolutionSample();
+      renderInvalidated = true;
+      if (bootReady && !frameRequest) {
+        clock.start();
+        animate();
+      }
+    }
+  });
 }
 
 function setupOverlayButtons() {
@@ -913,6 +946,8 @@ function startWave() {
   projectiles.clear();
   enemies.reset();
   enemies.spawnWave(state.wave);
+  shadowsDirty = true;
+  renderInvalidated = true;
   updateHud();
 }
 
@@ -2021,16 +2056,80 @@ async function resetGame() {
 }
 
 function onResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const aspect = Math.max(1, window.innerWidth) / Math.max(1, window.innerHeight);
+  camera.aspect = aspect;
   camera.updateProjectionMatrix();
 
-  weaponCamera.aspect = window.innerWidth / window.innerHeight;
+  weaponCamera.aspect = aspect;
   weaponCamera.updateProjectionMatrix();
 
-  sniperBulletCamera.aspect = window.innerWidth / window.innerHeight;
+  sniperBulletCamera.aspect = aspect;
   sniperBulletCamera.updateProjectionMatrix();
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  applyRenderSize();
+  resetResolutionSample();
+  renderInvalidated = true;
+}
+
+function applyRenderSize() {
+  const width = Math.max(1, window.innerWidth);
+  const height = Math.max(1, window.innerHeight);
+  const baseRatio = Math.min(
+    window.devicePixelRatio || 1,
+    renderSettings.maxPixelRatio,
+    Math.sqrt(renderSettings.maxRenderPixels / (width * height))
+  );
+  const ratio = baseRatio * renderScale;
+  if (width === renderWidth && height === renderHeight && ratio === renderPixelRatio) return;
+  renderWidth = width;
+  renderHeight = height;
+  renderPixelRatio = ratio;
+  // Resize the backing buffer once. CSS geometry and all three camera aspects
+  // continue to use the full viewport, including fullscreen and touch layouts.
+  renderer.setDrawingBufferSize(width, height, ratio);
+  renderer.domElement.style.width = `${width}px`;
+  renderer.domElement.style.height = `${height}px`;
+  renderInvalidated = true;
+}
+
+function resetResolutionSample(now = performance.now()) {
+  resolutionSampleMs = 0;
+  resolutionSampleFrames = 0;
+  fastRenderMs = 0;
+  resolutionSettleUntil = now + 1000;
+}
+
+function updateRenderResolution(frameMs, now) {
+  // Use unclamped frame intervals, never game time (which includes slow motion).
+  // Ignore menu/resize/resume transitions and require sustained evidence before
+  // reallocating. Recovery is deliberately slower than a quality reduction.
+  if (now < resolutionSettleUntil || frameMs <= 0) return;
+  resolutionSampleMs += Math.min(frameMs, 100);
+  resolutionSampleFrames++;
+  if (resolutionSampleMs < 1000) return;
+
+  const average = resolutionSampleMs / resolutionSampleFrames;
+  let nextScale = renderScale;
+  if (average > 20) {
+    nextScale = Math.max(renderSettings.minRenderScale, renderScale - 0.05);
+    fastRenderMs = 0;
+  } else if (average < 17.5) {
+    fastRenderMs += resolutionSampleMs;
+    if (fastRenderMs >= 4000) {
+      nextScale = Math.min(1, renderScale + 0.05);
+      fastRenderMs = 0;
+    }
+  } else {
+    fastRenderMs = 0;
+  }
+  resolutionSampleMs = 0;
+  resolutionSampleFrames = 0;
+  nextScale = Math.round(nextScale * 100) / 100;
+  if (nextScale !== renderScale) {
+    renderScale = nextScale;
+    applyRenderSize();
+    resolutionSettleUntil = now + 750;
+  }
 }
 
 function addViewPunch() {
@@ -2109,8 +2208,28 @@ function renderWithCameraShake() {
   camera.position.sub(cameraShake.positionOffset);
 }
 
-function animate() {
-  requestAnimationFrame(animate);
+function animate(now = performance.now()) {
+  frameRequest = 0;
+  if (document.hidden) {
+    clock.stop();
+    return;
+  }
+  frameRequest = requestAnimationFrame(animate);
+
+  const active = state.isPlaying && !isTouchPortrait() && !touchControls.isPickerOpen;
+  if (active !== activeRendering) {
+    activeRendering = active;
+    lastFrameTime = 0;
+    lastMenuFrameTime = -Infinity;
+    resetResolutionSample(now);
+    shadowsDirty = true;
+    clock.getDelta();
+  }
+  if (!active && !renderInvalidated && now - lastMenuFrameTime < 1000 / renderSettings.menuFps - 0.5) return;
+  const frameMs = lastFrameTime ? now - lastFrameTime : 0;
+  lastFrameTime = now;
+  lastMenuFrameTime = now;
+  if (active) updateRenderResolution(frameMs, now);
 
   const delta = Math.min(clock.getDelta(), 0.05);
   touchControls.update(delta);
@@ -2154,6 +2273,12 @@ function animate() {
   bulletHoles.update(delta);
   updateViewPunch(delta);
   updateCameraShake(delta);
+  if (shadowsDirty || (active && now - lastShadowTime >= 1000 / renderSettings.shadowUpdateHz - 0.5)) {
+    renderer.shadowMap.needsUpdate = true;
+    lastShadowTime = now;
+    shadowsDirty = false;
+  }
   renderWithCameraShake();
+  renderInvalidated = false;
 }
 }

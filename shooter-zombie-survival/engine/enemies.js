@@ -1540,6 +1540,11 @@ export function createEnemies({
   }
 
   function removeEnemy(enemy) {
+    const mixer = enemy.userData.mixer;
+    if (mixer) {
+      mixer.stopAllAction();
+      mixer.uncacheRoot(enemy.userData.model);
+    }
     scene.remove(enemy);
     disposeObject(enemy);
 
@@ -1548,17 +1553,16 @@ export function createEnemies({
   }
 
   function disposeObject(root) {
+    const skeletons = new Set();
+    const materials = new Set();
     root.traverse(object => {
-      if (object.geometry) object.geometry.dispose();
-
-      if (object.material) {
-        if (Array.isArray(object.material)) {
-          object.material.forEach(material => material.dispose());
-        } else {
-          object.material.dispose();
-        }
-      }
+      if (object.isSkinnedMesh) skeletons.add(object.skeleton);
+      if (object.material) [].concat(object.material).forEach(material => materials.add(material));
     });
+    // Skeletons and materials belong to this clone. Geometry and image textures
+    // belong to the model cache and may still be used by other live enemies.
+    skeletons.forEach(skeleton => skeleton.dispose());
+    materials.forEach(material => material.dispose());
   }
 
   function playAssetSound(src, volume = 1.0) {
