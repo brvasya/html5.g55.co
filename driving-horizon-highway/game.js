@@ -87,10 +87,47 @@ document.querySelectorAll('.more-games-link').forEach(link => {
 });
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-const MAX_PIXEL_RATIO = Math.min(window.devicePixelRatio || 1, 1.35);
-let qualityPixelRatio = MAX_PIXEL_RATIO;
-renderer.setPixelRatio(qualityPixelRatio);
-renderer.setSize(innerWidth, innerHeight, false);
+const RENDER_LIMITS = {
+  maxPixelRatio: 1.35,
+  chasePixels: 1920 * 1080,
+  cockpitPixels: 1600 * 900,
+  minScale: .60
+};
+let cameraMode = 'chase';
+const renderQuality = {
+  scales: { chase: 1, cockpit: 1 },
+  sampleFrames: 0,
+  sampleSeconds: 0,
+  fastSeconds: 0,
+  settleSeconds: 1
+};
+
+function resetQualitySampling(settleSeconds = .5) {
+  renderQuality.sampleFrames = 0;
+  renderQuality.sampleSeconds = 0;
+  renderQuality.fastSeconds = 0;
+  renderQuality.settleSeconds = settleSeconds;
+}
+
+function resizeRenderer() {
+  const width = Math.max(1, canvas.clientWidth || innerWidth);
+  const height = Math.max(1, canvas.clientHeight || innerHeight);
+  const maxPixels = cameraMode === 'cockpit' ? RENDER_LIMITS.cockpitPixels : RENDER_LIMITS.chasePixels;
+  const baseRatio = Math.min(window.devicePixelRatio || 1, RENDER_LIMITS.maxPixelRatio,
+    Math.sqrt(maxPixels / (width * height)));
+  const ratio = baseRatio * renderQuality.scales[cameraMode];
+  const bufferWidth = Math.max(1, Math.floor(width * ratio));
+  const bufferHeight = Math.max(1, Math.floor(height * ratio));
+  // CSS keeps the canvas and HTML HUD at full display size. Only the 3D
+  // drawing buffer scales, including below native resolution on large screens.
+  if (canvas.width !== bufferWidth || canvas.height !== bufferHeight) {
+    renderer.setSize(bufferWidth, bufferHeight, false);
+  }
+  return { width, height };
+}
+
+renderer.setPixelRatio(1);
+resizeRenderer();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -261,7 +298,8 @@ function playerInsideTunnel() { return environment.isInsideTunnel(PLAYER_Z); }
 
 const mats = {
   dark: new THREE.MeshStandardMaterial({ color: 0x111820, roughness: .3, metalness: .35 }),
-  glass: new THREE.MeshPhysicalMaterial({ color: 0x83b5d6, roughness: .08, metalness: .08, transparent: true, opacity: .86, transmission: .08, clearcoat: .55, clearcoatRoughness: .16 }),
+  // Traffic windows need only a tint; refraction adds a full-scene render pass.
+  glass: new THREE.MeshStandardMaterial({ color: 0x83b5d6, roughness: .18, metalness: .08, transparent: true, opacity: .86 }),
   tire: new THREE.MeshStandardMaterial({ color: 0x101214, roughness: .85 }),
   trailer: new THREE.MeshStandardMaterial({ color: 0xd8dde0, roughness: .62, metalness: .18 }),
   rim: new THREE.MeshStandardMaterial({ color: 0xaab2b7, roughness: .3, metalness: .82 })
@@ -396,7 +434,7 @@ function createVan(color = 0xd7dce0) {
   const body = box(2.25, 1.55, 4.8, paint); body.position.y = 1.06; g.add(body);
   const nose = box(2.15, .72, 1.05, paint); nose.position.set(0, .78, -2.42); g.add(nose);
   const glass = box(1.8, .68, .07, mats.glass); glass.position.set(0, 1.55, -2.44); glass.rotation.x = .12; g.add(glass);
-  const sideGlassMat = new THREE.MeshPhysicalMaterial({ color: 0x638aa3, roughness: .1, metalness: .08, transparent: true, opacity: .84, clearcoat: .4 });
+  const sideGlassMat = new THREE.MeshStandardMaterial({ color: 0x638aa3, roughness: .18, metalness: .08, transparent: true, opacity: .84 });
   for (const x of [-1.14, 1.14]) { const sw = box(.06, .62, 1.7, sideGlassMat); sw.position.set(x, 1.56, -.35); g.add(sw); }
   const wheels = []; for (const x of [-1.17, 1.17]) for (const z of [-1.45, 1.48]) { const w = createWheel(.44, .36); w.position.set(x, .46, z); g.add(w); wheels.push(w); }
   const tailMat = new THREE.MeshStandardMaterial({ color: 0x74152a, emissive: 0xff214a, emissiveIntensity: .16, roughness: .3 });
@@ -821,7 +859,6 @@ if (!player.userData.glbHeadlights?.length) {
 player.visible = assetsLoaded;
 world.add(player);
 
-let cameraMode = 'chase';
 const cockpitWorldScale = new THREE.Vector3(1, 1, 1);
 
 function setCameraMode(mode, announce = true) {
@@ -848,6 +885,8 @@ function setCameraMode(mode, announce = true) {
     camera.near = .035;
     camera.fov = 70;
     camera.updateProjectionMatrix();
+    resetQualitySampling();
+    resizeRenderer();
     if (announce) showMessage('COCKPIT VIEW', 650);
     return true;
   }
@@ -860,6 +899,8 @@ function setCameraMode(mode, announce = true) {
   camera.rotation.set(-.12, 0, 0);
   camera.fov = 61;
   camera.updateProjectionMatrix();
+  resetQualitySampling();
+  resizeRenderer();
   if (announce) showMessage('CHASE VIEW', 650);
   return true;
 }
@@ -1794,7 +1835,10 @@ function suspendActiveRun() {
   if (state.mode === 'playing') pauseGame();
 }
 addEventListener('blur', suspendActiveRun);
-document.addEventListener('visibilitychange', () => { if (document.hidden) suspendActiveRun(); });
+document.addEventListener('visibilitychange', () => {
+  resetQualitySampling(1);
+  if (document.hidden) suspendActiveRun();
+});
 addEventListener('orientationchange', () => { suspendActiveRun(); updateOrientation(); });
 
 function touchButton(id, key) {
@@ -2103,6 +2147,8 @@ function startFatalCrash(t, incomingKmh, wasBoosting, side) {
   camera.near = .1;
   camera.fov = 68;
   camera.updateProjectionMatrix();
+  resetQualitySampling();
+  resizeRenderer();
 
   state.crashSlow = 0;
   state.endDelay = 0;
@@ -2753,31 +2799,50 @@ function updateHUD() {
 const clock = new THREE.Clock();
 let hudAccumulator = 0;
 let atmosphereAccumulator = 0;
-let perfFrames = 0;
-let perfSeconds = 0;
-function updateAdaptiveQuality(dt) {
-  if (dt <= 0 || dt > .12) return;
-  perfFrames++;
-  perfSeconds += dt;
-  if (perfSeconds < 2.5) return;
-  const fps = perfFrames / perfSeconds;
-  let next = qualityPixelRatio;
-  if (fps < 47 && qualityPixelRatio > 1.0) next = Math.max(1.0, qualityPixelRatio - .15);
-  else if (fps > 58 && qualityPixelRatio < MAX_PIXEL_RATIO) next = Math.min(MAX_PIXEL_RATIO, qualityPixelRatio + .08);
-  if (Math.abs(next - qualityPixelRatio) > .04) {
-    qualityPixelRatio = next;
-    renderer.setPixelRatio(qualityPixelRatio);
-    renderer.setSize(innerWidth, innerHeight, false);
+function updateAdaptiveQuality(frameSeconds) {
+  if (!Number.isFinite(frameSeconds) || frameSeconds <= 0) return;
+  // Do not learn quality from loading, hidden tabs, or frozen menu scenes.
+  if (!assetsLoaded || document.hidden || state.mode !== 'playing' || state.ended) {
+    resetQualitySampling();
+    return;
   }
-  perfFrames = 0;
-  perfSeconds = 0;
+  if (renderQuality.settleSeconds > 0) {
+    renderQuality.settleSeconds = Math.max(0, renderQuality.settleSeconds - frameSeconds);
+    return;
+  }
+
+  renderQuality.sampleFrames++;
+  renderQuality.sampleSeconds += frameSeconds;
+  if (renderQuality.sampleSeconds < .75) return;
+
+  const fps = renderQuality.sampleFrames / renderQuality.sampleSeconds;
+  const current = renderQuality.scales[cameraMode];
+  let next = current;
+  if (fps < 55) {
+    next = Math.max(RENDER_LIMITS.minScale, current * (fps < 35 ? .80 : .90));
+    renderQuality.fastSeconds = 0;
+  } else if (fps >= 59) {
+    renderQuality.fastSeconds += renderQuality.sampleSeconds;
+    // Recover gradually only after sustained headroom; avoid quality pumping.
+    if (renderQuality.fastSeconds >= 8) next = Math.min(1, current + .04);
+  } else {
+    renderQuality.fastSeconds = 0;
+  }
+  renderQuality.sampleFrames = 0;
+  renderQuality.sampleSeconds = 0;
+  if (Math.abs(next - current) > .001) {
+    renderQuality.scales[cameraMode] = next;
+    resizeRenderer();
+    resetQualitySampling();
+  }
 }
 
 
 function animate() {
   requestAnimationFrame(animate);
-  const realDt = Math.min(.035, clock.getDelta());
-  updateAdaptiveQuality(realDt);
+  const frameSeconds = clock.getDelta();
+  updateAdaptiveQuality(frameSeconds);
+  const realDt = Math.min(.035, frameSeconds);
   let dt = realDt;
   if (state.mode === 'playing' && state.crashSlow > 0) {
     state.crashSlow = Math.max(0, state.crashSlow - realDt);
@@ -2840,14 +2905,26 @@ function animate() {
 animate();
 
 function resize() {
-  renderer.setSize(innerWidth, innerHeight, false);
-  renderer.setPixelRatio(qualityPixelRatio);
-  camera.aspect = innerWidth / innerHeight;
+  const { width, height } = resizeRenderer();
+  resetQualitySampling();
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
   fitScoreText(scoreValue, true);
   fitScoreText(finalScore, true);
 }
-addEventListener('resize', () => { resize(); clearHeldInput(); updateOrientation(); });
+let resizePending = false;
+function queueResize() {
+  if (resizePending) return;
+  resizePending = true;
+  requestAnimationFrame(() => {
+    resizePending = false;
+    resize();
+    clearHeldInput();
+    updateOrientation();
+  });
+}
+addEventListener('resize', queueResize);
+document.addEventListener('fullscreenchange', queueResize);
 
 bestScore.textContent = Math.max(readBest(), Number(progressionProfile.bestScore || 0)).toLocaleString();
 function setPreloadProgress(value) {

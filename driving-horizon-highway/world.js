@@ -243,7 +243,6 @@ export function createWorld({ scene, camera, renderer, locations = WORLD_LOCATIO
     lane: new THREE.MeshBasicMaterial({ color: 0xe8eef2 }),
     rail: new THREE.MeshStandardMaterial({ color: 0xb9c0c4, roughness: .55, metalness: .55 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x111820, roughness: .3, metalness: .35 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x83b5d6, roughness: .08, metalness: .08, transparent: true, opacity: .86, transmission: .08, clearcoat: .55, clearcoatRoughness: .16 }),
     tire: new THREE.MeshStandardMaterial({ color: 0x101214, roughness: .85 }),
     trunk: new THREE.MeshStandardMaterial({ color: 0x76533a, roughness: 1 }),
     leaves: new THREE.MeshStandardMaterial({ color: 0x3d7444, roughness: 1 }),
