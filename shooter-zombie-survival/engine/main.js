@@ -61,7 +61,7 @@ const CONFIG = {
   stopSpeed: 1.2,
   walkMultiplier: 0.55,
   mouseSensitivity: 0.0022,
-  dragSensitivity: 0.006,
+  touchSensitivity: 0.006,
   touchLookSensitivity: 0.72,
   enemyAttackCooldown: 900,
   arenaSize: 42,
@@ -88,6 +88,8 @@ const loadingButton = createLoadingButtonController();
 let bootLoadingActive = true;
 let bootReady = false;
 let startPending = false;
+let startRequestId = 0;
+let pendingMouseCapture = null;
 let mainMenuNeedsReset = false;
 let gameOverOverlayTimer = null;
 let noticeTimer = null;
@@ -171,12 +173,7 @@ const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
 const world = createWorld({ THREE, scene, worldConfig: GAME_ASSETS.world });
-const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders,
-  onFallbackLook: () => {
-    document.body.classList.add("fallback-look");
-    if (state.isPlaying) showNotice("Mouse capture unavailable. Press L to retry, or hold left mouse and drag to aim and fire.");
-  }
-});
+const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders, lockTarget: renderer.domElement });
 let enemies = null;
 
 const weapon = createWeaponSystem({
@@ -506,6 +503,12 @@ function setupInput() {
       return;
     }
     if (!state.isPlaying) {
+      if (startPending && (e.code === "Escape" || e.code === "Tab")) {
+        e.preventDefault();
+        pauseGame();
+        if (e.code === "Tab") trapDialogFocus(dom.overlay, e);
+        return;
+      }
       if (e.code === "KeyB" && state.isWaveComplete && !mainMenuNeedsReset) {
         e.preventDefault();
         if (!e.repeat) openBuyMenu();
@@ -524,12 +527,7 @@ function setupInput() {
     }
     if (e.code === "KeyB") { e.preventDefault(); if (!e.repeat) toggleBuyMenu(); return; }
     if (sniperBulletCam.active || isTouchPortrait() || touchControls.isPickerOpen) return;
-    if (e.code === "KeyL") {
-      e.preventDefault();
-      // Retry from this key gesture without interrupting fallback drag-look.
-      if (!e.repeat && !state.isGameOver && !state.isWaveComplete) player.lockCursor();
-      return;
-    }
+    if (!touchControls.enabled && !player.pointerLockActive) { pauseGame(); return; }
     if (/^(Digit|Numpad)[1-6]$/.test(e.code)) { e.preventDefault(); if (!e.repeat) switchWeapon(Number(e.code.slice(-1))); }
     if (e.code === "KeyR") { e.preventDefault(); if (!e.repeat) reload(); }
     player.onKeyDown(e);
@@ -539,6 +537,7 @@ function setupInput() {
 
   document.addEventListener("wheel", e => {
     if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+    if (!player.pointerLockActive) return;
     if (Math.abs(e.deltaY) < 1) return;
 
     e.preventDefault();
@@ -549,6 +548,7 @@ function setupInput() {
 
   document.addEventListener("mousedown", e => {
     if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen || sniperBulletCam.active || touchControls.isPickerOpen || isTouchPortrait()) return;
+    if (!player.pointerLockActive) return;
     if (e.target.closest?.("button, a, #overlay, #buyMenu, #touchControls")) return;
     if (e.button === 2) { e.preventDefault(); startSecondaryAction(); return; }
     if (e.button !== 0) return;
@@ -573,7 +573,7 @@ function setupInput() {
   });
   document.addEventListener("contextmenu", e => e.preventDefault());
   document.addEventListener("pointerlockchange", onPointerLockChange);
-  document.addEventListener("pointerlockerror", enableFallbackLook);
+  document.addEventListener("pointerlockerror", onPointerLockError);
   const interruptInput = () => {
     stopSecondaryAction();
     player.clearMovement();
@@ -660,6 +660,7 @@ function showOverlay(title, text, action) {
 }
 
 function returnToMainMenu() {
+  cancelPendingStart();
   projectiles.clear();
   clearTimeout(gameOverOverlayTimer);
   state.isPlaying = false;
@@ -671,8 +672,7 @@ function returnToMainMenu() {
   touchControls.reset();
   cancelSniperBulletCamera();
   stopSecondaryAction();
-  if (document.pointerLockElement) document.exitPointerLock();
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
   document.body.classList.add("main-menu-active");
   dom.overlay.classList.add("main-menu");
   dom.overlay.style.display = "grid";
@@ -688,6 +688,7 @@ function returnToMainMenu() {
 
 async function startGame() {
   if (!bootReady || startPending || state.isBuyMenuOpen) return;
+  const requestId = ++startRequestId;
   startPending = true;
   dom.startButton.disabled = true;
   sounds.resume();
@@ -695,35 +696,50 @@ async function startGame() {
     clearMenuSelection();
     player.clearMovement();
     touchControls.reset();
+    // Request directly from the Start/Resume gesture, before any reset work.
+    const captured = await requestMouseCapture();
+    if (requestId !== startRequestId) return;
+    if (!captured) {
+      showOverlay("Paused", "Mouse capture failed. Click Resume to try again.", "Resume");
+      return;
+    }
     if (state.isGameOver || state.isGameComplete || mainMenuNeedsReset) {
       await resetGame();
+      if (requestId !== startRequestId) return;
       mainMenuNeedsReset = false;
     }
-    if (state.isWaveComplete) { continueWave(); return; }
+    if (document.hidden || (!touchControls.enabled && !player.pointerLockActive)) {
+      pauseGame();
+      return;
+    }
+    if (state.isWaveComplete && !continueWave()) return;
     state.isPlaying = true;
     dom.overlay.style.display = "none";
-    document.body.classList.remove("fallback-look", "main-menu-active");
+    document.body.classList.remove("main-menu-active");
     dom.overlay.classList.remove("main-menu");
     document.activeElement?.blur();
-    if (!touchControls.enabled) player.lockCursor();
   } finally {
-    startPending = false;
-    dom.startButton.disabled = false;
+    if (requestId === startRequestId) {
+      startPending = false;
+      dom.startButton.disabled = false;
+    }
   }
 }
 
 function pauseGame() {
-  if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (!state.isPlaying && !startPending) return;
 
+  cancelPendingStart();
   cancelSniperBulletCamera();
   stopSecondaryAction();
   state.isPlaying = false;
   player.clearMovement();
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  touchControls.reset();
 
-  if (document.pointerLockElement === document.body) document.exitPointerLock();
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
-  showOverlay("Paused", "Resume when you’re ready. Your progress is kept.", "Resume");
+  if (state.isGameOver || state.isGameComplete || state.isWaveComplete || state.isBuyMenuOpen) return;
+  showOverlay("Paused", "Click Resume when you’re ready. Your progress is kept.", "Resume");
 }
 
 function toggleBuyMenu() {
@@ -740,6 +756,7 @@ function openBuyMenu() {
   if (state.isBuyMenuOpen || state.isGameOver || mainMenuNeedsReset ||
       (!state.isPlaying && !state.isWaveComplete)) return;
 
+  cancelPendingStart();
   cancelSniperBulletCamera();
   stopSecondaryAction();
   state.isPlaying = false;
@@ -749,9 +766,7 @@ function openBuyMenu() {
   player.clearMovement();
   touchControls.reset();
 
-  if (document.pointerLockElement === document.body) document.exitPointerLock();
-
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   updateBuyMenu();
   hud.showBuyMenu();
@@ -770,11 +785,7 @@ function closeBuyMenu(resumeGame = false) {
   }
   if (!resumeGame || state.isGameOver) return;
 
-  player.clearMovement();
-  clearMenuSelection();
-  state.isPlaying = true;
-  document.activeElement?.blur();
-  if (!touchControls.enabled) player.lockCursor();
+  startGame();
 }
 
 function updateBuyMenu() {
@@ -968,9 +979,7 @@ function showWaveComplete() {
 
   player.clearMovement();
 
-  if (document.pointerLockElement === document.body) document.exitPointerLock();
-
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   updateHud();
 
@@ -987,16 +996,14 @@ function showGameComplete() {
 
   player.clearMovement();
 
-  if (document.pointerLockElement === document.body) document.exitPointerLock();
-
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   updateHud();
   showOverlay("Game Complete", "You cleared the final wave!", "Play Again");
 }
 
 function continueWave() {
-  if (!enemies) return;
+  if (!enemies) return false;
 
   state.isFinalWave = hasAllWeaponsOwned();
   state.isWaveComplete = false;
@@ -1004,35 +1011,63 @@ function continueWave() {
   state.wave += 1;
 
   startWave();
+  return true;
+}
 
-  state.isPlaying = true;
-  dom.overlay.style.display = "none";
-  document.body.classList.remove("fallback-look");
+function requestMouseCapture() {
+  if (touchControls.enabled || player.pointerLockActive) return Promise.resolve(true);
+  if (typeof renderer.domElement.requestPointerLock !== "function" ||
+      typeof document.exitPointerLock !== "function") return Promise.resolve(false);
 
-  if (!touchControls.enabled) player.lockCursor();
+  return new Promise(resolve => {
+    const request = { resolve };
+    pendingMouseCapture = request;
+    try {
+      const result = renderer.domElement.requestPointerLock();
+      // Older browsers return nothing and report the result through events.
+      if (result && typeof result.then === "function") {
+        result.then(() => {
+          if (pendingMouseCapture === request) finishMouseCapture(player.pointerLockActive);
+        }, () => {
+          if (pendingMouseCapture === request) finishMouseCapture(player.pointerLockActive);
+        });
+      }
+    } catch {
+      finishMouseCapture(false);
+    }
+  });
+}
+
+function finishMouseCapture(captured) {
+  const request = pendingMouseCapture;
+  pendingMouseCapture = null;
+  request?.resolve(captured);
+}
+
+function cancelPendingStart() {
+  ++startRequestId;
+  startPending = false;
+  finishMouseCapture(false);
+  dom.startButton.disabled = false;
 }
 
 function onPointerLockChange() {
-  const locked = document.pointerLockElement === document.body;
-  if (locked && !state.isPlaying) { document.exitPointerLock(); return; }
-
-  player.setPointerLockActive(locked);
-  document.body.classList.toggle("cursor-locked", locked);
-  if (locked) {
-    document.body.classList.remove("fallback-look");
-    dom.uiStatus.classList.remove("visible");
+  const locked = player.pointerLockActive;
+  if (locked && !state.isPlaying && !startPending) {
+    document.exitPointerLock();
+    return;
   }
-
-  if (!locked && state.isPlaying && !state.isGameOver && !state.isWaveComplete && !state.isBuyMenuOpen && player.pointerLockSupported && !player.fallbackLookEnabled) {
+  finishMouseCapture(locked);
+  if (locked) {
+    dom.uiStatus.classList.remove("visible");
+  } else if (!touchControls.enabled) {
     pauseGame();
   }
-
 }
 
-function enableFallbackLook() {
-  player.enableFallbackLook();
-  document.body.classList.remove("cursor-locked");
-  document.body.classList.add("fallback-look");
+function onPointerLockError() {
+  finishMouseCapture(player.pointerLockActive);
+  if (!player.pointerLockActive && state.isPlaying) pauseGame();
 }
 
 function startZoom() {
@@ -1903,9 +1938,7 @@ function endGame() {
 
   player.clearMovement();
 
-  if (document.pointerLockElement === document.body) document.exitPointerLock();
-
-  document.body.classList.remove("cursor-locked", "fallback-look");
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   viewPunch.pitchVelocity += 0.18;
   viewPunch.yawVelocity += (Math.random() - 0.5) * 0.12;
@@ -2081,6 +2114,7 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.05);
   touchControls.update(delta);
+  if (state.isPlaying && !touchControls.enabled && !player.pointerLockActive) pauseGame();
   const gameplayActive = state.isPlaying && !sniperBulletCam.active && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden;
 
   player.update(delta, gameplayActive);

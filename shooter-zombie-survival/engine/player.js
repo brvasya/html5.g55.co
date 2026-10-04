@@ -1,4 +1,4 @@
-export function createPlayer({ THREE, camera, config, colliders, onFallbackLook = () => {} }) {
+export function createPlayer({ THREE, camera, config, colliders, lockTarget }) {
   const MOVE_TUNING = {
     maxGroundSpeed: config.playerSpeed,
     maxWalkSpeed: config.playerSpeed * config.walkMultiplier,
@@ -69,12 +69,6 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
   let pitch = 0;
   let verticalVelocity = 0;
   let canJump = true;
-  const pointerLockSupported = hasPointerLockSupport();
-  let pointerLockActive = false;
-  let fallbackLookEnabled = !pointerLockSupported;
-  let dragLookActive = false;
-  let lastDragX = 0;
-  let lastDragY = 0;
   let stepDistance = 0;
   let stepTimer = 0;
   let bobTime = 0;
@@ -89,42 +83,8 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
 
   applyCameraRotation();
 
-  function hasPointerLockSupport() {
-    return typeof document.body.requestPointerLock === "function" && typeof document.exitPointerLock === "function";
-  }
-
-  function lockCursor() {
-    if (!pointerLockSupported || document.pointerLockElement === document.body) {
-      if (!pointerLockSupported) enableFallbackLook();
-      return;
-    }
-
-    try {
-      const result = document.body.requestPointerLock({ unadjustedMovement: true });
-      if (result && typeof result.catch === "function") result.catch(requestBasicPointerLock);
-    } catch {
-      requestBasicPointerLock();
-    }
-  }
-
-  function requestBasicPointerLock() {
-    try {
-      const result = document.body.requestPointerLock();
-      if (result && typeof result.catch === "function") result.catch(enableFallbackLook);
-    } catch {
-      enableFallbackLook();
-    }
-  }
-
-  function enableFallbackLook() {
-    fallbackLookEnabled = true;
-    pointerLockActive = false;
-    onFallbackLook();
-  }
-
-  function setPointerLockActive(value) {
-    pointerLockActive = value;
-    if (value) fallbackLookEnabled = false;
+  function isMouseCaptured() {
+    return document.pointerLockElement === lockTarget;
   }
 
   function onKeyDown(event) {
@@ -154,34 +114,18 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
   }
 
   function onMouseDown(event) {
-    if (event.button === 0) inputState.mouseDown = true;
-
-    if (!pointerLockActive && fallbackLookEnabled && event.button === 0) {
-      dragLookActive = true;
-      lastDragX = event.clientX;
-      lastDragY = event.clientY;
-    }
+    if (event.button === 0 && isMouseCaptured()) inputState.mouseDown = true;
   }
 
   function onMouseUp(event) {
     if (event.button === 0) {
       inputState.mouseDown = false;
-      dragLookActive = false;
     }
   }
 
   function onMouseMove(event, sensitivityMultiplier = 1) {
-    if (pointerLockActive) {
+    if (isMouseCaptured()) {
       rotateView(event.movementX, event.movementY, config.mouseSensitivity * sensitivityMultiplier);
-      return;
-    }
-
-    if (dragLookActive) {
-      const deltaX = event.clientX - lastDragX;
-      const deltaY = event.clientY - lastDragY;
-      lastDragX = event.clientX;
-      lastDragY = event.clientY;
-      rotateView(deltaX, deltaY, config.dragSensitivity * sensitivityMultiplier);
     }
   }
 
@@ -201,7 +145,7 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
   }
 
   function addLookDelta(deltaX, deltaY, sensitivityMultiplier = 1) {
-    rotateView(deltaX, deltaY, config.dragSensitivity * sensitivityMultiplier);
+    rotateView(deltaX, deltaY, config.touchSensitivity * sensitivityMultiplier);
   }
 
   function setFiring(active) {
@@ -226,7 +170,6 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
     keys.jumpQueued = false;
     touchInput.moveX = 0;
     touchInput.moveY = 0;
-    dragLookActive = false;
     inputState.mouseDown = false;
   }
 
@@ -543,21 +486,9 @@ export function createPlayer({ THREE, camera, config, colliders, onFallbackLook 
     velocity,
     inputState,
 
-    get pointerLockSupported() {
-      return pointerLockSupported;
-    },
-
     get pointerLockActive() {
-      return pointerLockActive;
+      return isMouseCaptured();
     },
-
-    get fallbackLookEnabled() {
-      return fallbackLookEnabled;
-    },
-
-    lockCursor,
-    enableFallbackLook,
-    setPointerLockActive,
     onKeyDown,
     onKeyUp,
     onMouseDown,

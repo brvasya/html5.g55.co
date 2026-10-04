@@ -36,8 +36,6 @@ body {
   font-family: var(--ui-font);
 }
 
-body.cursor-locked { cursor: none; }
-body.fallback-look { cursor: crosshair; }
 canvas { display: block; }
 
 /* HUD */
