@@ -88,7 +88,7 @@ document.querySelectorAll('.more-games-link').forEach(link => {
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 const RENDER_LIMITS = {
-  maxPixelRatio: 1.35,
+  maxPixelRatio: 1,
   chasePixels: 1920 * 1080,
   cockpitPixels: 1600 * 900,
   minScale: .60
