@@ -1361,10 +1361,6 @@ export function createEnemies({
           attackDuration || 0,
           enemy.userData.attackDamageDelay || 0
         );
-
-        if (enemy.userData.type.asset.attackSound) {
-          playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
-        }
       }
 
       if (
@@ -1374,6 +1370,10 @@ export function createEnemies({
       ) {
         enemy.userData.pendingDamage = false;
         triggerEnemyMuzzleFlash(enemy);
+
+        if (enemy.userData.type.asset.attackSound) {
+          playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
+        }
 
         const currentDistance = Math.abs((playerPosition.y - config.playerHeight) - enemy.position.y) > enemy.userData.attackDistance ? Infinity : getFlatDistance(enemy.position, playerPosition);
 
