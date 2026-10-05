@@ -1292,7 +1292,7 @@ for (let i = 0; i < 10; i++) spawnTraffic(-65 - i * 32 - Math.random() * 18);
 
 let audio = null;
 const AUDIO_MUTED_KEY = 'g55HighwayMuted';
-const AUDIO_MASTER_LEVEL = 1.75;
+const AUDIO_MASTER_LEVEL = 5.25;
 
 let audioMuted = false;
 try { audioMuted = localStorage.getItem(AUDIO_MUTED_KEY) === '1'; }
