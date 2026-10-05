@@ -4,7 +4,8 @@ import { RIFLE } from "./assets/rifle.js";
 import { SHOTGUN } from "./assets/shotgun.js";
 import { SNIPER } from "./assets/sniper.js";
 import { LAUNCHER } from "./assets/launcher.js";
-import { ENEMY } from "./assets/enemy.js";
+import { ZOMBIE } from "./assets/zombie.js";
+import { SOLDIER } from "./assets/soldier.js";
 
 export const GAME_CONFIG = {
 gameTitle: "Shooter: Zombie Survival",
@@ -15,7 +16,7 @@ enemiesPerWave: 3,
 maxEnemies: 20
 },
 enemySpawn: {
-types: ["enemy"]
+types: ["soldier"]
 }
 };
 
@@ -31,7 +32,7 @@ weaponSlots: [
 
 enemies: {
 types: {
-enemy: { asset: ENEMY }
+soldier: { asset: SOLDIER }
 }
 }
 };

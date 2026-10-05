@@ -1,4 +1,5 @@
 import { createGLTFLoader } from "./gltfLoader.js";
+import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 export function createEnemies({
@@ -66,6 +67,17 @@ export function createEnemies({
   const audioCache = new Map();
   const hitboxTemplateCache = new Map();
 
+  const MUZZLE_FLASH_DURATION = 0.055;
+  let muzzleFlashTexture = null;
+  let muzzleLightEnemy = null;
+  const muzzleLight = new THREE.PointLight(0xffc36a, 0, 6, 2);
+  muzzleLight.name = "EnemyMuzzleFlashLight";
+  muzzleLight.castShadow = false;
+  // A fixed light count avoids per-enemy lighting cost and firing-time recompiles.
+  if (Object.values(enemyTypes).some(type => type.asset?.muzzleFlash)) {
+    scene.add(muzzleLight);
+  }
+
   function getEnemyModelSources(asset) {
     const configured = Array.isArray(asset?.models)
       ? asset.models
@@ -84,6 +96,12 @@ export function createEnemies({
   function getEnemyAnimationSource(asset) {
     if (typeof asset?.animations !== "string") return null;
     const src = asset.animations.trim();
+    return src || null;
+  }
+
+  function getEnemyWeaponSource(asset) {
+    if (typeof asset?.weapon !== "string") return null;
+    const src = asset.weapon.trim();
     return src || null;
   }
 
@@ -109,9 +127,14 @@ export function createEnemies({
 
     const tasks = getEnemyModelSources(asset).map(preloadEnemyModel);
     const animationSrc = getEnemyAnimationSource(asset);
+    const weaponSrc = getEnemyWeaponSource(asset);
 
     if (animationSrc) {
       tasks.push(preloadEnemyAnimationLibrary(animationSrc));
+    }
+
+    if (weaponSrc) {
+      tasks.push(preloadEnemyModel(weaponSrc));
     }
 
     return tasks.length ? Promise.all(tasks) : Promise.resolve(null);
@@ -157,6 +180,9 @@ export function createEnemies({
           enemies.forEach(enemy => {
             if (enemy.userData.modelSrc === src && !enemy.userData.model) {
               attachEnemyModel(enemy);
+            }
+            if (enemy.userData.weaponSrc === src) {
+              attachEnemyWeapon(enemy);
             }
           });
 
@@ -426,6 +452,7 @@ export function createEnemies({
       type,
       modelSrc,
       animationSrc,
+      weaponSrc: getEnemyWeaponSource(asset),
       health: asset.enemyHealth,
       speed: asset.enemySpeed,
       damage: asset.enemyDamage,
@@ -445,6 +472,9 @@ export function createEnemies({
       hitboxes: [],
       broadHitBounds: null,
       model: null,
+      weapon: null,
+      muzzleFlashSprite: null,
+      muzzleFlashTime: 0,
       groundY: y,
       verticalVelocity: 0,
       navTarget: null,
@@ -503,7 +533,19 @@ export function createEnemies({
     model.rotation.set(assetRotation[0], assetRotation[1], assetRotation[2]);
     model.position.y += assetPositionY;
 
-    model.traverse(object => {
+    cloneEnemyMaterials(model);
+
+    enemy.add(model);
+    enemy.userData.model = model;
+    enemy.updateMatrixWorld(true);
+
+    setupEnemyBoneHitboxes(enemy);
+    attachEnemyWeapon(enemy);
+    setupEnemyAnimationsIfReady(enemy);
+  }
+
+  function cloneEnemyMaterials(root) {
+    root.traverse(object => {
       if (!object.isMesh || !object.material) return;
 
       if (Array.isArray(object.material)) {
@@ -512,13 +554,117 @@ export function createEnemies({
         object.material = object.material.clone();
       }
     });
+  }
 
-    enemy.add(model);
-    enemy.userData.model = model;
+  function attachEnemyWeapon(enemy) {
+    const model = enemy.userData.model;
+    const cached = modelCache.get(enemy.userData.weaponSrc);
+    if (!model || !cached?.source || enemy.userData.weapon) return;
+
+    const asset = enemy.userData.type.asset;
+    const boneName = THREE.PropertyBinding.sanitizeNodeName(asset.weaponBone || "_R_Hand");
+    const hand = model.getObjectByName(boneName);
+
+    if (!hand?.isBone) {
+      console.warn(`Missing enemy weapon attachment bone: ${boneName}`);
+      return;
+    }
+
+    const weapon = SkeletonUtils.clone(cached.source);
+    cloneEnemyMaterials(weapon);
+
+    const socket = new THREE.Group();
+    const rotation = asset.weaponRotation || [0, 0, 0];
+    socket.name = "EnemyWeaponSocket";
+    socket.position.fromArray(asset.weaponPosition || [0, 0, 0]);
+    socket.rotation.set(rotation[0], rotation[1], rotation[2]);
+    socket.scale.setScalar(asset.weaponScale ?? 1);
+    socket.add(weapon);
+    hand.add(socket);
+
+    enemy.userData.weapon = weapon;
+    setupEnemyMuzzleFlash(enemy);
     enemy.updateMatrixWorld(true);
+  }
 
-    setupEnemyBoneHitboxes(enemy);
-    setupEnemyAnimationsIfReady(enemy);
+  function setupEnemyMuzzleFlash(enemy) {
+    const name = enemy.userData.type.asset.muzzleFlash;
+    if (!name) return;
+
+    const wanted = THREE.PropertyBinding.sanitizeNodeName(String(name)).toLowerCase();
+    let muzzle = null;
+    enemy.userData.weapon.traverse(object => {
+      if (!muzzle && THREE.PropertyBinding.sanitizeNodeName(object.name).toLowerCase() === wanted) {
+        muzzle = object;
+      }
+    });
+    if (!muzzle) {
+      console.warn(`Missing enemy weapon muzzle flash attachment: ${name}`);
+      return;
+    }
+
+    if (!muzzleFlashTexture) muzzleFlashTexture = createMuzzleFlashTexture(THREE);
+    const material = new THREE.SpriteMaterial({
+      map: muzzleFlashTexture,
+      color: 0xffd27a,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false,
+      opacity: 0
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.name = "EnemyMuzzleFlash";
+    sprite.scale.set(5.2, 5.2, 1);
+    muzzle.add(sprite);
+    enemy.userData.muzzleFlashSprite = sprite;
+  }
+
+  function triggerEnemyMuzzleFlash(enemy) {
+    const sprite = enemy.userData.muzzleFlashSprite;
+    if (!sprite) return;
+
+    enemy.userData.muzzleFlashTime = MUZZLE_FLASH_DURATION;
+    sprite.material.opacity = 1;
+    sprite.material.rotation = Math.random() * Math.PI;
+    const scale = 4.5 + Math.random() * 1.4;
+    sprite.scale.set(scale, scale, 1);
+  }
+
+  function updateEnemyMuzzleFlash(enemy, delta) {
+    if (enemy.userData.muzzleFlashTime <= 0) return;
+    enemy.userData.muzzleFlashTime = Math.max(0, enemy.userData.muzzleFlashTime - delta);
+    enemy.userData.muzzleFlashSprite.material.opacity = enemy.userData.muzzleFlashTime / MUZZLE_FLASH_DURATION;
+  }
+
+  function clearEnemyMuzzleFlash(enemy) {
+    enemy.userData.muzzleFlashTime = 0;
+    if (enemy.userData.muzzleFlashSprite) enemy.userData.muzzleFlashSprite.material.opacity = 0;
+    if (muzzleLightEnemy === enemy) {
+      muzzleLight.intensity = 0;
+      muzzleLightEnemy = null;
+    }
+  }
+
+  function syncEnemyMuzzleLight() {
+    muzzleLightEnemy = null;
+    let nearestDistance = Infinity;
+    for (const enemy of enemies) {
+      if (enemy.userData.muzzleFlashTime <= 0 || enemy.userData.isDying) continue;
+      const distance = enemy.position.distanceToSquared(camera.position);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        muzzleLightEnemy = enemy;
+      }
+    }
+
+    muzzleLight.intensity = 0;
+    if (muzzleLightEnemy) {
+      const data = muzzleLightEnemy.userData;
+      data.muzzleFlashSprite.getWorldPosition(muzzleLight.position);
+      muzzleLight.intensity = 10 + 22 * (data.muzzleFlashTime / MUZZLE_FLASH_DURATION);
+    }
   }
 
   function setupEnemyBoneHitboxes(enemy) {
@@ -1147,6 +1293,7 @@ export function createEnemies({
 
     enemies.forEach(enemy => {
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
+      updateEnemyMuzzleFlash(enemy, delta);
 
       if (enemy.userData.isDying) {
         enemy.userData.deathTimer -= delta;
@@ -1226,6 +1373,7 @@ export function createEnemies({
         enemy.userData.attackElapsed >= enemy.userData.attackDamageDelay
       ) {
         enemy.userData.pendingDamage = false;
+        triggerEnemyMuzzleFlash(enemy);
 
         const currentDistance = Math.abs((playerPosition.y - config.playerHeight) - enemy.position.y) > enemy.userData.attackDistance ? Infinity : getFlatDistance(enemy.position, playerPosition);
 
@@ -1240,6 +1388,7 @@ export function createEnemies({
         playEnemyAnimation(enemy, "walk");
       }
     });
+    syncEnemyMuzzleLight();
   }
 
   function moveEnemy(enemy, playerPosition, delta) {
@@ -1487,6 +1636,7 @@ export function createEnemies({
     }
 
     if (enemy.userData.health <= 0) {
+      clearEnemyMuzzleFlash(enemy);
       enemy.userData.isDying = true;
       enemy.userData.isHitReacting = false;
       enemy.userData.hitTimer = 0;
@@ -1540,6 +1690,7 @@ export function createEnemies({
   }
 
   function removeEnemy(enemy) {
+    clearEnemyMuzzleFlash(enemy);
     const mixer = enemy.userData.mixer;
     if (mixer) {
       mixer.stopAllAction();
