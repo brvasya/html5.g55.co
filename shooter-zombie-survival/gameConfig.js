@@ -16,7 +16,7 @@ enemiesPerWave: 3,
 maxEnemies: 20
 },
 enemySpawn: {
-types: ["soldier"]
+types: ["zombie", "soldier"]
 }
 };
 
@@ -32,7 +32,8 @@ weaponSlots: [
 
 enemies: {
 types: {
-soldier: { asset: SOLDIER }
+zombie: { asset: SOLDIER },
+soldier: { asset: ZOMBIE }
 }
 }
 };
