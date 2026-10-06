@@ -32,8 +32,8 @@ weaponSlots: [
 
 enemies: {
 types: {
-zombie: { asset: SOLDIER },
-soldier: { asset: ZOMBIE }
+zombie: { asset: ZOMBIE },
+soldier: { asset: SOLDIER }
 }
 }
 };
