@@ -10,7 +10,7 @@ enemyDamage: 10,
 attackDistance: 2,
 attackDamageDelay: 0.3,
 anim: {
-walk: ["WALK_drunk", "WALK_shuffle"],
+walk: ["WALK_drunk"],
 attack: ["FightA_1", "FightA_2", "FightA_3"],
 hit: ["HIT_L", "HIT_R", "HIT_back"],
 headshot: ["KO_shot_face"],
