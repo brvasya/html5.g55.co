@@ -947,14 +947,6 @@ function startWave() {
   updateHud();
 }
 
-function refillActiveEnemies() {
-  if (state.isGameComplete || !enemies || typeof enemies.spawnOne !== "function") return;
-
-  while (enemies.count < state.enemyLimit) {
-    if (!enemies.spawnOne(state.wave)) break;
-  }
-}
-
 function handleEnemyKilled({ headshot = false, count = 1 } = {}) {
   const killCount = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 1;
   const now = performance.now();
@@ -1247,7 +1239,6 @@ function shoot() {
     spawnTracer(direction);
     const result = resolveBulletImpact(shot, hit);
 
-    if (!state.isWaveComplete) refillActiveEnemies();
     if (result.enemyWasHit) sounds.playEnemyHit();
     updateHud();
     return;
@@ -1266,8 +1257,6 @@ function shoot() {
 
     if (result.waveComplete) break;
   }
-
-  if (!state.isWaveComplete) refillActiveEnemies();
 
   if (enemyWasHit) {
     sounds.playEnemyHit();
@@ -1337,13 +1326,12 @@ function handleProjectileExplosion({ position, hit, damage, selfDamage = damage,
   // completing the wave, while enemies killed by that blast still award points.
   if (playerDamage > 0) takeDamage(playerDamage);
 
-  // Resolve all victims first. Refilling inside the loop would let the same
-  // explosion damage newly spawned enemies, or reset references mid-blast.
+  // Resolve all victims before completing the wave so a reset cannot
+  // invalidate enemy references mid-blast.
   if (kills > 0) {
     sounds.playEnemyDie();
     handleEnemyKilled({ count: kills });
   }
-  if (state.isPlaying && !state.isGameOver && !state.isWaveComplete) refillActiveEnemies();
   if (enemyWasHit) sounds.playEnemyHit();
   updateHud();
 }
@@ -1412,7 +1400,6 @@ function handleMeleeHit(shot) {
   if (killed) {
     sounds.playEnemyDie();
     handleEnemyKilled();
-    if (!state.isWaveComplete) refillActiveEnemies();
   }
 
   resetImpactRaycasterRange();
@@ -1636,7 +1623,6 @@ function updateSniperBulletCamera(delta) {
 
   const result = resolveBulletImpact(sniperBulletCam.shot, sniperBulletCam.hit);
 
-  if (!state.isWaveComplete) refillActiveEnemies();
   if (result.enemyWasHit) sounds.playEnemyHit();
   updateHud();
 
