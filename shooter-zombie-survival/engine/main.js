@@ -930,18 +930,14 @@ function shouldInstantKillHeadshot(hit) {
   return Boolean(hit?.headshot);
 }
 
-function hasAllWeaponsOwned() {
-  const slots = weapon.getShopState?.();
-  return Array.isArray(slots) && slots.length > 0 && slots.every(slot => slot.owned);
-}
-
 function startWave() {
   if (!enemies) return;
 
   resetKillCombo();
   state.waveScore = 0;
   state.waveTargetScore = getWaveEnemyLimit();
-  state.enemyLimit = getWaveEnemyLimit();
+  state.enemyLimit = state.waveTargetScore;
+  state.isFinalWave = state.waveTargetScore >= CONFIG.wave.maxEnemies;
 
   projectiles.clear();
   enemies.reset();
@@ -1040,7 +1036,6 @@ function showGameComplete() {
 function continueWave() {
   if (!enemies) return false;
 
-  state.isFinalWave = hasAllWeaponsOwned();
   state.isWaveComplete = false;
   setWaveShopVisible(false);
   state.wave += 1;
