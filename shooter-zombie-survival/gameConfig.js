@@ -13,7 +13,7 @@ gameTitle: "Shooter: Zombie Survival",
 wave: {
 baseEnemies: 6,
 enemiesPerWave: 3,
-maxEnemies: 20
+maxEnemies: 30
 },
 enemySpawn: {
 types: ["zombie", "soldier"]
