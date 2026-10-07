@@ -4,7 +4,7 @@ import { createTouchControls } from "./touchControls.js";
 import { renderGameTitle, controlsText, focusMenu, clearMenuSelection, trapDialogFocus } from "./ui.js";
 import { createWeaponSystem } from "./weapon.js";
 import { createProjectiles } from "./projectiles.js";
-import { createWorld } from "./world.js";
+import { createMapWorld, MAP_IDS } from "./mapManager.js";
 import { createEnemies } from "./enemies.js";
 import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
@@ -130,6 +130,7 @@ const dom = {
   damageFlash: document.getElementById("damageFlash"),
   mainMenuButton: document.getElementById("mainMenuButton"),
   fullscreenButton: document.getElementById("fullscreenButton"),
+  mapButtons: Array.from(document.querySelectorAll("#mapSelect [data-map]")),
   uiStatus: document.getElementById("uiStatus"),
   moreGamesButton: null,
   waveShopButton: null
@@ -146,6 +147,8 @@ weaponRoot.name = "FirstPersonWorldAnchor";
 weaponRoot.scale.setScalar(weaponWorldScale);
 weaponScene.add(weaponRoot);
 const weaponLightLinks = [];
+let hemisphereLight = null;
+let sunLight = null;
 
 scene.background = new THREE.Color(0x87a7c7);
 scene.fog = new THREE.Fog(0x87a7c7, 22, 75);
@@ -188,7 +191,9 @@ document.body.appendChild(renderer.domElement);
 const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
-const world = createWorld({ THREE, scene, worldConfig: GAME_ASSETS.world });
+const world = createMapWorld({
+  THREE, scene, mapId: document.documentElement.dataset.selectedMap
+});
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders, lockTarget: renderer.domElement });
 let enemies = null;
 
@@ -348,7 +353,7 @@ async function boot() {
     loadingButton.setProgress(100);
     bootLoadingActive = false;
     bootReady = true;
-    requestAnimationFrame(() => { loadingButton.hide(); focusMenu(dom.overlay); });
+    requestAnimationFrame(() => { loadingButton.hide(); updateMapButtons(); focusMenu(dom.overlay); });
     animate();
   } catch (error) {
     console.error("Game failed to initialize:", error);
@@ -401,13 +406,14 @@ async function preloadAllAssets() {
 
 function setupLights() {
   const lighting = world.lighting || {};
-  scene.add(new THREE.HemisphereLight(
+  hemisphereLight = new THREE.HemisphereLight(
     lighting.hemisphereSky ?? 0xffffff,
     lighting.hemisphereGround ?? 0xffffff,
     lighting.hemisphereIntensity ?? 1.5
-  ));
+  );
+  scene.add(hemisphereLight);
 
-  const sun = new THREE.DirectionalLight(lighting.sunColor ?? 0xffffff, lighting.sunIntensity ?? 1.5);
+  const sun = sunLight = new THREE.DirectionalLight(lighting.sunColor ?? 0xffffff, lighting.sunIntensity ?? 1.5);
   sun.position.set(...(lighting.sunPosition || [10, 18, 8]));
   sun.shadow.camera.left = -56;
   sun.shadow.camera.right = 56;
@@ -420,6 +426,36 @@ function setupLights() {
   sun.castShadow = true;
   sun.shadow.mapSize.set(renderSettings.shadowMapSize, renderSettings.shadowMapSize);
   scene.add(sun);
+
+  refreshWeaponLightLinks();
+}
+
+function updateMapLighting() {
+  const lighting = world.lighting || {};
+  hemisphereLight.color.set(lighting.hemisphereSky ?? 0xffffff);
+  hemisphereLight.groundColor.set(lighting.hemisphereGround ?? 0xffffff);
+  hemisphereLight.intensity = lighting.hemisphereIntensity ?? 1.5;
+  sunLight.color.set(lighting.sunColor ?? 0xffffff);
+  sunLight.intensity = lighting.sunIntensity ?? 1.5;
+  sunLight.position.set(...(lighting.sunPosition || [10, 18, 8]));
+  refreshWeaponLightLinks();
+  shadowsDirty = true;
+  renderer.shadowMap.needsUpdate = true;
+  renderInvalidated = true;
+}
+
+function refreshWeaponLightLinks() {
+  for (const { light } of weaponLightLinks) {
+    weaponScene.remove(light);
+    if (light.target) weaponScene.remove(light.target);
+    // View-model shadows borrow the world shadow map; never dispose its texture.
+    if (light.shadow) {
+      light.shadow.map = null;
+      light.shadow.mapPass = null;
+    }
+    light.dispose?.();
+  }
+  weaponLightLinks.length = 0;
 
   // The separate pass keeps weapons clear of nearby walls. Its lights mirror
   // the world, including the animated fire and police lights, instead of using
@@ -490,6 +526,10 @@ function setupInput() {
   dom.startButton.addEventListener("click", startGame);
   dom.mainMenuButton.addEventListener("click", returnToMainMenu);
   dom.fullscreenButton.addEventListener("click", toggleFullscreen);
+  dom.mapButtons.forEach(button => {
+    button.addEventListener("click", () => selectMap(button.dataset.map));
+  });
+  updateMapButtons();
   document.addEventListener("fullscreenchange", () => {
     dom.fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
     onResize();
@@ -658,6 +698,42 @@ function setWaveShopVisible(visible) {
   dom.waveShopButton.style.display = visible ? "" : "none";
 }
 
+function updateMapButtons() {
+  document.documentElement.dataset.selectedMap = world.mapId;
+  for (const button of dom.mapButtons) {
+    button.setAttribute("aria-pressed", String(button.dataset.map === world.mapId));
+    button.disabled = !bootReady || startPending;
+  }
+}
+
+function selectMap(id) {
+  if (!bootReady || startPending || !dom.overlay.classList.contains("main-menu") ||
+      !MAP_IDS.includes(id) || id === world.mapId) return;
+
+  mainMenuNeedsReset = true;
+  clearTimeout(gameOverOverlayTimer);
+  player.clearMovement();
+  touchControls.reset();
+  cancelSniperBulletCamera();
+  stopSecondaryAction();
+  enemies?.reset();
+  projectiles.clear();
+  impacts.clear();
+  bulletHoles.clear();
+
+  try {
+    world.selectMap(id);
+    updateMapLighting();
+    world.resetPlayer(player);
+    try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
+    updateMapButtons();
+  } catch (error) {
+    console.error("Map failed to load:", error);
+    updateMapButtons();
+    showNotice("The map could not load. Try again.");
+  }
+}
+
 function isTouchPortrait() {
   return touchControls.enabled && touchControls.isPortrait();
 }
@@ -715,6 +791,7 @@ function returnToMainMenu() {
   dom.startButton.textContent = "Start Game";
   dom.mainMenuButton.hidden = true;
   mainMenuNeedsReset = true;
+  updateMapButtons();
   setWaveShopVisible(false);
   focusMenu(dom.overlay);
 }
@@ -723,6 +800,7 @@ async function startGame() {
   if (!bootReady || startPending || state.isBuyMenuOpen) return;
   const requestId = ++startRequestId;
   startPending = true;
+  updateMapButtons();
   dom.startButton.disabled = true;
   sounds.resume();
   try {
@@ -754,6 +832,7 @@ async function startGame() {
   } finally {
     if (requestId === startRequestId) {
       startPending = false;
+      updateMapButtons();
       dom.startButton.disabled = false;
     }
   }

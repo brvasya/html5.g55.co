@@ -1866,3 +1866,48 @@ body.touch-device #reloadStatus, body.main-menu-active #reloadStatus, body.main-
 @media (prefers-reduced-motion: reduce) {
   button, a { transition: none !important; }
 }
+
+/* Text-only map selection; mirrored in the existing critical first-paint styles. */
+.map-select { display: none; }
+#overlay.main-menu .map-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0;
+}
+#overlay.main-menu .map-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--ui-muted);
+  background: transparent;
+  font: 700 13px/1 var(--ui-font);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+}
+#overlay.main-menu .map-option::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 35%;
+  right: 35%;
+  height: 2px;
+  background: var(--ui-accent-bright);
+  opacity: 0;
+}
+#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent-bright); }
+#overlay.main-menu .map-option[aria-pressed="true"]::after { opacity: 1; }
+#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); }
+#overlay.main-menu .map-option:disabled { cursor: wait; opacity: .65; }
+@media (max-width: 460px) {
+  #overlay.main-menu .map-select { max-width: 320px; }
+}
