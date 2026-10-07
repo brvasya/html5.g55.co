@@ -43,7 +43,7 @@ export function trapDialogFocus(container, event) {
   if (event.code !== "Tab") return;
   if (container.inert) { event.preventDefault(); return; }
   document.body.classList.add("keyboard-navigation");
-  const items = [...container.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')]
+  const items = [...container.querySelectorAll('button:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]')]
     .filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden");
   if (!items.length) { event.preventDefault(); return; }
   const first = items[0];

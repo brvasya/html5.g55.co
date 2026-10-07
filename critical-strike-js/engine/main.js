@@ -4,7 +4,7 @@ import { createTouchControls } from "./touchControls.js";
 import { renderGameTitle, controlsText, focusMenu, clearMenuSelection, trapDialogFocus } from "./ui.js";
 import { createWeaponSystem } from "./weapon.js";
 import { createProjectiles } from "./projectiles.js";
-import { createMapWorld, MAP_IDS } from "./mapManager.js";
+import { createMapWorld } from "./mapManager.js";
 import { createEnemies } from "./enemies.js";
 import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
@@ -39,7 +39,8 @@ function createLoadingButtonController() {
     button.textContent = "Start Game";
   }
 
-  function show() {
+  function show(reset = false) {
+    if (reset) progress = 0;
     setProgress(progress);
   }
 
@@ -88,6 +89,7 @@ const loadingButton = createLoadingButtonController();
 let bootLoadingActive = true;
 let bootReady = false;
 let startPending = false;
+let mapSelectionPending = false;
 let startRequestId = 0;
 let pendingMouseCapture = null;
 let mainMenuNeedsReset = false;
@@ -130,7 +132,9 @@ const dom = {
   damageFlash: document.getElementById("damageFlash"),
   mainMenuButton: document.getElementById("mainMenuButton"),
   fullscreenButton: document.getElementById("fullscreenButton"),
+  mapGroup: document.getElementById("mapSelect"),
   mapButtons: Array.from(document.querySelectorAll("#mapSelect [data-map]")),
+  mapPicker: document.getElementById("mapPicker"),
   uiStatus: document.getElementById("uiStatus"),
   moreGamesButton: null,
   waveShopButton: null
@@ -192,7 +196,7 @@ const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
 const world = createMapWorld({
-  THREE, scene, mapId: document.documentElement.dataset.selectedMap
+  THREE, scene, maps: CONFIG.maps, mapId: document.documentElement.dataset.selectedMap
 });
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders, lockTarget: renderer.domElement });
 let enemies = null;
@@ -340,13 +344,13 @@ const viewPunch = {
 boot();
 
 async function boot() {
-  setupLights();
   setupInput();
   setupOverlayButtons();
-  renderer.render(scene, camera);
 
   try {
     await world.ready;
+    setupLights();
+    renderer.render(scene, camera);
     createEnemySystemIfNeeded();
     await preloadAllAssets();
     await resetGame();
@@ -529,6 +533,7 @@ function setupInput() {
   dom.mapButtons.forEach(button => {
     button.addEventListener("click", () => selectMap(button.dataset.map));
   });
+  dom.mapPicker?.addEventListener("change", () => selectMap(dom.mapPicker.value));
   updateMapButtons();
   document.addEventListener("fullscreenchange", () => {
     dom.fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
@@ -699,17 +704,27 @@ function setWaveShopVisible(visible) {
 }
 
 function updateMapButtons() {
+  const busy = !bootReady || startPending || mapSelectionPending || world.isLoading;
   document.documentElement.dataset.selectedMap = world.mapId;
+  dom.mapGroup.setAttribute("aria-busy", String(busy));
   for (const button of dom.mapButtons) {
     button.setAttribute("aria-pressed", String(button.dataset.map === world.mapId));
-    button.disabled = !bootReady || startPending;
+    button.disabled = busy;
+  }
+  if (dom.mapPicker) {
+    dom.mapPicker.value = world.mapId;
+    dom.mapPicker.disabled = busy;
   }
 }
 
-function selectMap(id) {
-  if (!bootReady || startPending || !dom.overlay.classList.contains("main-menu") ||
-      !MAP_IDS.includes(id) || id === world.mapId) return;
+async function selectMap(id) {
+  if (!bootReady || startPending || mapSelectionPending || world.isLoading ||
+      !dom.overlay.classList.contains("main-menu") ||
+      !world.mapIds.includes(id) || id === world.mapId) return;
 
+  mapSelectionPending = true;
+  loadingButton.show(true);
+  updateMapButtons();
   mainMenuNeedsReset = true;
   clearTimeout(gameOverOverlayTimer);
   player.clearMovement();
@@ -722,15 +737,23 @@ function selectMap(id) {
   bulletHoles.clear();
 
   try {
-    world.selectMap(id);
+    // Paint the loading state even when this module is already cached.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await world.selectMap(id);
     updateMapLighting();
     world.resetPlayer(player);
-    try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
-    updateMapButtons();
+    if (CONFIG.maps.rememberSelection !== false) {
+      try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
+    }
+    loadingButton.setProgress(100);
   } catch (error) {
-    console.error("Map failed to load:", error);
+    console.warn("Map failed to load:", error);
+    showNotice("The map could not load. Choose another map or reload.");
+  } finally {
+    mapSelectionPending = false;
+    loadingButton.hide();
     updateMapButtons();
-    showNotice("The map could not load. Try again.");
+    renderInvalidated = true;
   }
 }
 
@@ -797,7 +820,7 @@ function returnToMainMenu() {
 }
 
 async function startGame() {
-  if (!bootReady || startPending || state.isBuyMenuOpen) return;
+  if (!bootReady || startPending || mapSelectionPending || world.isLoading || state.isBuyMenuOpen) return;
   const requestId = ++startRequestId;
   startPending = true;
   updateMapButtons();
@@ -2275,6 +2298,7 @@ function animate(now = performance.now()) {
     return;
   }
   frameRequest = requestAnimationFrame(animate);
+  if (mapSelectionPending || world.isLoading) return;
 
   const active = state.isPlaying && !isTouchPortrait() && !touchControls.isPickerOpen;
   if (active !== activeRendering) {

@@ -7,14 +7,71 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script>
-// Resolve the saved map before the menu's first visible paint.
+// Build the selector from local config before revealing the complete menu.
 (() => {
-  let map = "office";
-  try {
-    const saved = localStorage.getItem(`g55:${document.title}:map`);
-    if (saved === "office" || saved === "assault") map = saved;
-  } catch {}
-  document.documentElement.dataset.selectedMap = map;
+  const root = document.documentElement;
+  root.classList.add("menu-config-pending");
+  const markupReady = new Promise(resolve => { window.finishMapMenuMarkup = resolve; });
+  window.mapMenuReady = (async () => {
+    try {
+      const [{ GAME_CONFIG }, { resolveMapConfig }] = await Promise.all([
+        import("./gameConfig.js"), import("./engine/mapManager.js")
+      ]);
+      const config = resolveMapConfig(GAME_CONFIG.maps);
+      let selected = config.defaultId;
+      if (config.rememberSelection) {
+        try {
+          const saved = localStorage.getItem(`g55:${GAME_CONFIG.gameTitle}:map`);
+          if (config.items.some(item => item.id === saved)) selected = saved;
+        } catch {}
+      }
+      await markupReady;
+      const group = document.getElementById("mapSelect");
+      if (config.items.length <= 3) {
+        const template = document.getElementById("mapOptionTemplate");
+        const buttons = config.items.map(item => {
+          const button = template.content.firstElementChild.cloneNode(true);
+          button.dataset.map = item.id;
+          button.textContent = item.name;
+          button.setAttribute("aria-pressed", String(item.id === selected));
+          return button;
+        });
+        group.dataset.layout = config.items.length === 3 ? "three" : "buttons";
+        group.replaceChildren(...buttons);
+      } else {
+        // Keep longer lists compact on embedded and portrait screens.
+        const picker = document.getElementById("mapPickerTemplate").content.firstElementChild.cloneNode(true);
+        for (const item of config.items) {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = item.name;
+          picker.appendChild(option);
+        }
+        picker.value = selected;
+        group.dataset.layout = "picker";
+        group.replaceChildren(picker);
+      }
+      group.hidden = config.items.length < 2;
+      root.dataset.selectedMap = selected;
+      return true;
+    } catch (error) {
+      await markupReady;
+      console.warn("Map configuration failed to load:", error);
+      const button = document.getElementById("startButton");
+      button.disabled = false;
+      button.textContent = "Retry";
+      delete button.dataset.loading;
+      button.removeAttribute("aria-busy");
+      button.style.removeProperty("--load-progress");
+      button.onclick = () => window.location.reload();
+      document.getElementById("uiStatus").textContent = "The game could not load. Try again.";
+      document.getElementById("uiStatus").classList.add("visible");
+      return false;
+    } finally {
+      root.classList.remove("menu-config-pending");
+      delete window.finishMapMenuMarkup;
+    }
+  })();
 })();
 // Set touch mode and start font preparation before any menu content can paint.
 document.documentElement.classList.toggle("touch-device",
@@ -410,6 +467,26 @@ html.touch-device .controls-touch { display: inline; }
 @media (max-width: 460px) {
   #overlay.main-menu .map-select { max-width: 320px; }
 }
+
+/* Configured choices settle before the first visible menu frame. */
+html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
+#overlay.main-menu .map-select[data-layout="three"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#overlay.main-menu .map-select[data-layout="picker"] { display: block; }
+#overlay.main-menu .map-picker {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 8px;
+  color: var(--ui-accent-bright);
+  background: rgba(8, 16, 23, .7);
+  font: 700 13px/1.2 var(--ui-font);
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+#overlay.main-menu .map-picker option { color: var(--ui-text); background: #081017; }
+#overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}
@@ -445,9 +522,9 @@ html.touch-device .controls-touch { display: inline; }
 <img id="mainMenuLogo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPgAAAA/CAYAAADNPAUHAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAhJJREFUeNrs3UFuwjAUBcDY4kg5kw/FmbiTKyRYtGoCVRPjb88sukLwcHiJDU2Saq0LMKbL/c+6rnuP6W0PkDrONnruVmrQMag9ZbvdbksONtBLKSXklEPusOV+dww+lXvzda/X627Bzd2Z/cgdJffm62flRkmGyF3fLbhyo9wxc9dXBVdulDt27rpVcOVGSXbcv5UOkrv+LLhyo9xjlPtbzuxzBuPuRBUcBqbgoOCAggMKDig4oODAlssRT1JKCfnm5Y5rhm13P92zi4I/wqSIAy53XC3H4Mgdyh9y//u/5kzRwRocUHBAwYE2LjO/+ce3lEee/pfkxhF8XK5OgoIrudwouJLLTYdr8LM/JClQWVLQkluTO4J/RrA7hDiSo+Cm63Kj4EouNwpuaSE3Cg4KDig4oOCAggMKDig4TCz6+eCp1e+0R1zhcoDcKHhbDa+sWeXGFB1QcCDmFH13fWlNCMHX4C/Wl9aEYIoOdHEEP+Eyvu9ynnWs3If9ctD4Mxc1tyM47Tgn3hQdUHBAwUHBAQUHFBxQcKBhwUPci6qUEnKQ5f5VqPufreu6ROxKjjLgz8ANz6OW+/zcSn7ujjnlCAOuJEPnjnon0xBdyb0HV5Ipciv5Sdsu9xxcSabKreQnbLvca3AlmTK3kh+87XKPwZVk6txKfuC2S7XW5wP2nqd2PGA16IaeNbfxaZjtS4ABAKJ04U5ThTiQAAAAAElFTkSuQmCC" width="248" height="63" alt="G55.CO" draggable="false" decoding="sync">
 <h1 id="panelTitle"><span class="main-title-prefix">Shooter:</span><span class="main-title-name">Zombie Survival</span></h1>
 <p id="panelDescription"><span class="controls-desktop">WASD move · Shift walk · Space jump · Mouse aim · LMB fire · RMB scope / toggle light · R reload · 1–6 / wheel weapons · B shop · Esc pause · F fullscreen · M toggle sound</span><span class="controls-touch">Left stick move · Swipe right side to aim · Hold + drag Fire · Tap weapon to switch</span></p>
-<div id="mapSelect" class="map-select" role="group" aria-label="Map">
-<button class="map-option" type="button" data-map="office" aria-pressed="true" disabled>Office</button>
-<button class="map-option" type="button" data-map="assault" aria-pressed="false" disabled>Assault</button>
+<div id="mapSelect" class="map-select" role="group" aria-label="Map" hidden>
+<template id="mapOptionTemplate"><button class="map-option" type="button" aria-pressed="false" disabled></button></template>
+<template id="mapPickerTemplate"><select id="mapPicker" class="map-picker" aria-label="Map" disabled></select></template>
 </div>
 <div class="menu-actions">
 <button id="startButton" class="cs-button" type="button" disabled data-loading="true" aria-busy="true" style="--load-progress:0%">Loading 0%</button>
@@ -458,9 +535,7 @@ html.touch-device .controls-touch { display: inline; }
 </div>
 <div id="uiStatus" role="status" aria-live="polite"></div>
 <script>
-for (const button of document.querySelectorAll("#mapSelect [data-map]")) {
-  button.setAttribute("aria-pressed", String(button.dataset.map === document.documentElement.dataset.selectedMap));
-}
+window.finishMapMenuMarkup?.();
 </script>
 <script type="module" src="./main.js"></script>
 </body>

@@ -1911,3 +1911,23 @@ body.touch-device #reloadStatus, body.main-menu-active #reloadStatus, body.main-
 @media (max-width: 460px) {
   #overlay.main-menu .map-select { max-width: 320px; }
 }
+
+/* Configured choices settle before the first visible menu frame. */
+html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
+#overlay.main-menu .map-select[data-layout="three"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#overlay.main-menu .map-select[data-layout="picker"] { display: block; }
+#overlay.main-menu .map-picker {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 8px;
+  color: var(--ui-accent-bright);
+  background: rgba(8, 16, 23, .7);
+  font: 700 13px/1.2 var(--ui-font);
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+#overlay.main-menu .map-picker option { color: var(--ui-text); background: #081017; }
+#overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
