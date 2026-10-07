@@ -9,6 +9,7 @@ export function createEnemies({
   config,
   state,
   floorObjects = [],
+  colliders = [],
   navigation = null,
   enemyTypes,
   playAudio = (audio, volume = 1.0) => {
@@ -61,6 +62,12 @@ export function createEnemies({
   const terrainRaycaster = new THREE.Raycaster();
   const terrainRayOrigin = new THREE.Vector3();
   const terrainRayDirection = new THREE.Vector3(0, -1, 0);
+
+  const attackRaycaster = new THREE.Raycaster();
+  const attackRayOrigin = new THREE.Vector3();
+  const attackRayDirection = new THREE.Vector3();
+  const attackIntersections = [];
+  const ATTACK_RAY_EPSILON = 0.002;
 
   const modelCache = new Map();
   const animationCache = new Map();
@@ -1285,6 +1292,34 @@ export function createEnemies({
     return true;
   }
 
+  function canEnemyAttack(enemy, playerPosition) {
+    // Measure range in 3D between ground positions, preserving level-ground reach.
+    toPlayer.subVectors(playerPosition, enemy.position);
+    toPlayer.y -= config.playerHeight;
+    const range = enemy.userData.attackDistance;
+    if (!(range >= 0) || toPlayer.lengthSq() > range * range) return false;
+
+    if (!colliders.length) {
+      return !navigation || navigation.hasLineOfSight(enemy.position, playerPosition);
+    }
+
+    // Navigation tests footprints only. Shoot from body height to the player's
+    // eyes so visible players above cover can be hit, while solid cover still blocks.
+    attackRayOrigin.copy(enemy.position);
+    attackRayOrigin.y += config.playerHeight * 0.8;
+    attackRayDirection.subVectors(playerPosition, attackRayOrigin);
+    const distance = attackRayDirection.length();
+    if (distance <= ATTACK_RAY_EPSILON * 2) return true;
+
+    attackRayDirection.divideScalar(distance);
+    attackRaycaster.set(attackRayOrigin, attackRayDirection);
+    attackRaycaster.near = ATTACK_RAY_EPSILON;
+    attackRaycaster.far = distance - ATTACK_RAY_EPSILON;
+    attackIntersections.length = 0;
+    attackRaycaster.intersectObjects(colliders, true, attackIntersections);
+    return attackIntersections.length === 0;
+  }
+
   function update(delta, isPlaying, takeDamage) {
     if (!isPlaying) return;
 
@@ -1331,21 +1366,15 @@ export function createEnemies({
         enemy.userData.attackElapsed += delta;
       }
 
-      toPlayer.set(
-        playerPosition.x - enemy.position.x,
-        0,
-        playerPosition.z - enemy.position.z
-      );
+      const canAttack = canEnemyAttack(enemy, playerPosition);
 
-      const distance = Math.abs((playerPosition.y - config.playerHeight) - enemy.position.y) > enemy.userData.attackDistance || (navigation && !navigation.hasLineOfSight(enemy.position, playerPosition)) ? Infinity : toPlayer.length();
-
-      if (distance <= enemy.userData.attackDistance) {
+      if (canAttack) {
         enemy.userData.navTarget = null;
         enemy.userData.navTargetAge = 0;
         enemy.lookAt(playerPosition.x, enemy.position.y, playerPosition.z);
       }
 
-      if (distance > enemy.userData.attackDistance) {
+      if (!canAttack) {
         if (!enemy.userData.isAttacking) {
           moveEnemy(enemy, playerPosition, delta);
           playEnemyAnimation(enemy, "walk");
@@ -1375,9 +1404,8 @@ export function createEnemies({
           playAssetSound(enemy.userData.type.asset.attackSound, 1.0);
         }
 
-        const currentDistance = Math.abs((playerPosition.y - config.playerHeight) - enemy.position.y) > enemy.userData.attackDistance ? Infinity : getFlatDistance(enemy.position, playerPosition);
-
-        if (currentDistance <= enemy.userData.attackDistance && (!navigation || navigation.hasLineOfSight(enemy.position, playerPosition))) {
+        // Recheck at the damage frame in case the player moved behind cover.
+        if (canEnemyAttack(enemy, playerPosition)) {
           takeDamage(enemy.userData.damage);
         }
       }
