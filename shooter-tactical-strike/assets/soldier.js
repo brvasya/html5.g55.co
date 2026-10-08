@@ -12,7 +12,7 @@ scale: [1.1, 1.1, -1.1],
 enemyHealth: 100,
 enemySpeed: [1.5, 3],
 enemyDamage: 1,
-attackDistance: [6, 12],
+attackDistance: [6, 9, 12],
 attackDamageDelay: 1,
 anim: {
 walk: ["GunMove_FWD"],
