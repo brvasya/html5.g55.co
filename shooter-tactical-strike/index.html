@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shooter: Tactical Strike</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="./assets/font.woff2" as="font" type="font/woff2" crossorigin>
 <script>
 // Build the selector from local config before revealing the complete menu.
 (() => {
@@ -77,8 +76,11 @@
 document.documentElement.classList.toggle("touch-device",
   Boolean(window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0));
 (() => {
-  if (!document.fonts?.load) return;
   const root = document.documentElement;
+  if (!document.fonts?.load) {
+    root.classList.add("ui-font-fallback");
+    return;
+  }
   root.classList.add("menu-font-pending");
   let settled = false;
   let loading = false;
@@ -91,30 +93,35 @@ document.documentElement.classList.toggle("touch-device",
     root.classList.remove("menu-font-pending");
   };
   const timeout = setTimeout(() => finish(false), 3000);
-  window.loadMenuFont = link => {
+  window.loadMenuFont = () => {
     if (settled || loading) return;
     loading = true;
-    link.media = "all";
-    const sample = document.title + " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%: /·–→";
-    Promise.all([400, 500, 700].map(weight =>
-      document.fonts.load(`${weight} 16px Roboto`, sample)
+    const family = getComputedStyle(root).getPropertyValue("--ui-font").split(",")[0].trim();
+    const sample = document.title + " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%: /·×–—’…←→↻⌄";
+    Promise.all([400, 500, 600, 700, 800, 900].map(weight =>
+      document.fonts.load(`${weight} 16px ${family}`, sample)
     )).then(faces => finish(faces.every(matches => matches.length > 0)),
       () => finish(false));
   };
   window.failMenuFont = () => finish(false);
 })();
 </script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap"
-  media="print" onload="window.loadMenuFont?.(this)" onerror="window.failMenuFont?.()">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=optional"></noscript>
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css" onerror="window.failMenuFont?.()">
 <style id="critical-first-paint">
+@font-face {
+  font-family: "Game UI";
+  src: url("./assets/font.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
 :root {
   --ui-accent-bright: #59d2ff;
   --ui-text: #f7fafc;
   --ui-muted: rgba(235, 242, 247, 0.62);
   --ui-line-strong: rgba(255, 255, 255, 0.18);
-  --ui-font: Roboto, Arial, sans-serif;
+  --ui-font: "Game UI", Arial, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -147,7 +154,7 @@ body.keyboard-navigation a:focus-visible {
   outline-offset: 4px;
 }
 #overlay { position: fixed; inset: 0; z-index: 10; display: grid; }
-/* Reveal the complete menu only after Roboto is ready, not in a temporary font. */
+/* Reveal the complete menu only after the UI font is ready. */
 html.menu-font-pending #overlay.main-menu #panel { visibility: hidden; }
 html.ui-font-fallback { --ui-font: Arial, sans-serif; }
 #overlay.main-menu {
@@ -488,6 +495,9 @@ html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
 #overlay.main-menu .map-picker option { color: var(--ui-text); background: #081017; }
 #overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
 </style>
+<script>
+window.loadMenuFont?.();
+</script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}
 </script>
