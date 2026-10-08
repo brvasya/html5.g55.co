@@ -65,6 +65,10 @@ export function createWorld({ THREE, scene }) {
     cargoGreen: standard(0x657b62, { map: textures.panels, metalness: 0.2 }),
     wood: standard(0xb79862, { map: textures.wood }), woodEdge: standard(0x7d623d),
     yellow: standard(0xd6b761), white: standard(0xc6cdc8),
+    // Paint is an intentional decal. Bias it slightly without changing the
+    // camera's very wide depth range or disabling depth tests on architecture.
+    paintYellow: standard(0xd6b761, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
+    paintWhite: standard(0xc6cdc8, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }),
     red: standard(0xa85c42), van: standard(0x566d7d, { metalness: 0.22 }),
     lamp: standard(0xeaf1d6, { emissive: 0xd6ecc5, emissiveIntensity: 1.05 }),
     amber: standard(0xe8b669, { emissive: 0xffae48, emissiveIntensity: 0.8 })
@@ -214,25 +218,61 @@ export function createWorld({ THREE, scene }) {
   }
 
   function createGround() {
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(96, 96), mat.asphalt);
-    ground.name = 'G55FLR_AssaultGround'; ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+    // Keep the original single collision/spawn plane, but render adjoining
+    // surface patches instead of stacking floors 0.005-0.012 units apart.
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(96, 96), hiddenMaterial);
+    ground.name = 'G55FLR_AssaultGround'; ground.rotation.x = -Math.PI / 2;
     root.add(ground); colliders.push(ground); floorObjects.push(ground);
-    // Cosmetic ground panels are flush: one authoritative floor for every spawn.
-    groundPlane(39.5, 37.5, 0, -13, mat.interior, 0.006);
-    groundPlane(13.4, 13.2, -12.55, -24.9, mat.plaster, 0.011);
-    groundPlane(10, 89, -27, 0, mat.concrete, 0.006);
-    groundPlane(10, 89, 27, 0, mat.concrete, 0.006);
-    groundPlane(39.5, 8, 0, -38, mat.concrete, 0.007);
-    groundPlane(9.8, 26, 0, -6.8, mat.asphalt, 0.012);
-    for (let z = -17; z < 22; z += 6) groundPlane(0.14, 2.8, 0, z, mat.yellow, 0.03);
-    for (const x of [-5.1, 5.1]) groundPlane(0.11, 24.8, x, -6.5, mat.yellow, 0.032);
-    for (const x of [-21, 21]) groundPlane(0.12, 35, x, -12.5, mat.yellow, 0.022);
-    for (const z of [9, 18.9]) groundPlane(11, 0.12, -12, z, mat.yellow, 0.025);
-    for (const x of [-17.5, -6.5]) groundPlane(0.12, 10, x, 14, mat.yellow, 0.025);
-    for (let x = -7; x <= 7; x += 1.6) groundPlane(0.8, 2.2, x, 33, mat.white, 0.022);
+    groundSurfaces([
+      { x: 0, z: -13, w: 39.5, d: 37.5, material: mat.interior },
+      { x: -12.55, z: -24.9, w: 13.4, d: 13.2, material: mat.plaster },
+      { x: -27, z: 0, w: 10, d: 89, material: mat.concrete },
+      { x: 27, z: 0, w: 10, d: 89, material: mat.concrete },
+      { x: 0, z: -38, w: 39.5, d: 8, material: mat.concrete },
+      { x: 0, z: -6.8, w: 9.8, d: 26, material: mat.asphalt }
+    ]);
+    for (let z = -17; z < 22; z += 6) groundPlane(0.14, 2.8, 0, z, mat.paintYellow, 0.03);
+    for (const x of [-5.1, 5.1]) groundPlane(0.11, 24.8, x, -6.5, mat.paintYellow, 0.032);
+    for (const x of [-21, 21]) groundPlane(0.12, 35, x, -12.5, mat.paintYellow, 0.022);
+    for (const z of [9, 18.9]) groundPlane(11, 0.12, -12, z, mat.paintYellow, 0.025);
+    for (const x of [-17.5, -6.5]) groundPlane(0.12, 10, x, 14, mat.paintYellow, 0.025);
+    for (let x = -7; x <= 7; x += 1.6) groundPlane(0.8, 2.2, x, 33, mat.paintWhite, 0.022);
     for (const p of [[-25, 6], [26, -27], [8, 32], [-8, -35]]) drain(p[0], p[1]);
-    // Continuation beyond the actual collision boundary prevents exposed edges.
-    groundPlane(270, 270, 0, 0, mat.asphalt, -0.09);
+    // The backdrop is a ring, so it cannot flicker through the playable floor.
+    for (const x of [-91.5, 91.5]) groundPlane(87, 270, x, 0, mat.asphalt, 0);
+    for (const z of [-91.5, 91.5]) groundPlane(96, 87, 0, z, mat.asphalt, 0);
+  }
+  function groundSurfaces(regions) {
+    const xs = new Set([-48, 48]), zs = new Set([-48, 48]);
+    for (const r of regions) {
+      xs.add(r.x - r.w / 2); xs.add(r.x + r.w / 2);
+      zs.add(r.z - r.d / 2); zs.add(r.z + r.d / 2);
+    }
+    const columns = [...xs].sort((a, b) => a - b), rows = [...zs].sort((a, b) => a - b);
+    const rectangles = [], previous = new Map();
+    for (let zi = 0; zi < rows.length - 1; zi++) {
+      const z0 = rows[zi], z1 = rows[zi + 1], z = (z0 + z1) / 2;
+      let runStart = columns[0], runMaterial = null;
+      const finishRun = x1 => {
+        const key = `${runStart}:${x1}:${runMaterial.uuid}`, old = previous.get(key);
+        if (old && old.z1 === z0) old.z1 = z1;
+        else {
+          const rectangle = { x0: runStart, x1, z0, z1, material: runMaterial };
+          rectangles.push(rectangle); previous.set(key, rectangle);
+        }
+      };
+      for (let xi = 0; xi < columns.length - 1; xi++) {
+        const x = (columns[xi] + columns[xi + 1]) / 2;
+        let material = mat.asphalt;
+        for (const r of regions) {
+          if (Math.abs(x - r.x) < r.w / 2 && Math.abs(z - r.z) < r.d / 2) material = r.material;
+        }
+        if (runMaterial && material !== runMaterial) { finishRun(columns[xi]); runStart = columns[xi]; }
+        runMaterial = material;
+      }
+      finishRun(columns[columns.length - 1]);
+    }
+    for (const r of rectangles) groundPlane(r.x1 - r.x0, r.z1 - r.z0, (r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, r.material, 0);
   }
   function drain(x, z) {
     box(x, 0.015, z, 0.7, 0.028, 1.5, mat.dark, false, '', false, false);
@@ -285,7 +325,7 @@ export function createWorld({ THREE, scene }) {
     for (const side of [-1, 1]) {
       const opening = side === 1 ? ASSAULT.gates.east : ASSAULT.gates.west;
       const mid = (opening[0] + opening[1]) / 2;
-      for (const z of opening) box(side * 20.12, 1.78, z, 0.65, 3.56, 0.14, mat.steel);
+      for (const z of opening) box(side * 20.12, 1.78, z, 0.65, 3.56, 0.14, mat.steel, true, 'Service door jamb');
       box(side * 20.15, 3.55, mid, 0.65, 0.17, opening[1] - opening[0], mat.steel, true, 'Service lintel', false);
       sign(side === 1 ? 'SERVICE 02' : 'VENTILATION', '', side * 20.37, 4.2, mid,
         3.2, 0.58, side * Math.PI / 2, '#d2cbae', '#2c4446');
@@ -335,15 +375,17 @@ export function createWorld({ THREE, scene }) {
   function createSecurityRoom() {
     // A ground-level counterpart of the classic security/hostage room. Two real
     // entrances keep this useful during waves, without adding hostage mechanics.
-    wallWithDoor('z', -5.8, -31.65, -18, 3.6, [-27.1, -23.2], 2.8, mat.plaster, 'Security room east wall', 0.35);
+    // Leave the corner's approach grid cell clear for the existing 1-unit
+    // flood field; the former -23.2 edge stranded enemies while turning east.
+    wallWithDoor('z', -5.8, -31.65, -18, 3.6, [-27.1, -22.7], 2.8, mat.plaster, 'Security room east wall', 0.35);
     wallWithDoor('x', -18, -19.65, -5.8, 3.6, [-15, -11], 2.8, mat.plaster, 'Security room front wall', 0.35);
     // The room uses open doorways; the high gallery remains scenery.
     box(-12.7, 3.7, -24.8, 13.9, 0.2, 13.6, mat.roof, true, 'Security room ceiling', false);
     sign('SECURITY', 'AUTHORIZED PERSONNEL', -13, 3.19, -17.79, 3.5, 0.54, 0, '#385451', '#e2e7d9');
     box(-18, 0.42, -27.9, 1.8, 0.84, 4, mat.dark, true, 'Security console');
-    box(-17.8, 0.9, -27.9, 2.2, 0.14, 4.15, mat.steel);
+    box(-17.8, 0.9, -27.9, 2.2, 0.14, 4.15, mat.steel, true, 'Security console tabletop');
     for (const z of [-26.6, -28.6]) {
-      box(-18, 1.31, z, 0.65, 0.65, 1.15, mat.dark);
+      box(-18, 1.31, z, 0.65, 0.65, 1.15, mat.dark, true, 'Security monitor');
       box(-17.655, 1.34, z, 0.035, 0.48, 0.94, mat.windowLight, false, '', false, false);
       for (let dz = -0.32; dz <= 0.32; dz += 0.16) box(-17.63, 1.34, z + dz, 0.015, 0.41, 0.014, mat.steel, false, '', false, false);
     }
@@ -414,7 +456,7 @@ export function createWorld({ THREE, scene }) {
       for (let x = -44; x <= 44; x += 4) box(x, 8.68, z, 0.07, 0.46, 0.07, mat.steel, false, '', false, false);
       box(0, 6.88, z, 95, 0.33, 0.25, mat.steel, true, 'Bridge beam', false);
     }
-    for (let x = -44; x < 46; x += 6) groundPlane(3.5, 0.13, x, 27, mat.yellow, 7.817);
+    for (let x = -44; x < 46; x += 6) groundPlane(3.5, 0.13, x, 27, mat.paintYellow, 7.817);
     for (const x of [-16, 16]) {
       box(x, 6.76, 27, 1.7, 0.12, 0.5, mat.lamp, false, '', false, false);
       cylinder(x, 10.5, 30.5, 0.07, 3.5, mat.steel, 0, 0, 0, false);
@@ -536,7 +578,7 @@ export function createWorld({ THREE, scene }) {
   }
   function dumpster(x, z) {
     box(x, 0.65, z, 2.8, 1.3, 1.6, mat.cargoGreen, true, 'Dumpster');
-    box(x, 1.36, z, 2.86, 0.13, 1.66, mat.dark);
+    box(x, 1.36, z, 2.86, 0.13, 1.66, mat.dark, true, 'Dumpster lid');
     for (const dx of [-1.1, 1.1]) box(x + dx, 0.25, z, 0.15, 0.4, 1.68, mat.steel);
   }
   function lampPost(x, z) {
@@ -552,9 +594,13 @@ export function createWorld({ THREE, scene }) {
     box(x, 1.48, z - 0.6, 2.65, 2.1, 4.6, mat.van);
     box(x, 1.03, z + 2.1, 2.6, 1.15, 1.7, mat.van);
     box(x, 1.91, z + 1.45, 2.3, 0.66, 0.55, mat.glass);
-    box(x, 2.49, z - 0.3, 2.7, 0.18, 4.55, mat.van);
+    box(x, 2.49, z - 0.3, 2.7, 0.18, 4.55, mat.van, true, 'CT van roof', false);
     box(x, 0.55, z + 2.98, 2.83, 0.2, 0.16, mat.steel);
-    collider(x, 1.32, z, 2.85, 2.64, 6.18, 0, 'CT communications van');
+    // Match the high body and low hood separately. A full-height envelope used
+    // to stop bullets above the hood and let the player stand on invisible air.
+    collider(x, 1.29, z - 0.6, 2.85, 2.58, 4.6, 0, 'CT van body');
+    collider(x, 0.8025, z + 2.1, 2.7, 1.605, 1.7, 0, 'CT van hood');
+    collider(x, 0.55, z + 2.98, 2.83, 0.2, 0.16, 0, 'CT van bumper');
     for (const side of [-1, 1]) {
       for (const dz of [-1.8, 1.9]) {
         cylinder(x + side * 1.35, 0.49, z + dz, 0.5, 0.26, mat.rubber, 0, 0, Math.PI / 2);
