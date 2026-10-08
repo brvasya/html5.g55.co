@@ -14,7 +14,8 @@ defaultId: "office",
 rememberSelection: true,
 items: [
 { id: "office", name: "Office", load: () => import("./assets/world.js") },
-{ id: "assault", name: "Assault", load: () => import("./assets/world1.js") }
+{ id: "assault", name: "Assault", load: () => import("./assets/world1.js") },
+{ id: "militia", name: "Militia", load: () => import("./assets/world2.js") }
 ]
 },
 
