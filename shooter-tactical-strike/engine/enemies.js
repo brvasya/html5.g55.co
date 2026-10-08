@@ -112,6 +112,15 @@ export function createEnemies({
     return src || null;
   }
 
+  function pickEnemyStatValue(configured, fallback) {
+    if (!Array.isArray(configured)) return configured;
+
+    const values = configured.filter(value => Number.isFinite(value) && value >= 0);
+    return values.length
+      ? values[Math.floor(Math.random() * values.length)]
+      : fallback;
+  }
+
   function preloadAll() {
     const tasks = [];
 
@@ -461,9 +470,11 @@ export function createEnemies({
       animationSrc,
       weaponSrc: getEnemyWeaponSource(asset),
       health: asset.enemyHealth,
-      speed: asset.enemySpeed,
+      // Choose once per enemy so movement and walk playback use the same speed.
+      speed: pickEnemyStatValue(asset.enemySpeed, 0),
       damage: asset.enemyDamage,
-      attackDistance: asset.attackDistance,
+      // Choose once per enemy so attack start and damage checks use the same range.
+      attackDistance: pickEnemyStatValue(asset.attackDistance),
       attackDuration: 0,
       attackDamageDelay: asset.attackDamageDelay,
       lastAttack: 0,
