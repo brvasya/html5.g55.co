@@ -7,7 +7,7 @@ import { LAUNCHER } from "./assets/launcher.js";
 import { SOLDIER } from "./assets/soldier.js";
 
 export const GAME_CONFIG = {
-gameTitle: "Shooter: Zombie Survival",
+gameTitle: "Shooter: Tactical Strike",
 
 maps: {
 defaultId: "office",
