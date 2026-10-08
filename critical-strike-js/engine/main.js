@@ -31,12 +31,12 @@ function createLoadingButtonController() {
     button.textContent = `Loading ${progress}%`;
   }
 
-  function hide() {
+  function hide(label = "Start Game") {
     button.disabled = false;
     delete button.dataset.loading;
     button.removeAttribute("aria-busy");
     button.style.removeProperty("--load-progress");
-    button.textContent = "Start Game";
+    button.textContent = label;
   }
 
   function show(reset = false) {
@@ -79,7 +79,7 @@ const state = {
   enemyLimit: 0,
   isPlaying: false,
   isGameOver: false,
-  isGameComplete: false,
+  isMapComplete: false,
   isFinalWave: false,
   isWaveComplete: false,
   isBuyMenuOpen: false
@@ -211,7 +211,7 @@ const weapon = createWeaponSystem({
   onStateChange: () => updateHud()
 });
 const touchControls = createTouchControls({
-  isActive: () => state.isPlaying && !state.isGameOver && !state.isGameComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
+  isActive: () => state.isPlaying && !state.isGameOver && !state.isMapComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
   setMove: (x, y) => player.setTouchMove(x, y),
   setFire: active => {
     player.setFiring(active);
@@ -726,6 +726,22 @@ async function selectMap(id) {
   loadingButton.show(true);
   updateMapButtons();
   mainMenuNeedsReset = true;
+
+  try {
+    await loadMap(id);
+    loadingButton.setProgress(100);
+  } catch (error) {
+    console.warn("Map failed to load:", error);
+    showNotice("The map could not load. Choose another map or reload.");
+  } finally {
+    mapSelectionPending = false;
+    loadingButton.hide();
+    updateMapButtons();
+    renderInvalidated = true;
+  }
+}
+
+async function loadMap(id) {
   clearTimeout(gameOverOverlayTimer);
   player.clearMovement();
   touchControls.reset();
@@ -736,24 +752,13 @@ async function selectMap(id) {
   impacts.clear();
   bulletHoles.clear();
 
-  try {
-    // Paint the loading state even when this module is already cached.
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await world.selectMap(id);
-    updateMapLighting();
-    world.resetPlayer(player);
-    if (CONFIG.maps.rememberSelection !== false) {
-      try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
-    }
-    loadingButton.setProgress(100);
-  } catch (error) {
-    console.warn("Map failed to load:", error);
-    showNotice("The map could not load. Choose another map or reload.");
-  } finally {
-    mapSelectionPending = false;
-    loadingButton.hide();
-    updateMapButtons();
-    renderInvalidated = true;
+  // Paint the loading state even when this module is already cached.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await world.selectMap(id);
+  updateMapLighting();
+  world.resetPlayer(player);
+  if (CONFIG.maps.rememberSelection !== false) {
+    try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
   }
 }
 
@@ -812,6 +817,7 @@ function returnToMainMenu() {
   renderGameTitle(dom.panelTitle, CONFIG.gameTitle);
   dom.panelText.textContent = controlsText(touchControls.enabled);
   dom.startButton.textContent = "Start Game";
+  if (mapSelectionPending) loadingButton.show();
   dom.mainMenuButton.hidden = true;
   mainMenuNeedsReset = true;
   updateMapButtons();
@@ -834,13 +840,29 @@ async function startGame() {
     const captured = await requestMouseCapture();
     if (requestId !== startRequestId) return;
     if (!captured) {
-      showOverlay("Paused", "Mouse capture failed. Click Resume to try again.", "Resume");
+      if (state.isMapComplete && !mainMenuNeedsReset) {
+        showNotice("Mouse capture failed. Click Next Map to try again.");
+      } else {
+        showOverlay("Paused", "Mouse capture failed. Click Resume to try again.", "Resume");
+      }
       return;
     }
-    if (state.isGameOver || state.isGameComplete || mainMenuNeedsReset) {
+    if (state.isGameOver || mainMenuNeedsReset) {
       await resetGame();
       if (requestId !== startRequestId) return;
       mainMenuNeedsReset = false;
+    } else if (state.isMapComplete) {
+      const continued = await continueMap();
+      if (requestId !== startRequestId) {
+        if (continued && !mainMenuNeedsReset) {
+          showOverlay("Paused", "Click Resume when you’re ready. Your progress is kept.", "Resume");
+        }
+        return;
+      }
+      if (!continued) {
+        if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+        return;
+      }
     }
     if (document.hidden || (!touchControls.enabled && !player.pointerLockActive)) {
       pauseGame();
@@ -856,7 +878,7 @@ async function startGame() {
     if (requestId === startRequestId) {
       startPending = false;
       updateMapButtons();
-      dom.startButton.disabled = false;
+      dom.startButton.disabled = mapSelectionPending || world.isLoading;
     }
   }
 }
@@ -873,7 +895,7 @@ function pauseGame() {
 
   if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
-  if (state.isGameOver || state.isGameComplete || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (state.isGameOver || state.isMapComplete || state.isWaveComplete || state.isBuyMenuOpen) return;
   showOverlay("Paused", "Click Resume when you’re ready. Your progress is kept.", "Resume");
 }
 
@@ -889,6 +911,7 @@ function toggleBuyMenu() {
 
 function openBuyMenu() {
   if (state.isBuyMenuOpen || state.isGameOver || mainMenuNeedsReset ||
+      mapSelectionPending || world.isLoading ||
       (!state.isPlaying && !state.isWaveComplete)) return;
 
   cancelPendingStart();
@@ -1092,7 +1115,7 @@ function handleEnemyKilled({ headshot = false, count = 1 } = {}) {
 
 function showWaveComplete() {
   if (state.isFinalWave) {
-    showGameComplete();
+    showMapComplete();
     return;
   }
 
@@ -1111,24 +1134,70 @@ function showWaveComplete() {
   showOverlay(`Wave ${state.wave} Complete`, `Ready for wave ${state.wave + 1}?`, "Next Wave");
 }
 
-function showGameComplete() {
+function showMapComplete() {
   projectiles.clear({ effects: false });
   cancelSniperBulletCamera();
   stopSecondaryAction();
   state.isPlaying = false;
-  state.isWaveComplete = false;
-  state.isGameComplete = true;
+  state.isWaveComplete = true;
+  state.isMapComplete = true;
 
   player.clearMovement();
+  touchControls.reset();
 
   if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   updateHud();
-  showOverlay("Game Complete", "You cleared the final wave!", "Play Again");
+  const currentName = getMapName(world.mapId);
+  const nextName = getMapName(getNextMapId());
+  showOverlay("Map Complete", `${currentName} cleared. Next: ${nextName}.`, "Next Map");
+}
+
+function getNextMapId() {
+  const index = world.mapIds.indexOf(world.mapId);
+  return world.mapIds[(index + 1) % world.mapIds.length];
+}
+
+function getMapName(id) {
+  return CONFIG.maps.items.find(map => map.id === id)?.name || id;
+}
+
+async function continueMap() {
+  if (!enemies || !state.isMapComplete) return false;
+
+  mapSelectionPending = true;
+  loadingButton.show(true);
+  dom.waveShopButton.disabled = true;
+  updateMapButtons();
+  try {
+    await loadMap(getNextMapId());
+    // A new arena starts at wave 1; cash and weapon slots belong to this run.
+    state.health = 100;
+    state.wave = 1;
+    state.isMapComplete = false;
+    state.isWaveComplete = false;
+    hud.clearHeadshot();
+    dom.damageFlash.style.opacity = "0";
+    setWaveShopVisible(false);
+    startWave();
+    loadingButton.setProgress(100);
+    return true;
+  } catch (error) {
+    console.warn("Next map failed to load:", error);
+    showNotice("The next map could not load. Try again or reload.");
+    return false;
+  } finally {
+    mapSelectionPending = false;
+    const action = mainMenuNeedsReset ? "Start Game" : state.isMapComplete ? "Next Map" : "Resume";
+    loadingButton.hide(action);
+    dom.waveShopButton.disabled = false;
+    updateMapButtons();
+    renderInvalidated = true;
+  }
 }
 
 function continueWave() {
-  if (!enemies) return false;
+  if (!enemies || state.isMapComplete) return false;
 
   state.isWaveComplete = false;
   setWaveShopVisible(false);
@@ -1172,7 +1241,8 @@ function cancelPendingStart() {
   ++startRequestId;
   startPending = false;
   finishMouseCapture(false);
-  dom.startButton.disabled = false;
+  dom.startButton.disabled = mapSelectionPending || world.isLoading;
+  updateMapButtons();
 }
 
 function onPointerLockChange() {
@@ -2105,7 +2175,7 @@ async function resetGame() {
   state.waveTargetScore = 0;
   state.enemyLimit = 0;
   state.isGameOver = false;
-  state.isGameComplete = false;
+  state.isMapComplete = false;
   state.isFinalWave = false;
   state.isWaveComplete = false;
   state.isBuyMenuOpen = false;
