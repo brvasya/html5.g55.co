@@ -4,7 +4,7 @@ import { createTouchControls } from "./touchControls.js";
 import { renderGameTitle, controlsText, focusMenu, clearMenuSelection, trapDialogFocus } from "./ui.js";
 import { createWeaponSystem } from "./weapon.js";
 import { createProjectiles } from "./projectiles.js";
-import { createWorld } from "./world.js";
+import { createMapWorld } from "./mapManager.js";
 import { createEnemies } from "./enemies.js";
 import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
@@ -31,15 +31,16 @@ function createLoadingButtonController() {
     button.textContent = `Loading ${progress}%`;
   }
 
-  function hide() {
+  function hide(label = "Start Game") {
     button.disabled = false;
     delete button.dataset.loading;
     button.removeAttribute("aria-busy");
     button.style.removeProperty("--load-progress");
-    button.textContent = "Start Game";
+    button.textContent = label;
   }
 
-  function show() {
+  function show(reset = false) {
+    if (reset) progress = 0;
     setProgress(progress);
   }
 
@@ -78,7 +79,7 @@ const state = {
   enemyLimit: 0,
   isPlaying: false,
   isGameOver: false,
-  isGameComplete: false,
+  isMapComplete: false,
   isFinalWave: false,
   isWaveComplete: false,
   isBuyMenuOpen: false
@@ -88,6 +89,7 @@ const loadingButton = createLoadingButtonController();
 let bootLoadingActive = true;
 let bootReady = false;
 let startPending = false;
+let mapSelectionPending = false;
 let startRequestId = 0;
 let pendingMouseCapture = null;
 let mainMenuNeedsReset = false;
@@ -130,6 +132,9 @@ const dom = {
   damageFlash: document.getElementById("damageFlash"),
   mainMenuButton: document.getElementById("mainMenuButton"),
   fullscreenButton: document.getElementById("fullscreenButton"),
+  mapGroup: document.getElementById("mapSelect"),
+  mapButtons: Array.from(document.querySelectorAll("#mapSelect [data-map]")),
+  mapPicker: document.getElementById("mapPicker"),
   uiStatus: document.getElementById("uiStatus"),
   moreGamesButton: null,
   waveShopButton: null
@@ -146,6 +151,8 @@ weaponRoot.name = "FirstPersonWorldAnchor";
 weaponRoot.scale.setScalar(weaponWorldScale);
 weaponScene.add(weaponRoot);
 const weaponLightLinks = [];
+let hemisphereLight = null;
+let sunLight = null;
 
 scene.background = new THREE.Color(0x87a7c7);
 scene.fog = new THREE.Fog(0x87a7c7, 22, 75);
@@ -188,7 +195,9 @@ document.body.appendChild(renderer.domElement);
 const hud = createHud();
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
-const world = createWorld({ THREE, scene, worldConfig: GAME_ASSETS.world });
+const world = createMapWorld({
+  THREE, scene, maps: CONFIG.maps, mapId: document.documentElement.dataset.selectedMap
+});
 const player = createPlayer({ THREE, camera, config: CONFIG, colliders: world.colliders, lockTarget: renderer.domElement });
 let enemies = null;
 
@@ -202,7 +211,7 @@ const weapon = createWeaponSystem({
   onStateChange: () => updateHud()
 });
 const touchControls = createTouchControls({
-  isActive: () => state.isPlaying && !state.isGameOver && !state.isGameComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
+  isActive: () => state.isPlaying && !state.isGameOver && !state.isMapComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
   setMove: (x, y) => player.setTouchMove(x, y),
   setFire: active => {
     player.setFiring(active);
@@ -335,20 +344,20 @@ const viewPunch = {
 boot();
 
 async function boot() {
-  setupLights();
   setupInput();
   setupOverlayButtons();
-  renderer.render(scene, camera);
 
   try {
     await world.ready;
+    setupLights();
+    renderer.render(scene, camera);
     createEnemySystemIfNeeded();
     await preloadAllAssets();
     await resetGame();
     loadingButton.setProgress(100);
     bootLoadingActive = false;
     bootReady = true;
-    requestAnimationFrame(() => { loadingButton.hide(); focusMenu(dom.overlay); });
+    requestAnimationFrame(() => { loadingButton.hide(); updateMapButtons(); focusMenu(dom.overlay); });
     animate();
   } catch (error) {
     console.error("Game failed to initialize:", error);
@@ -401,13 +410,14 @@ async function preloadAllAssets() {
 
 function setupLights() {
   const lighting = world.lighting || {};
-  scene.add(new THREE.HemisphereLight(
+  hemisphereLight = new THREE.HemisphereLight(
     lighting.hemisphereSky ?? 0xffffff,
     lighting.hemisphereGround ?? 0xffffff,
     lighting.hemisphereIntensity ?? 1.5
-  ));
+  );
+  scene.add(hemisphereLight);
 
-  const sun = new THREE.DirectionalLight(lighting.sunColor ?? 0xffffff, lighting.sunIntensity ?? 1.5);
+  const sun = sunLight = new THREE.DirectionalLight(lighting.sunColor ?? 0xffffff, lighting.sunIntensity ?? 1.5);
   sun.position.set(...(lighting.sunPosition || [10, 18, 8]));
   sun.shadow.camera.left = -56;
   sun.shadow.camera.right = 56;
@@ -420,6 +430,36 @@ function setupLights() {
   sun.castShadow = true;
   sun.shadow.mapSize.set(renderSettings.shadowMapSize, renderSettings.shadowMapSize);
   scene.add(sun);
+
+  refreshWeaponLightLinks();
+}
+
+function updateMapLighting() {
+  const lighting = world.lighting || {};
+  hemisphereLight.color.set(lighting.hemisphereSky ?? 0xffffff);
+  hemisphereLight.groundColor.set(lighting.hemisphereGround ?? 0xffffff);
+  hemisphereLight.intensity = lighting.hemisphereIntensity ?? 1.5;
+  sunLight.color.set(lighting.sunColor ?? 0xffffff);
+  sunLight.intensity = lighting.sunIntensity ?? 1.5;
+  sunLight.position.set(...(lighting.sunPosition || [10, 18, 8]));
+  refreshWeaponLightLinks();
+  shadowsDirty = true;
+  renderer.shadowMap.needsUpdate = true;
+  renderInvalidated = true;
+}
+
+function refreshWeaponLightLinks() {
+  for (const { light } of weaponLightLinks) {
+    weaponScene.remove(light);
+    if (light.target) weaponScene.remove(light.target);
+    // View-model shadows borrow the world shadow map; never dispose its texture.
+    if (light.shadow) {
+      light.shadow.map = null;
+      light.shadow.mapPass = null;
+    }
+    light.dispose?.();
+  }
+  weaponLightLinks.length = 0;
 
   // The separate pass keeps weapons clear of nearby walls. Its lights mirror
   // the world, including the animated fire and police lights, instead of using
@@ -490,6 +530,11 @@ function setupInput() {
   dom.startButton.addEventListener("click", startGame);
   dom.mainMenuButton.addEventListener("click", returnToMainMenu);
   dom.fullscreenButton.addEventListener("click", toggleFullscreen);
+  dom.mapButtons.forEach(button => {
+    button.addEventListener("click", () => selectMap(button.dataset.map));
+  });
+  dom.mapPicker?.addEventListener("change", () => selectMap(dom.mapPicker.value));
+  updateMapButtons();
   document.addEventListener("fullscreenchange", () => {
     dom.fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
     onResize();
@@ -658,6 +703,65 @@ function setWaveShopVisible(visible) {
   dom.waveShopButton.style.display = visible ? "" : "none";
 }
 
+function updateMapButtons() {
+  const busy = !bootReady || startPending || mapSelectionPending || world.isLoading;
+  document.documentElement.dataset.selectedMap = world.mapId;
+  dom.mapGroup.setAttribute("aria-busy", String(busy));
+  for (const button of dom.mapButtons) {
+    button.setAttribute("aria-pressed", String(button.dataset.map === world.mapId));
+    button.disabled = busy;
+  }
+  if (dom.mapPicker) {
+    dom.mapPicker.value = world.mapId;
+    dom.mapPicker.disabled = busy;
+  }
+}
+
+async function selectMap(id) {
+  if (!bootReady || startPending || mapSelectionPending || world.isLoading ||
+      !dom.overlay.classList.contains("main-menu") ||
+      !world.mapIds.includes(id) || id === world.mapId) return;
+
+  mapSelectionPending = true;
+  loadingButton.show(true);
+  updateMapButtons();
+  mainMenuNeedsReset = true;
+
+  try {
+    await loadMap(id);
+    loadingButton.setProgress(100);
+  } catch (error) {
+    console.warn("Map failed to load:", error);
+    showNotice("The map could not load. Choose another map or reload.");
+  } finally {
+    mapSelectionPending = false;
+    loadingButton.hide();
+    updateMapButtons();
+    renderInvalidated = true;
+  }
+}
+
+async function loadMap(id) {
+  clearTimeout(gameOverOverlayTimer);
+  player.clearMovement();
+  touchControls.reset();
+  cancelSniperBulletCamera();
+  stopSecondaryAction();
+  enemies?.reset();
+  projectiles.clear();
+  impacts.clear();
+  bulletHoles.clear();
+
+  // Paint the loading state even when this module is already cached.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await world.selectMap(id);
+  updateMapLighting();
+  world.resetPlayer(player);
+  if (CONFIG.maps.rememberSelection !== false) {
+    try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
+  }
+}
+
 function isTouchPortrait() {
   return touchControls.enabled && touchControls.isPortrait();
 }
@@ -713,16 +817,19 @@ function returnToMainMenu() {
   renderGameTitle(dom.panelTitle, CONFIG.gameTitle);
   dom.panelText.textContent = controlsText(touchControls.enabled);
   dom.startButton.textContent = "Start Game";
+  if (mapSelectionPending) loadingButton.show();
   dom.mainMenuButton.hidden = true;
   mainMenuNeedsReset = true;
+  updateMapButtons();
   setWaveShopVisible(false);
   focusMenu(dom.overlay);
 }
 
 async function startGame() {
-  if (!bootReady || startPending || state.isBuyMenuOpen) return;
+  if (!bootReady || startPending || mapSelectionPending || world.isLoading || state.isBuyMenuOpen) return;
   const requestId = ++startRequestId;
   startPending = true;
+  updateMapButtons();
   dom.startButton.disabled = true;
   sounds.resume();
   try {
@@ -733,13 +840,29 @@ async function startGame() {
     const captured = await requestMouseCapture();
     if (requestId !== startRequestId) return;
     if (!captured) {
-      showOverlay("Paused", "Mouse capture failed. Click Resume to try again.", "Resume");
+      if (state.isMapComplete && !mainMenuNeedsReset) {
+        showNotice("Mouse capture failed. Click Next Map to try again.");
+      } else {
+        showOverlay("Paused", "Mouse capture failed. Click Resume to try again.", "Resume");
+      }
       return;
     }
-    if (state.isGameOver || state.isGameComplete || mainMenuNeedsReset) {
+    if (state.isGameOver || mainMenuNeedsReset) {
       await resetGame();
       if (requestId !== startRequestId) return;
       mainMenuNeedsReset = false;
+    } else if (state.isMapComplete) {
+      const continued = await continueMap();
+      if (requestId !== startRequestId) {
+        if (continued && !mainMenuNeedsReset) {
+          showOverlay("Paused", "Click Resume when you’re ready. Your progress is kept.", "Resume");
+        }
+        return;
+      }
+      if (!continued) {
+        if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+        return;
+      }
     }
     if (document.hidden || (!touchControls.enabled && !player.pointerLockActive)) {
       pauseGame();
@@ -754,7 +877,8 @@ async function startGame() {
   } finally {
     if (requestId === startRequestId) {
       startPending = false;
-      dom.startButton.disabled = false;
+      updateMapButtons();
+      dom.startButton.disabled = mapSelectionPending || world.isLoading;
     }
   }
 }
@@ -771,7 +895,7 @@ function pauseGame() {
 
   if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
-  if (state.isGameOver || state.isGameComplete || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (state.isGameOver || state.isMapComplete || state.isWaveComplete || state.isBuyMenuOpen) return;
   showOverlay("Paused", "Click Resume when you’re ready. Your progress is kept.", "Resume");
 }
 
@@ -787,6 +911,7 @@ function toggleBuyMenu() {
 
 function openBuyMenu() {
   if (state.isBuyMenuOpen || state.isGameOver || mainMenuNeedsReset ||
+      mapSelectionPending || world.isLoading ||
       (!state.isPlaying && !state.isWaveComplete)) return;
 
   cancelPendingStart();
@@ -990,7 +1115,7 @@ function handleEnemyKilled({ headshot = false, count = 1 } = {}) {
 
 function showWaveComplete() {
   if (state.isFinalWave) {
-    showGameComplete();
+    showMapComplete();
     return;
   }
 
@@ -1009,24 +1134,70 @@ function showWaveComplete() {
   showOverlay(`Wave ${state.wave} Complete`, `Ready for wave ${state.wave + 1}?`, "Next Wave");
 }
 
-function showGameComplete() {
+function showMapComplete() {
   projectiles.clear({ effects: false });
   cancelSniperBulletCamera();
   stopSecondaryAction();
   state.isPlaying = false;
-  state.isWaveComplete = false;
-  state.isGameComplete = true;
+  state.isWaveComplete = true;
+  state.isMapComplete = true;
 
   player.clearMovement();
+  touchControls.reset();
 
   if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
 
   updateHud();
-  showOverlay("Game Complete", "You cleared the final wave!", "Play Again");
+  const currentName = getMapName(world.mapId);
+  const nextName = getMapName(getNextMapId());
+  showOverlay("Map Complete", `${currentName} cleared. Next: ${nextName}.`, "Next Map");
+}
+
+function getNextMapId() {
+  const index = world.mapIds.indexOf(world.mapId);
+  return world.mapIds[(index + 1) % world.mapIds.length];
+}
+
+function getMapName(id) {
+  return CONFIG.maps.items.find(map => map.id === id)?.name || id;
+}
+
+async function continueMap() {
+  if (!enemies || !state.isMapComplete) return false;
+
+  mapSelectionPending = true;
+  loadingButton.show(true);
+  dom.waveShopButton.disabled = true;
+  updateMapButtons();
+  try {
+    await loadMap(getNextMapId());
+    // A new arena starts at wave 1; cash and weapon slots belong to this run.
+    state.health = 100;
+    state.wave = 1;
+    state.isMapComplete = false;
+    state.isWaveComplete = false;
+    hud.clearHeadshot();
+    dom.damageFlash.style.opacity = "0";
+    setWaveShopVisible(false);
+    startWave();
+    loadingButton.setProgress(100);
+    return true;
+  } catch (error) {
+    console.warn("Next map failed to load:", error);
+    showNotice("The next map could not load. Try again or reload.");
+    return false;
+  } finally {
+    mapSelectionPending = false;
+    const action = mainMenuNeedsReset ? "Start Game" : state.isMapComplete ? "Next Map" : "Resume";
+    loadingButton.hide(action);
+    dom.waveShopButton.disabled = false;
+    updateMapButtons();
+    renderInvalidated = true;
+  }
 }
 
 function continueWave() {
-  if (!enemies) return false;
+  if (!enemies || state.isMapComplete) return false;
 
   state.isWaveComplete = false;
   setWaveShopVisible(false);
@@ -1070,7 +1241,8 @@ function cancelPendingStart() {
   ++startRequestId;
   startPending = false;
   finishMouseCapture(false);
-  dom.startButton.disabled = false;
+  dom.startButton.disabled = mapSelectionPending || world.isLoading;
+  updateMapButtons();
 }
 
 function onPointerLockChange() {
@@ -2003,7 +2175,7 @@ async function resetGame() {
   state.waveTargetScore = 0;
   state.enemyLimit = 0;
   state.isGameOver = false;
-  state.isGameComplete = false;
+  state.isMapComplete = false;
   state.isFinalWave = false;
   state.isWaveComplete = false;
   state.isBuyMenuOpen = false;
@@ -2196,6 +2368,7 @@ function animate(now = performance.now()) {
     return;
   }
   frameRequest = requestAnimationFrame(animate);
+  if (mapSelectionPending || world.isLoading) return;
 
   const active = state.isPlaying && !isTouchPortrait() && !touchControls.isPickerOpen;
   if (active !== activeRendering) {

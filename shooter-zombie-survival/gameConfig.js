@@ -10,6 +10,14 @@ import { SOLDIER } from "./assets/soldier.js";
 export const GAME_CONFIG = {
 gameTitle: "Shooter: Zombie Survival",
 
+maps: {
+defaultId: "city",
+rememberSelection: true,
+items: [
+{ id: "city", name: "City", load: () => import("./assets/world.js") }
+]
+},
+
 wave: {
 baseEnemies: 6,
 enemiesPerWave: 3,
