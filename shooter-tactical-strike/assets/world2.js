@@ -128,11 +128,19 @@ export function createWorld({ THREE, scene }) {
     const mesh = new THREE.Mesh(boxGeo, hiddenMaterial);
     mesh.name = name; mesh.position.set(x, y, z); mesh.rotation.y = yaw; mesh.scale.set(w, h, d);
     root.add(mesh); colliders.push(mesh);
-    if (navigationBlock) obstacles.push({ x, z, halfW: w / 2, halfD: d / 2, cos: Math.cos(yaw), sin: Math.sin(yaw) });
+    if (navigationBlock) navigationFootprint(x, z, w, d, yaw);
     return mesh;
   }
-  function cylinder(x, y, z, r, h, material, rx = 0, ry = 0, rz = 0, shadow = true) {
+  function navigationFootprint(x, z, w, d, yaw = 0) {
+    obstacles.push({ x, z, halfW: w / 2, halfD: d / 2, cos: Math.cos(yaw), sin: Math.sin(yaw) });
+  }
+  function cylinder(x, y, z, r, h, material, rx = 0, ry = 0, rz = 0, shadow = true, solidName = null) {
     instance(cylinderGeo, material, x, y, z, r, h, r, rx, ry, rz, shadow);
+    if (solidName) {
+      const mesh = new THREE.Mesh(cylinderGeo, hiddenMaterial);
+      mesh.name = solidName; mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz); mesh.scale.set(r, h, r);
+      root.add(mesh); colliders.push(mesh);
+    }
   }
   function groundPatch(x, z, w, d, material, y = 0.018) {
     instance(planeGeo, material, x, y, z, w, d, 1, -Math.PI / 2, 0, 0, false);
@@ -170,18 +178,44 @@ export function createWorld({ THREE, scene }) {
     part(cursor, end, low, high);
   }
   function createGround() {
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(280, 280), mat.earth);
-    ground.name = "G55FLR_MilitiaGround"; ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+    // A single flat collision floor; visible terrain is partitioned into adjoining
+    // faces instead of stacking coplanar grass/gravel planes over this surface.
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(280, 280), hiddenMaterial);
+    ground.name = "G55FLR_MilitiaGround"; ground.rotation.x = -Math.PI / 2;
     root.add(ground); colliders.push(ground); floorObjects.push(ground);
-    groundPatch(1, 15, 58, 30, mat.grass);
-    groundPatch(6, 28, 20, 34, mat.gravel, 0.025);
-    groundPatch(12, 0, 27, 11, mat.gravel, 0.027);
-    groundPatch(30, -12, 11, 57, mat.gravel);
-    groundPatch(-25, -12, 9, 60, mat.gravel);
-    groundPatch(0, -33, 53, 16, mat.grass);
-    groundPatch(-24, 25, 24, 8, mat.gravel, 0.03);
-    groundPatch(-24, -29, 25, 8, mat.gravel, 0.03);
+    terrainSurfaces([
+      [1,15,58,30,mat.grass], [6,28,20,34,mat.gravel],
+      [12,0,27,11,mat.gravel], [30,-12,11,57,mat.gravel],
+      [-25,-12,9,60,mat.gravel], [0,-33,53,16,mat.grass],
+      [-24,25,24,8,mat.gravel], [-24,-29,25,8,mat.gravel]
+    ]);
     floor(-6, -14, 24, 20, mat.wood); floor(15, -14, 18, 20, mat.concrete);
+  }
+  function terrainSurfaces(patches) {
+    const xs = [-140, 140], zs = [-140, 140], groups = new Map();
+    for (const [x,z,w,d] of patches) { xs.push(x-w/2,x+w/2); zs.push(z-d/2,z+d/2); }
+    const xx = [...new Set(xs)].sort((a,b)=>a-b), zz = [...new Set(zs)].sort((a,b)=>a-b);
+    for (let i=0;i<xx.length-1;i++) for(let j=0;j<zz.length-1;j++) {
+      const x0=xx[i],x1=xx[i+1],z0=zz[j],z1=zz[j+1],x=(x0+x1)/2,z=(z0+z1)/2;
+      let surface=[0,0,280,280,mat.earth];
+      for(const patch of patches) {
+        const [px,pz,w,d]=patch;
+        if(Math.abs(x-px)<w/2 && Math.abs(z-pz)<d/2) surface=patch;
+      }
+      const [px,pz,w,d,material]=surface;
+      if(!groups.has(material)) groups.set(material,{positions:[],uv:[]});
+      const group=groups.get(material);
+      for(const [vx,vz] of [[x0,z0],[x0,z1],[x1,z0],[x1,z0],[x0,z1],[x1,z1]]) {
+        group.positions.push(vx,0,vz);
+        group.uv.push((vx-px)/w+.5,.5-(vz-pz)/d);
+      }
+    }
+    for(const [material,data] of groups) {
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute("position",new THREE.Float32BufferAttribute(data.positions,3));
+      geometry.setAttribute("uv",new THREE.Float32BufferAttribute(data.uv,2));geometry.computeVertexNormals();
+      const mesh=new THREE.Mesh(geometry,material);mesh.name="Non-overlapping compound terrain";mesh.receiveShadow=true;root.add(mesh);
+    }
   }
   function createBoundary() {
     for (const x of [-47, 47]) collider(x, 8, 0, 2, 16, 96, 0, "Canyon boundary");
@@ -208,20 +242,22 @@ export function createWorld({ THREE, scene }) {
     gableRoof(-6, -14, 25.5, 21.6, 7.2, 3.3, false);
     // Front porch: level threshold, columns at the edges, open central approach.
     floor(-2, -2.2, 11.4, 3.1, mat.concrete);
-    box(-2, 3.26, -2.2, 12, 0.22, 3.8, mat.woodDark, true, "Porch canopy", false);
+    // Keep the top above the player's upward-offset ground probe when its head
+    // hits the underside; a thin slab can otherwise be mistaken for a floor.
+    box(-2, 3.35, -2.2, 12, 0.4, 3.8, mat.woodDark, true, "Porch canopy", false);
     for (const x of [-7.4, 3.4]) box(x, 1.58, -0.65, 0.25, 3.16, 0.25, mat.trim, true, "Porch post");
-    box(-2, 3.12, -0.6, 11.5, 0.24, 0.22, mat.trim);
+    box(-2, 3.12, -0.6, 11.5, 0.24, 0.22, mat.trim, true, "Porch beam", false);
   }
   function createGarage() {
     wall("z", -4, 6, 24, 0, 4.3, 0.45, mat.stucco, [[16, 8, 0, 3.55]], "Open garage front");
     wall("z", -24, 6, 24, 0, 4.3, 0.45, mat.stucco, [[17, 5.6, 0, 3.4]], "Open garage rear");
     wall("x", 24, -24, -4, 0, 4.3, 0.45, mat.stucco, [[-14, 4.4, 0, 3.3]], "Garage side door");
-    box(15, 4.18, -14, 18, 0.2, 20, mat.woodDark, true, "Garage ceiling", false);
+    box(15, 4.28, -14, 18, 0.4, 20, mat.woodDark, true, "Garage ceiling", false);
     gableRoof(15, -14, 19.3, 21.2, 4.4, 4, true);
     box(16, 3.77, -3.65, 8.4, 0.34, 0.3, mat.metal);
     for (const x of [11.75, 20.25]) box(x, 1.8, -3.64, 0.18, 3.6, 0.2, mat.metal);
     // Rolled-up door is visibly overhead and excluded from navigation.
-    cylinder(16, 4.03, -3.46, 0.32, 8.3, mat.zinc, 0, 0, Math.PI / 2);
+    cylinder(16, 4.03, -3.46, 0.32, 8.3, mat.zinc, 0, 0, Math.PI / 2, true, "Garage door roll");
   }
   function gableRoof(x, z, w, d, eave, rise, alongZ) {
     const span = alongZ ? w : d, length = alongZ ? d : w;
@@ -261,7 +297,8 @@ export function createWorld({ THREE, scene }) {
       for (const side of [-1, 1]) box(-33.89, 1.72, z + side * (width / 2 + 0.13), 0.45, 3.45, 0.3, mat.woodDark);
     }
     for (let z = -30; z <= 30; z += 10) {
-      box(-39, 3.75, z, 9.25, 0.22, 0.2, mat.metal);
+      box(-39, 3.82, z, 9.25, 0.36, 0.2, mat.metal);
+      collider(-39, 4.02, z, 9.25, 0.76, 0.2, 0, "Sewer ceiling beam", false);
       box(-39, 3.56, z, 1.3, 0.12, 0.32, mat.lamp);
       for (const x of [-43.36, -34.64]) box(x, 1.9, z, 0.1, 3.8, 0.16, mat.metal);
     }
@@ -290,12 +327,13 @@ export function createWorld({ THREE, scene }) {
     box(31, 1.6, -35, 8.4, 3.2, 0.3, mat.wood, true, "Shed back");
     box(35, 1.6, -31, 0.3, 3.2, 8, mat.wood, true, "Shed side");
     for (const x of [27, 35]) box(x, 1.6, -27, 0.25, 3.2, 0.25, mat.woodDark, true, "Shed post");
-    box(31, 3.25, -31, 9, 0.22, 9, mat.roof, true, "Shed roof", false);
+    box(31, 3.34, -31, 9, 0.4, 9, mat.roof, true, "Shed roof", false);
     // Silos are closed scenery at grade, not spawning platforms.
     for (const [x, z, r, h] of [[36, -8, 2.9, 9.5], [36, -18, 2.5, 7.6]]) {
-      cylinder(x, h / 2, z, r, h, mat.zinc);
+      cylinder(x, h / 2, z, r, h, mat.zinc, 0, 0, 0, true, "Grain silo");
       instance(coneGeo, mat.metal, x, h + 0.7, z, r + 0.15, 1.4, r + 0.15);
-      collider(x, h / 2, z, r * 1.85, h, r * 1.85, 0, "Grain silo");
+      // Conservative pathfinding footprint, precise round shot/movement surface.
+      navigationFootprint(x, z, r * 2.04, r * 2.04);
       for (let y = 0.6; y < h; y += 1.5) cylinder(x, y, z, r + 0.06, 0.07, mat.metal);
     }
   }
@@ -308,7 +346,9 @@ export function createWorld({ THREE, scene }) {
     }
   }
   function boulder(x, z, rx, h, rz, solid = true, base = 0) {
-    if (solid) collider(x, h / 2, z, rx * 1.7, h, rz * 1.7, 0, "Yard rock");
+    // The full visible base determines clearance; the rock mesh below handles
+    // impacts, with no hidden box blocking air beside its chamfered corners.
+    if (solid) navigationFootprint(x, z, rx * 2, rz * 2);
     // Broad flat base, broken shoulders and a sloping crown; no visible box plinth.
     const ring = [[-1,-.82],[-.82,-1],[.82,-1],[1,-.82],[1,.82],[.82,1],[-.82,1],[-1,.82]];
     const points = [], uv = [];
@@ -316,7 +356,7 @@ export function createWorld({ THREE, scene }) {
       const p = ring[i % 8], scale = level === 2 ? .57 : 1;
       return [x + p[0] * rx * scale, base + (level === 0 ? 0 : level === 1 ? h * .77 : h * (1.12 + ((i % 8) % 3) * .045)), z + p[1] * rz * scale];
     };
-      const tri = (a,b,c) => { points.push(...a,...c,...b); uv.push(0,0,.5,1,1,0); };
+    const tri = (a,b,c) => { points.push(...a,...c,...b); uv.push(0,0,.5,1,1,0); };
     for (let level=0;level<2;level++) for(let i=0;i<8;i++) {
       const a=vertex(i,level),b=vertex(i+1,level),c=vertex(i+1,level+1),d=vertex(i,level+1);
       tri(a,b,d);tri(b,c,d);
@@ -383,12 +423,20 @@ export function createWorld({ THREE, scene }) {
   }
   function createInteriorDetail() {
     // Ceiling beams, skirtings and furniture details stay within existing solids.
-    for(const z of [-7,-13,-20]) box(-6,3.17,z,23.5,.18,.2,mat.woodDark);
-    for(const z of [-8,-14,-20]) box(15,3.95,z,17.6,.22,.2,mat.metal);
+    // Extend hidden beam colliders through the overlapping ceiling slab. The
+    // union has no exposed internal top face for the controller to snap onto.
+    for(const z of [-7,-13,-20]) {
+      box(-6,3.17,z,23.5,.18,.2,mat.woodDark);
+      collider(-6,3.295,z,23.5,.43,.2,0,"House ceiling beam",false);
+    }
+    for(const z of [-8,-14,-20]) {
+      box(15,4,z,17.6,.32,.2,mat.metal);
+      collider(15,4.16,z,17.6,.64,.2,0,"Garage ceiling beam",false);
+    }
     box(-14.8,1.09,-8.44,4.35,.72,.36,mat.olive);
     for(const x of [-16.8,-12.8]) box(x,.86,-8,.36,.47,1.26,mat.woodDark);
     for(const x of [-16,-14.8,-13.6]) box(x,.86,-7.8,1.02,.16,.8,mat.sandbag);
-    groundPatch(-13,-12.7,6.4,4.7,mat.woodDark,.051);
+    groundPatch(-13,-12.7,6.4,4.7,mat.woodDark,.07);
     // Cabinet doors and a cooker share the existing kitchen-counter footprint.
     for(const x of [1.7,2.8,3.9]) {
       box(x,.51,-21.05,.94,.88,.08,mat.siding);box(x+.24,.7,-20.99,.07,.07,.07,mat.metal);
@@ -410,22 +458,22 @@ export function createWorld({ THREE, scene }) {
   function createCompoundProps() {
     // Six-wheel APC at the CT approach, functioning as ordinary static cover.
     const x=18,z=33;
-    box(x,1.3,z,3.55,1.8,6.8,mat.olive,true,"Parked APC");
-    box(x,2.24,z-.7,3.25,.44,3.7,mat.olive);
-    box(x,2.27,z+2.35,2.9,.56,1.2,mat.metal);
+    box(x,1.3,z,3.55,1.8,6.8,mat.olive,true,"Parked APC",false);
+    navigationFootprint(x,z,3.96,7.3);
+    box(x,2.24,z-.7,3.25,.44,3.7,mat.olive,true,"APC roof",false);
+    box(x,2.27,z+2.35,2.9,.56,1.2,mat.metal,true,"APC cab",false);
     box(x,2.46,z+2.97,2.5,.22,.06,mat.glass);
-    box(x,2.9,z-.8,1.55,.72,1.6,mat.olive);
-    collider(x,2.65,z-.7,3.25,.8,3.7,0,"APC upper body",false);
-    cylinder(x,3.3,z-.8,.48,.12,mat.metal);
+    box(x,2.9,z-.8,1.55,.72,1.6,mat.olive,true,"APC turret",false);
+    cylinder(x,3.3,z-.8,.48,.12,mat.metal,0,0,0,true,"APC hatch");
     for(const side of [-1,1]) {
       for(const dz of [-2.15,0,2.15]) {
-        cylinder(x+side*1.74,.69,z+dz,.69,.35,mat.rubber,0,0,Math.PI/2);
+        cylinder(x+side*1.74,.69,z+dz,.69,.35,mat.rubber,0,0,Math.PI/2,true,"APC wheel");
         cylinder(x+side*1.94,.69,z+dz,.34,.065,mat.metal,0,0,Math.PI/2);
       }
       box(x+side*1.81,1.84,z,.12,.24,5.7,mat.metal);
       box(x+side*1.26,1.65,z+3.44,.47,.2,.07,mat.lamp);
     }
-    box(x,.75,z+3.53,3.9,.26,.2,mat.metal);
+    box(x,.75,z+3.53,3.9,.26,.2,mat.metal,true,"APC bumper",false);
     // Ranch fence separates the approach, with a generous central opening.
     for(const [a,b] of [[-15,-3],[10,14]]) fence(a,b,40.5);
     plaque("PRIVATE PROPERTY",-8.9,1.8,40.66,4.8,.68,0,"#6d654e","#e2d5ac");
@@ -462,15 +510,15 @@ export function createWorld({ THREE, scene }) {
     }
   }
   function barrel(x,z) {
-    cylinder(x,.63,z,.48,1.26,mat.rust);collider(x,.63,z,.92,1.26,.92,0,"Fuel barrel");
+    cylinder(x,.63,z,.48,1.26,mat.rust,0,0,0,true,"Fuel barrel");navigationFootprint(x,z,.99,.99);
     for(const y of [.12,.94,1.2]) cylinder(x,y,z,.495,.065,mat.metal);
     cylinder(x,1.27,z,.44,.03,mat.metal);
   }
   function fence(a,b,z) {
     // Solid lower rails are honest movement/shot cover; upper rail is thin.
     box((a+b)/2,.56,z,b-a,1.12,.18,mat.wood,true,"Ranch fence");
-    for(let x=a;x<=b+.01;x+=2) box(x,.85,z,.18,1.7,.22,mat.woodDark);
-    box((a+b)/2,1.45,z,b-a,.16,.2,mat.siding);
+    for(let x=a;x<=b+.01;x+=2) box(x,.85,z,.18,1.7,.22,mat.woodDark,true,"Fence post",false);
+    box((a+b)/2,1.45,z,b-a,.16,.2,mat.siding,true,"Fence rail",false);
   }
   function plaque(text,x,y,z,w,h,yaw,bg,fg) {
     const texture=canvasTexture(512,96,ctx=>{
