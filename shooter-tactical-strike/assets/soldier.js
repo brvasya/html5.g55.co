@@ -1,6 +1,6 @@
 export const SOLDIER = {
 animations: "./assets/soldier.glb",
-models: ["./assets/sas6.glb"],
+models: ["./assets/sas1.glb", "./assets/sas2.glb", "./assets/sas3.glb", "./assets/sas4.glb", "./assets/sas5.glb", "./assets/sas6.glb"],
 weapon: "./assets/gun.glb",
 muzzleFlash: "muzzle_flash",
 weaponBone: "_R_Hand",
