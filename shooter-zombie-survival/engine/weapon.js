@@ -3,7 +3,7 @@ import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { WEAPON_UPGRADE_TIERS, MAX_WEAPON_UPGRADE_LEVEL, getWeaponUpgradeStats, getWeaponUpgradePrice } from "./weaponUpgrades.js";
 
-export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, onStateChange, onReloadStart }) {
+export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, onStateChange, onReloadStart, onShootSecondaryStart }) {
   const HANDS_MODEL_URL = "./assets/hands.glb";
   const VALVEBIPED_SOURCE_PREFIX = "ValveBiped.Bip01";
   const VALVEBIPED_MERGE_PREFIX = THREE.PropertyBinding.sanitizeNodeName(VALVEBIPED_SOURCE_PREFIX);
@@ -696,6 +696,10 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     if (typeof onReloadStart === "function") onReloadStart();
   }
 
+  function notifyShootSecondaryStart() {
+    if (typeof onShootSecondaryStart === "function") onShootSecondaryStart();
+  }
+
   function addReserveAmmo(amount) {
     const slot = currentSlot();
     if (slot.id !== 9 && !slot.isMelee) slot.reserveAmmo += amount;
@@ -1108,6 +1112,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       const segmentDuration = Math.max(0, endsAt - weaponTime);
       playAction(action, "shoot", false, segmentDuration);
       returnTimer = scheduleWeaponTimer(() => playSegment(index + 1), segmentDuration);
+      // Only the configured second clip triggers its mechanical sound.
+      // A missing second clip must not transfer that sound to a later clip.
+      if (index === 1 && action === actions.get("shoot:1")) notifyShootSecondaryStart();
     }
 
     playSegment(0);
