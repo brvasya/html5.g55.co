@@ -12,7 +12,7 @@ shellEject: "2",
 behavior: {
 magazineSize: 5,
 damage: 100,
-fireCooldownMs: 1200,
+fireCooldownMs: 1000,
 reloadSpeed: 1,
 pellets: 1,
 spread: 0,
