@@ -1,9 +1,7 @@
 export const SNIPER = {
 name: "Sniper Rifle",
 view: {
-posOffset: [0, 0, 2],
-rotOffset: [0, -Math.PI, 0],
-scl: [1, 1, 1]
+rotOffset: [0, -Math.PI, 0]
 },
 attachment: "3",
 attachmentRotation: [0, Math.PI/2, 0],
