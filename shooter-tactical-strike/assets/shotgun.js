@@ -12,14 +12,14 @@ shellEject: "2",
 behavior: {
 magazineSize: 8,
 damage: 25,
-fireCooldownMs: 400,
+fireCooldownMs: 1200,
 reloadSpeed: 2,
 pellets: 6,
 spread: 0.1,
 },
 anim: {
 idle: "idle",
-shoot: "fire",
+shoot: ["fire", "pump"],
 reload: ["reload_start", "reload", "reload_end"]
 },
 model: "./assets/shotgun.glb",

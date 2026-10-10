@@ -3,7 +3,7 @@ import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { WEAPON_UPGRADE_TIERS, MAX_WEAPON_UPGRADE_LEVEL, getWeaponUpgradeStats, getWeaponUpgradePrice } from "./weaponUpgrades.js";
 
-export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, onStateChange }) {
+export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, onStateChange, onReloadStart }) {
   const HANDS_MODEL_URL = "./assets/hands.glb";
   const VALVEBIPED_SOURCE_PREFIX = "ValveBiped.Bip01";
   const VALVEBIPED_MERGE_PREFIX = THREE.PropertyBinding.sanitizeNodeName(VALVEBIPED_SOURCE_PREFIX);
@@ -26,6 +26,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   let reloadStartedAt = 0;
   let reloadDuration = 0;
   let reloadSequenceId = 0;
+  let shootSequenceEndTime = 0;
 
   const rig = new THREE.Group();
   const modelCache = new Map();
@@ -466,7 +467,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const now = weaponTime;
 
     if (isReloading) return { ok: false, reason: "reloading" };
-    if (now - lastShotTime < slot.fireCooldownMs) return { ok: false, reason: "cooldown" };
+    if (now < shootSequenceEndTime || now - lastShotTime < slot.fireCooldownMs) {
+      return { ok: false, reason: "cooldown" };
+    }
 
     if (slot.isMelee) {
       lastShotTime = now;
@@ -527,11 +530,14 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     }
 
     const reloadConfig = currentModelConfig().anim?.reload;
-    if (Array.isArray(reloadConfig)) {
-      const segmentedReload = getSegmentedReloadActions();
-      if (!segmentedReload) return { started: false, duration: 0 };
-      return startSegmentedReload(slot, segmentedReload);
-    }
+    const segmentedReload = Array.isArray(reloadConfig) ? getSegmentedReloadActions() : null;
+    if (Array.isArray(reloadConfig) && !segmentedReload) return { started: false, duration: 0 };
+
+    // Keep every shoot segment, including the pump after the final shell.
+    // Queue manual/automatic reloads on the same paused weapon clock.
+    const shootDelay = Math.max(0, shootSequenceEndTime - weaponTime);
+    if (shootDelay > 0) return queueReload(slot, segmentedReload, shootDelay);
+    if (segmentedReload) return startSegmentedReload(slot, segmentedReload);
 
     isReloading = true;
     const sequenceId = ++reloadSequenceId;
@@ -549,7 +555,33 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       finishReload(sequenceId);
     }, duration);
 
+    notifyReloadStart();
     return { started: true, duration };
+  }
+
+  function queueReload(slot, segmentedReload, delay) {
+    isReloading = true;
+    const sequenceId = ++reloadSequenceId;
+    reloadStartedAt = weaponTime + delay;
+    reloadDuration = segmentedReload
+      ? getSegmentedReloadDuration(slot, segmentedReload)
+      : getEffectiveActionDuration("reload");
+
+    reloadTimer = scheduleWeaponTimer(() => {
+      if (!isReloading || sequenceId !== reloadSequenceId) return;
+      isReloading = false;
+      reload();
+      notifyStateChange();
+    }, delay);
+
+    return { started: true, duration: delay + reloadDuration };
+  }
+
+  function getSegmentedReloadDuration(slot, { startAction, loopAction, endAction }) {
+    const shellCount = Math.min(slot.magazineSize - slot.ammo, slot.reserveAmmo);
+    return getActionDuration(startAction, "reload")
+      + getActionDuration(loopAction, "reload") * Math.max(0, shellCount - 1)
+      + getActionDuration(endAction, "reload");
   }
 
   function getSegmentedReloadActions() {
@@ -581,10 +613,8 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const sequenceId = ++reloadSequenceId;
 
     const startDuration = getActionDuration(segmentedReload.startAction, "reload");
-    const loopDuration = getActionDuration(segmentedReload.loopAction, "reload");
-    const endDuration = getActionDuration(segmentedReload.endAction, "reload");
     const loopCount = Math.max(0, shellCount - 1);
-    const duration = startDuration + loopDuration * loopCount + endDuration;
+    const duration = getSegmentedReloadDuration(slot, segmentedReload);
 
     reloadStartedAt = weaponTime;
     reloadDuration = duration;
@@ -605,6 +635,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       runReloadShellLoop(slot, segmentedReload, loopCount, sequenceId);
     }, startDuration);
 
+    notifyReloadStart();
     return { started: true, duration, shellCount };
   }
 
@@ -661,6 +692,10 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     if (typeof onStateChange === "function") onStateChange();
   }
 
+  function notifyReloadStart() {
+    if (typeof onReloadStart === "function") onReloadStart();
+  }
+
   function addReserveAmmo(amount) {
     const slot = currentSlot();
     if (slot.id !== 9 && !slot.isMelee) slot.reserveAmmo += amount;
@@ -689,7 +724,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       reserveAmmo: slot.reserveAmmo,
       isReloading,
       magazineSize: slot.magazineSize,
-      reloadProgress: isReloading ? Math.min(1, (weaponTime - reloadStartedAt) / Math.max(1, reloadDuration)) : 0,
+      reloadProgress: isReloading ? Math.max(0, Math.min(1, (weaponTime - reloadStartedAt) / Math.max(1, reloadDuration))) : 0,
       isMelee: slot.isMelee
     };
   }
@@ -921,6 +956,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     activeAction = null;
     actions.clear();
     returnTimer = null;
+    shootSequenceEndTime = 0;
   }
 
   function disposeModel(root) {
@@ -942,15 +978,20 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     mixer = new THREE.AnimationMixer(model);
 
     Object.entries(assetAnim).forEach(([name, clipSpec]) => {
-      if (name === "reload" && Array.isArray(clipSpec)) {
-        if (clipSpec.length !== 3) {
+      if ((name === "reload" || name === "shoot") && Array.isArray(clipSpec)) {
+        if (name === "reload" && clipSpec.length !== 3) {
           console.warn("Segmented reload must use exactly 3 clips: [start, loop, end].");
+          return;
+        }
+
+        if (!clipSpec.length) {
+          console.warn("Shoot animation sequence must contain at least one clip name.");
           return;
         }
 
         clipSpec.forEach((clipName, index) => {
           if (typeof clipName !== "string" || !clipName.trim()) {
-            console.warn(`Weapon reload animation at index ${index} must be a clip name.`);
+            console.warn(`Weapon ${name} animation at index ${index} must be a clip name.`);
             return;
           }
 
@@ -960,10 +1001,15 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
             return;
           }
 
+          if (name === "shoot" && (!Number.isFinite(clip.duration) || clip.duration < 0)) {
+            console.warn(`Invalid weapon animation duration: ${clipName}`);
+            return;
+          }
+
           const action = mixer.clipAction(clip);
           action.setLoop(THREE.LoopOnce, 1);
           action.clampWhenFinished = true;
-          actions.set(`reload:${index}`, action);
+          actions.set(`${name}:${index}`, action);
         });
         return;
       }
@@ -1015,15 +1061,61 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       : baseSpeed;
   }
 
+  function getShootSequenceActions() {
+    return currentModelConfig().anim.shoot
+      .map((clipName, index) => actions.get(`shoot:${index}`))
+      .filter(Boolean);
+  }
+
   function getEffectiveActionDuration(name) {
+    if (name === "shoot" && Array.isArray(currentModelConfig().anim?.shoot)) {
+      const rawDuration = getShootSequenceActions().reduce((sum, action) => sum + action.getClip().duration, 0);
+      return rawDuration > 0 ? currentSlot().fireCooldownMs : 0;
+    }
     return getActionDuration(actions.get(name), name);
   }
 
   function play(name) {
+    shootSequenceEndTime = 0;
+    if (name === "shoot" && Array.isArray(currentModelConfig().anim?.shoot)) {
+      return playShootSequence();
+    }
     return playAction(actions.get(name), name, true);
   }
 
-  function playAction(action, stateName, autoReturnToIdle = true) {
+  function playShootSequence() {
+    const sequence = getShootSequenceActions();
+    const rawDuration = sequence.reduce((sum, action) => sum + action.getClip().duration, 0);
+    if (rawDuration <= 0) return 0;
+
+    // Scale the complete sequence to one firing cooldown, preserving the
+    // authored duration ratio and the existing fire-rate upgrades.
+    const duration = currentSlot().fireCooldownMs;
+    const startedAt = weaponTime;
+    let elapsedRawTime = 0;
+    shootSequenceEndTime = startedAt + duration;
+
+    function playSegment(index) {
+      if (index >= sequence.length) {
+        play("idle");
+        return;
+      }
+
+      const action = sequence[index];
+      elapsedRawTime += action.getClip().duration;
+      const endsAt = index === sequence.length - 1 ? shootSequenceEndTime
+        : startedAt + elapsedRawTime / rawDuration * duration;
+      const segmentDuration = Math.max(0, endsAt - weaponTime);
+      playAction(action, "shoot", false, segmentDuration);
+      returnTimer = scheduleWeaponTimer(() => playSegment(index + 1), segmentDuration);
+    }
+
+    playSegment(0);
+    return duration;
+  }
+
+  function playAction(action, stateName, autoReturnToIdle = true, duration = getActionDuration(action, stateName)) {
+    if (stateName !== "shoot") shootSequenceEndTime = 0;
     currentState = stateName;
     currentStateTime = 0;
     returnTimer = null;
@@ -1049,12 +1141,13 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
     const loop = isLoopingAnimation(stateName);
     const rawDuration = action.getClip().duration * 1000;
-    const duration = getActionDuration(action, stateName);
 
     action.reset();
     action.enabled = true;
     action.setEffectiveWeight(1);
-    action.timeScale = stateName === "shoot" ? rawDuration / currentSlot().fireCooldownMs : getAnimationSpeed(stateName);
+    action.timeScale = stateName === "shoot"
+      ? (duration > 0 ? rawDuration / duration : 1)
+      : getAnimationSpeed(stateName);
     action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
     action.clampWhenFinished = !loop;
     action.play();
@@ -1098,8 +1191,8 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const endTime = weaponTime + delta * 1000;
 
     // Advance the mixer to each transition before running it, then give the
-    // next clip the remaining frame time. Reload stages cannot drift apart
-    // from their ammo updates, even when a frame crosses several boundaries.
+    // next clip the remaining frame time. Shoot/reload segments stay in sync
+    // with their effects/ammo, even when a frame crosses several boundaries.
     while (true) {
       const timer = !returnTimer ? reloadTimer : !reloadTimer ? returnTimer
         : returnTimer.at <= reloadTimer.at ? returnTimer : reloadTimer;
