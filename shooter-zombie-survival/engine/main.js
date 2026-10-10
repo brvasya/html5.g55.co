@@ -164,7 +164,7 @@ camera.position.set(0, CONFIG.playerHeight, 8);
 scene.add(camera);
 
 const weaponCamera = new THREE.PerspectiveCamera(
-  70, window.innerWidth / window.innerHeight,
+  CONFIG.weaponFov ?? 70, window.innerWidth / window.innerHeight,
   0.001 * weaponWorldScale, 100 * weaponWorldScale
 );
 weaponScene.add(weaponCamera);
