@@ -12,7 +12,7 @@ shellEject: "2",
 behavior: {
 magazineSize: 5,
 damage: 100,
-fireCooldownMs: 600,
+fireCooldownMs: 1200,
 reloadSpeed: 1,
 pellets: 1,
 spread: 0,
@@ -20,7 +20,7 @@ isSniper: true
 },
 anim: {
 idle: "idle",
-shoot: "fire",
+shoot: ["fire", "bolt"],
 reload: "reload_empty"
 },
 model: "./assets/sniper.glb",

@@ -209,6 +209,7 @@ const weapon = createWeaponSystem({
   playerVelocity: player.velocity,
   weaponSlots: GAME_ASSETS.weaponSlots,
   onReloadStart: () => sounds.playReload(),
+  onShootSecondaryStart: () => sounds.playReload(),
   onStateChange: () => updateHud()
 });
 const touchControls = createTouchControls({
