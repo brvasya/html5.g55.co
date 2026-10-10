@@ -1515,22 +1515,12 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     }
   }
 
-  function getCurrentView() {
-    const config = currentModelConfig();
-    const assetView = config.view;
-
-    return {
-      rotOffset: assetView.rotOffset
-    };
-  }
-
   function getBasePosition(target) {
     return target.set(0, 0, 0);
   }
 
   function getBaseRotation(target) {
-    const view = getCurrentView();
-    return target.set(view.rotOffset[0], view.rotOffset[1], view.rotOffset[2]);
+    return target.set(0, -Math.PI, 0);
   }
 
   return {

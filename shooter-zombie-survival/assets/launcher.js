@@ -1,8 +1,5 @@
 export const LAUNCHER = {
 name: "Grenade Launcher",
-view: {
-rotOffset: [0, -Math.PI, 0]
-},
 attachment: "flashlight",
 attachmentRotation: [0, Math.PI/2, 0],
 muzzleFlash: "muzzle_flash",

@@ -1,8 +1,5 @@
 export const SMG = {
 name: "SMG",
-view: {
-rotOffset: [0, -Math.PI, 0]
-},
 attachment: "5",
 attachmentRotation: [0, Math.PI/2, 0],
 muzzleFlash: "1",
