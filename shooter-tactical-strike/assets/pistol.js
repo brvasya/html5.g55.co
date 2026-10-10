@@ -1,16 +1,16 @@
 export const PISTOL = {
 name: "Pistol",
 view: {
-posOffset: [0, -1, 6],
+posOffset: [0, 0, 3],
 rotOffset: [0, -Math.PI, 0],
 scl: [1, 1, 1]
 },
-attachment: "flashlight",
+attachment: "5",
 attachmentRotation: [0, Math.PI/2, 0],
-muzzleFlash: "muzzle_flash",
-shellEject: "shell",
+muzzleFlash: "1",
+shellEject: "2",
 behavior: {
-magazineSize: 20,
+magazineSize: 12,
 damage: 25,
 fireCooldownMs: 200,
 reloadSpeed: 1,

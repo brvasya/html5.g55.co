@@ -1,16 +1,16 @@
 export const RIFLE = {
 name: "Assault Rifle",
 view: {
-posOffset: [0, -1, 5],
+posOffset: [0, 0, 3],
 rotOffset: [0, -Math.PI, 0],
 scl: [1, 1, 1]
 },
-attachment: "flashlight",
+attachment: "3",
 attachmentRotation: [0, Math.PI/2, 0],
-muzzleFlash: "muzzle_flash",
-shellEject: "shell",
+muzzleFlash: "1",
+shellEject: "2",
 behavior: {
-magazineSize: 20,
+magazineSize: 30,
 damage: 35,
 fireCooldownMs: 120,
 reloadSpeed: 1,
@@ -18,9 +18,9 @@ pellets: 1,
 spread: 0.05,
 },
 anim: {
-idle: "ta_rifle_run_trans_idle",
+idle: "idle",
 shoot: "fire",
-reload: "reload"
+reload: "reload_empty"
 },
 model: "./assets/rifle.glb",
 fireSound: "./assets/rifle.ogg"

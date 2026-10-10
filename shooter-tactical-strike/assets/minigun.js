@@ -1,17 +1,17 @@
-export const SMG = {
-name: "SMG",
+export const MINIGUN = {
+name: "Machine Gun",
 view: {
 posOffset: [0, 0, 3],
 rotOffset: [0, -Math.PI, 0],
 scl: [1, 1, 1]
 },
-attachment: "5",
+attachment: "3",
 attachmentRotation: [0, Math.PI/2, 0],
 muzzleFlash: "1",
 shellEject: "2",
 behavior: {
-magazineSize: 50,
-damage: 25,
+magazineSize: 100,
+damage: 35,
 fireCooldownMs: 90,
 reloadSpeed: 1,
 pellets: 1,
@@ -20,8 +20,8 @@ spread: 0.05,
 anim: {
 idle: "idle",
 shoot: "fire",
-reload: "reload_empty"
+reload: "reload"
 },
-model: "./assets/smg.glb",
-fireSound: "./assets/smg.ogg"
+model: "./assets/minigun.glb",
+fireSound: "./assets/minigun.ogg"
 };
