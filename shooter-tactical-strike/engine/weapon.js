@@ -16,9 +16,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     swayMax: 0.035,
     tiltAmount: 0.045,
     lagAmount: 0.08,
-    recoilKick: 0.075,
-    recoilRotation: 0.12,
-    returnSpeed: 12,
     motionBlend: 18
   };
 
@@ -59,7 +56,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   let activeAction = null;
   let returnTimer = null;
   let reloadTimer = null;
-  let recoil = 0;
   let bobTime = 0;
   let swayX = 0;
   let swayY = 0;
@@ -387,7 +383,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
     currentSlotIndex = index;
     lastShotTime = Number.NEGATIVE_INFINITY;
-    recoil = 0;
 
     attachCurrentModel();
 
@@ -476,7 +471,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     if (slot.isMelee) {
       lastShotTime = now;
       play("shoot");
-      addRecoil();
 
       return {
         ok: true,
@@ -500,7 +494,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     triggerMuzzleFlash();
     ejectShell();
     slot.ammo -= 1;
-    addRecoil();
 
     return {
       ok: true,
@@ -1090,10 +1083,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     return getEffectiveActionDuration(name);
   }
 
-  function addRecoil() {
-    recoil = Math.min(1, recoil + 1);
-  }
-
   function scheduleWeaponTimer(callback, duration) {
     return { callback, at: weaponTime + Math.max(0, duration) };
   }
@@ -1135,8 +1124,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     syncValveBipedBoneMerge();
     updateMuzzleFlash(delta);
 
-    recoil = THREE.MathUtils.lerp(recoil, 0, 1 - Math.exp(-settings.returnSpeed * delta));
-
     const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
     const moveFactor = Math.min(horizontalSpeed / 8.5, 1);
     const moving = Boolean(inputState?.moving && isPlaying);
@@ -1164,10 +1151,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const strafeTilt = THREE.MathUtils.clamp(playerVelocity.x / 8.5, -1, 1) * settings.tiltAmount * moveFactor;
 
     targetPosition.x += bobX + swayX;
-    targetPosition.y += bobY + swayY - recoil * settings.recoilKick;
-    targetPosition.z += lag + recoil * 0.04;
+    targetPosition.y += bobY + swayY;
+    targetPosition.z += lag;
 
-    targetRotation.x += recoil * settings.recoilRotation;
     targetRotation.y += swayX * 0.55;
     targetRotation.z += strafeTilt + swayX * 0.4;
 
@@ -1471,7 +1457,6 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     getHudState,
     getShopState,
     getCurrentAsset,
-    addRecoil,
     getDuration,
     setFlashlight,
     hasScope,
