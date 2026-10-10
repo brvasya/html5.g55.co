@@ -1,9 +1,7 @@
 export const PISTOL = {
 name: "Pistol",
 view: {
-posOffset: [0, -1, 6],
-rotOffset: [0, -Math.PI, 0],
-scl: [1, 1, 1]
+rotOffset: [0, -Math.PI, 0]
 },
 attachment: "flashlight",
 attachmentRotation: [0, Math.PI/2, 0],

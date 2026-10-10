@@ -1278,13 +1278,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     getBaseRotation(targetRotation);
     rig.position.copy(targetPosition);
     rig.rotation.copy(targetRotation);
-    const view = getCurrentView();
-    const scl = view.scl;
-    rig.scale.set(
-      scl[0],
-      scl[1],
-      scl[2]
-    );
+    rig.scale.set(1, 1, 1);
   }
 
   function getShellEjectConfig() {
@@ -1526,15 +1520,12 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const assetView = config.view;
 
     return {
-      posOffset: assetView.posOffset,
-      rotOffset: assetView.rotOffset,
-      scl: assetView.scl
+      rotOffset: assetView.rotOffset
     };
   }
 
   function getBasePosition(target) {
-    const view = getCurrentView();
-    return target.set(view.posOffset[0], view.posOffset[1], view.posOffset[2]);
+    return target.set(0, 0, 0);
   }
 
   function getBaseRotation(target) {
