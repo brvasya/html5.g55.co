@@ -660,6 +660,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
       runReloadShellLoop(slot, segmentedReload, shellsRemaining - 1, sequenceId);
     }, loopDuration);
+    notifyReloadStart();
   }
 
   function playReloadEnd(segmentedReload, sequenceId) {
@@ -668,6 +669,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const endDuration = playAction(segmentedReload.endAction, "reload", false);
 
     reloadTimer = scheduleWeaponTimer(() => finishReload(sequenceId), endDuration);
+    notifyReloadStart();
   }
 
   function finishReload(sequenceId) {
