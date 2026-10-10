@@ -13,7 +13,7 @@ behavior: {
 magazineSize: 8,
 damage: 25,
 fireCooldownMs: 1000,
-reloadSpeed: 1,
+reloadSpeed: 2,
 pellets: 6,
 spread: 0.1,
 },
