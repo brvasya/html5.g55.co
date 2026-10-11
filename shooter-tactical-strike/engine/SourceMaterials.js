@@ -25,8 +25,8 @@ export function parseVMT(text) {
   return { shader, values: block() };
 }
 
-const IMAGE_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "vtf"];
-const IMAGE_MIME = { webp: "image/webp", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" };
+const IMAGE_EXTENSIONS = ["webp", "vtf"];
+const IMAGE_MIME = { webp: "image/webp" };
 
 function materialPath(name) {
   const path = cleanPath(name).replace(/^materials\//i, "");
@@ -110,10 +110,10 @@ export async function loadSourceMaterials(metadata, options = {}, manager = THRE
 
   const nativeTexture = async name => {
     const paths = materialPaths(name);
-    const explicitExtension = paths[0].match(/\.(vtf|webp|png|jpe?g)$/i)?.[1].toLowerCase();
+    const explicitExtension = paths[0].match(/\.(vtf|webp)$/i)?.[1].toLowerCase();
     const extensions = explicitExtension ? [...new Set([explicitExtension, ...IMAGE_EXTENSIONS])] : IMAGE_EXTENSIONS;
     for (const path of paths) {
-      const stem = materialRoot + path.replace(/\.(vtf|webp|png|jpe?g)$/i, "");
+      const stem = materialRoot + path.replace(/\.(vtf|webp)$/i, "");
       const file = await findTexture(stem, extensions);
       if (file) return file;
     }
