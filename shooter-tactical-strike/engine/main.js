@@ -208,6 +208,7 @@ const weapon = createWeaponSystem({
   weaponCamera,
   playerVelocity: player.velocity,
   weaponSlots: GAME_ASSETS.weaponSlots,
+  handsAsset: GAME_ASSETS.hands,
   onReloadStart: () => sounds.playReload(),
   onShootSecondaryStart: () => sounds.playReload(),
   onStateChange: () => updateHud()

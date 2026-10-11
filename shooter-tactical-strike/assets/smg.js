@@ -17,6 +17,6 @@ idle: "idle",
 shoot: "fire",
 reload: "reload_empty"
 },
-model: "./assets/smg.glb",
+model: "./assets/c_iw5_p90.mdl",
 fireSound: "./assets/smg.ogg"
 };

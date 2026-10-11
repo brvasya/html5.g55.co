@@ -1,11 +1,15 @@
 export const SOLDIER = {
-animations: "./assets/soldier.glb",
-models: ["./assets/sas1.glb", "./assets/sas2.glb", "./assets/sas3.glb", "./assets/sas4.glb", "./assets/sas5.glb", "./assets/sas6.glb"],
-weapon: "./assets/gun.glb",
+animations: "./assets/ped.ifp",
+textures: "./assets/sas.txd",
+models: ["./assets/sas1.dff", "./assets/sas2.dff", "./assets/sas3.dff", "./assets/sas4.dff", "./assets/sas5.dff", "./assets/sas6.dff"],
+weapon: {
+model: "./assets/w_iw5_m16a4.mdl",
+anim: { idle: "idle" }
+},
 muzzleFlash: "muzzle",
-weaponBone: "_R_Hand",
+weaponBone: 24,
 weaponRotation: [Math.PI/2, Math.PI/2, 0],
-weaponScale: 1.2,
+weaponScale: 0.02286,
 attackSound: "./assets/rifle.ogg",
 positionY: 1.1,
 scale: [1.1, 1.1, -1.1],

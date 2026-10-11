@@ -17,6 +17,6 @@ idle: "idle",
 shoot: "fire",
 reload: "reload_empty"
 },
-model: "./assets/pistol.glb",
+model: "./assets/c_iw5_usp.mdl",
 fireSound: "./assets/pistol.ogg"
 };

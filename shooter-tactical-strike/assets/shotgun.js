@@ -8,7 +8,7 @@ behavior: {
 magazineSize: 8,
 damage: 25,
 fireCooldownMs: 1000,
-reloadSpeed: 2,
+reloadSpeed: 1,
 pellets: 6,
 spread: 0.1,
 },
@@ -17,6 +17,6 @@ idle: "idle",
 shoot: ["fire", "pump"],
 reload: ["reload_start", "reload", "reload_end"]
 },
-model: "./assets/shotgun.glb",
+model: "./assets/c_iw5_spas12.mdl",
 fireSound: "./assets/shotgun.ogg"
 };
