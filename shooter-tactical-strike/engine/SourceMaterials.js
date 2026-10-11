@@ -36,9 +36,15 @@ function materialPath(name) {
   return path;
 }
 
+function materialPaths(name) {
+  const path = materialPath(name);
+  // Prefer files beside the MDL, even when Source records an original folder path.
+  return [...new Set([path.split("/").pop(), path])];
+}
+
 export async function loadSourceMaterials(metadata, options = {}, manager = THREE.DefaultLoadingManager, usedMaterials = null) {
-  const materialRoot = (options.materialRoot || "./assets/materials/").replace(/\/?$/, "/");
-  const textureRoot = (options.textureRoot || "./assets/textures/").replace(/\/?$/, "/");
+  const materialRoot = (options.materialRoot || "./").replace(/\/?$/, "/");
+  const textureRoot = (options.textureRoot || "./").replace(/\/?$/, "/");
   const byteCache = new Map(), textureCache = new Map(), vmtCache = new Map();
 
   // Static servers cannot list a folder. Probe documented filenames, caching
@@ -82,7 +88,8 @@ export async function loadSourceMaterials(metadata, options = {}, manager = THRE
     return textureCache.get(key);
   };
 
-  const nativeURL = (name, extension) => materialRoot + materialPath(name).replace(new RegExp(`\\.${extension}$`, "i"), "") + "." + extension;
+  const nativeURLs = (name, extension) => materialPaths(name).map(path =>
+    materialRoot + path.replace(new RegExp(`\\.${extension}$`, "i"), "") + "." + extension);
   const vmt = async (url, parents = []) => {
     if (parents.includes(url) || parents.length >= 8) throw new Error("Cyclic/deep VMT Patch include.");
     if (!vmtCache.has(url)) vmtCache.set(url, (async () => {
@@ -92,23 +99,25 @@ export async function loadSourceMaterials(metadata, options = {}, manager = THRE
     const parsed = await vmtCache.get(url);
     if (!parsed || parsed.shader !== "patch") return parsed;
     if (!parsed.values.include) throw new Error("VMT Patch has no include.");
-    const base = await vmt(nativeURL(parsed.values.include, "vmt"), [...parents, url]);
+    let base = null;
+    for (const includeURL of nativeURLs(parsed.values.include, "vmt")) {
+      base = await vmt(includeURL, [...parents, url]);
+      if (base) break;
+    }
     if (!base) throw new Error(`VMT Patch include not found: ${parsed.values.include}`);
     return { shader: base.shader, values: { ...base.values, ...parsed.values.insert, ...parsed.values.replace } };
   };
 
   const nativeTexture = async name => {
-    const path = materialPath(name);
-    const explicitExtension = path.match(/\.(vtf|webp|png|jpe?g)$/i)?.[1].toLowerCase();
-    let file;
-    if (explicitExtension) {
-      const url = materialRoot + path, bytes = await readOptional(url);
-      if (bytes) file = { url, bytes, extension: explicitExtension };
-    } else {
-      file = await findTexture(materialRoot + path, ["vtf", "webp", "png", "jpg", "jpeg"]);
+    const paths = materialPaths(name);
+    const explicitExtension = paths[0].match(/\.(vtf|webp|png|jpe?g)$/i)?.[1].toLowerCase();
+    const extensions = explicitExtension ? [...new Set([explicitExtension, ...IMAGE_EXTENSIONS])] : IMAGE_EXTENSIONS;
+    for (const path of paths) {
+      const stem = materialRoot + path.replace(/\.(vtf|webp|png|jpe?g)$/i, "");
+      const file = await findTexture(stem, extensions);
+      if (file) return file;
     }
-    if (!file) throw new Error(`Material texture not found: ${name}`);
-    return file;
+    throw new Error(`Material texture not found: ${name}`);
   };
 
   const assignAutomatic = async (material, stem, base) => {
@@ -173,12 +182,16 @@ export async function loadSourceMaterials(metadata, options = {}, manager = THRE
     if (usedMaterials && !usedMaterials.has(index)) return material;
     try {
       // A matching loose image takes priority, allowing drop-in replacements.
-      const stem = textureRoot + materialPath(name);
-      const base = await findTexture(stem);
+      let stem, base;
+      for (const path of materialPaths(name)) {
+        stem = textureRoot + path;
+        base = await findTexture(stem);
+        if (base) break;
+      }
       if (base) {
         await assignAutomatic(material, stem, base);
       } else {
-        const candidates = [...new Set([...metadata.directories, ""].map(directory => nativeURL(directory + name, "vmt")))];
+        const candidates = [...new Set([...metadata.directories, ""].flatMap(directory => nativeURLs(directory + name, "vmt")))];
         let found = false;
         for (const url of candidates) {
           const parsed = await vmt(url);

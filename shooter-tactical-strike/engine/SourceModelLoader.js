@@ -189,7 +189,14 @@ export class SourceModelLoader {
       result.scene.traverse(object => {
         if (object.isMesh) usedMaterials.add(result.materials.indexOf(object.material));
       });
-      const materials = await loadSourceMaterials(result.metadata, options, this.manager, usedMaterials);
+      // Loose textures and VMTs follow the loaded MDL, including nested model folders.
+      const modelPath = url.split(/[?#]/, 1)[0];
+      const modelRoot = modelPath.slice(0, modelPath.lastIndexOf("/") + 1) || "./";
+      const materials = await loadSourceMaterials(result.metadata, {
+        ...options,
+        materialRoot: options.materialRoot || modelRoot,
+        textureRoot: options.textureRoot || modelRoot
+      }, this.manager, usedMaterials);
       result.scene.traverse(object => {
         if (!object.isMesh) return;
         const index = result.materials.indexOf(object.material);
