@@ -18,6 +18,6 @@ idle: "idle",
 shoot: ["fire", "bolt"],
 reload: "reload_empty"
 },
-model: "./assets/c_iw5_l96a1.mdl",
+model: "./assets/sniper/c_iw5_l96a1.mdl",
 fireSound: "./assets/sniper.ogg"
 };

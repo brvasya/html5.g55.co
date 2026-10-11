@@ -1,10 +1,10 @@
 export const SOLDIER = {
 animations: "./assets/m_anm.mdl",
-models: ["./assets/sas_pm.mdl"],
+models: ["./assets/soldier/sas_pm.mdl"],
 animationBase: "idle_ar2",
 poseParameters: { move_x: 1, move_y: 0, aim_yaw: 0, aim_pitch: 0 },
 weapon: {
-model: "./assets/w_iw5_m16a4.mdl",
+model: "./assets/rifle/w_iw5_m16a4.mdl",
 anim: { idle: "idle" }
 },
 muzzleFlash: "muzzle",

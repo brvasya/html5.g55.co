@@ -17,6 +17,6 @@ idle: "idle",
 shoot: ["fire", "pump"],
 reload: ["reload_start", "reload", "reload_end"]
 },
-model: "./assets/c_iw5_spas12.mdl",
+model: "./assets/shotgun/c_iw5_spas12.mdl",
 fireSound: "./assets/shotgun.ogg"
 };
