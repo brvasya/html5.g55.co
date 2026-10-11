@@ -17,6 +17,7 @@ idle: "idle",
 shoot: "fire",
 reload: "reload"
 },
-model: "./assets/minigun/c_iw5_mk46.mdl",
+model: "./assets/minigun/c_iw5_m60e4.mdl",
+source: { bodygroups: { bullet: 14 } },
 fireSound: "./assets/minigun.ogg"
 };
