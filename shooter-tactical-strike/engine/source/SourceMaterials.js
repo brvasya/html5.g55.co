@@ -37,8 +37,8 @@ function materialPath(name) {
 }
 
 export async function loadSourceMaterials(metadata, options = {}, manager = THREE.DefaultLoadingManager, usedMaterials = null) {
-  const materialRoot = (options.materialRoot || "./assets/source/materials/").replace(/\/?$/, "/");
-  const textureRoot = (options.textureRoot || "./assets/source/textures/").replace(/\/?$/, "/");
+  const materialRoot = (options.materialRoot || "./assets/materials/").replace(/\/?$/, "/");
+  const textureRoot = (options.textureRoot || "./assets/textures/").replace(/\/?$/, "/");
   const byteCache = new Map(), textureCache = new Map(), vmtCache = new Map();
 
   // Static servers cannot list a folder. Probe documented filenames, caching
