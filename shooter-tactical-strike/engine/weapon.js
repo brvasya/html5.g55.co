@@ -1,4 +1,4 @@
-import { updateSourceProceduralBones } from "./source/SourceProcedural.js";
+import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";

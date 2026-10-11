@@ -1,4 +1,4 @@
-import { SourceModelLoader } from "./source/SourceModelLoader.js";
+import { SourceModelLoader } from "./SourceModelLoader.js";
 
 // Player weapons, enemy weapons and shared hands all use native Source models.
 export async function loadWeaponAsset(asset, { hands = false } = {}) {

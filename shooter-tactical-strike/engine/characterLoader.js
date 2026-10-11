@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { SourceModelLoader, parseSourceBones } from "./source/SourceModelLoader.js";
-import { BinaryReader } from "./source/BinaryReader.js";
-import { parseAnimations, describeSequences } from "./source/SourceAnimations.js";
+import { SourceModelLoader, parseSourceBones } from "./SourceModelLoader.js";
+import { BinaryReader } from "./BinaryReader.js";
+import { parseAnimations, describeSequences } from "./SourceAnimations.js";
 
 // Animation-only MDLs need their .ani companion, but no VVD/VTX geometry.
 // Raw libraries are shared by every character; failed requests can be retried.
