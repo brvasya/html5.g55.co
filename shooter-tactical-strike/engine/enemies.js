@@ -1,4 +1,4 @@
-import { loadCharacterAsset, characterCacheKey, findCharacterBone } from "./characterLoader.js";
+import { loadCharacterAsset, characterCacheKey, findCharacterBone, pickCharacterBodygroups, applyCharacterBodygroups } from "./characterLoader.js";
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
@@ -366,6 +366,7 @@ export function createEnemies({
       typeId: typeId,
       type,
       modelSrc,
+      bodygroups: pickCharacterBodygroups(asset),
       health: asset.enemyHealth,
       // Choose once per enemy so movement and walk playback use the same speed.
       speed: pickEnemyStatValue(asset.enemySpeed, 0),
@@ -435,6 +436,7 @@ export function createEnemies({
     if (!cached || !cached.source || enemy.userData.model) return;
 
     const model = SkeletonUtils.clone(cached.source);
+    applyCharacterBodygroups(model, enemy.userData.bodygroups);
 
     const assetScale = type.asset.scale || [0.0254, 0.0254, 0.0254];
     model.scale.set(assetScale[0], assetScale[1], assetScale[2]);
@@ -585,8 +587,12 @@ export function createEnemies({
     if (!model) return;
 
     // Templates contain only bind-space data and node paths. They are safe to
-    // share across clones with different placement, scale, rotation and poses.
-    const cacheKey = characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset) || null;
+    // share across clones with the same parts and different placement/poses.
+    // Different bodygroups need different bounds and mesh node paths.
+    const cacheKey = JSON.stringify([
+      characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset),
+      enemy.userData.bodygroups
+    ]);
     let template = cacheKey ? hitboxTemplateCache.get(cacheKey) : null;
 
     if (!template) {

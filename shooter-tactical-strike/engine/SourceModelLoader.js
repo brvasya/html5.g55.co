@@ -129,38 +129,52 @@ function buildMeshes(mdl, vtx, vertices, root, skeleton, materials, options) {
     if (modelCount !== vtx.i32(vb)) throw new Error("MDL/VTX bodygroup counts differ.");
     const selected = options.bodygroups?.[name] ?? options.bodygroups?.[bpIndex] ?? 0;
     if (!Number.isInteger(selected) || selected < 0 || selected >= modelCount) throw new Error(`Invalid bodygroup ${name}: ${selected}.`);
+    // Characters can preload a pool of alternatives without duplicating their
+    // bones, animations or textures for every possible appearance combination.
+    const configuredVariants = options.bodygroupVariants?.[name] ?? options.bodygroupVariants?.[bpIndex];
+    if (configuredVariants !== undefined && (!Array.isArray(configuredVariants) || !configuredVariants.length)) {
+      throw new Error(`Bodygroup ${name} variants must be a nonempty array.`);
+    }
+    const variants = [...new Set(configuredVariants === undefined ? [selected] : [selected, ...configuredVariants])];
+    for (const variant of variants) {
+      if (!Number.isInteger(variant) || variant < 0 || variant >= modelCount) throw new Error(`Invalid bodygroup ${name}: ${variant}.`);
+    }
     mdl.table(bp + mdl.i32(bp + 12), modelCount, 148);
     vtx.table(vb + vtx.i32(vb + 4), modelCount, 8);
-    const model = bp + mdl.i32(bp + 12) + selected * 148;
-    const vm = vb + vtx.i32(vb + 4) + selected * 8;
-    const meshCount = mdl.i32(model + 72), modelVertexByte = mdl.i32(model + 84);
-    if (!meshCount) continue; // A legitimate blank bodygroup.
-    if (vtx.i32(vm) < 1 || modelVertexByte % 48) throw new Error("Invalid Source model vertex/LOD data.");
-    const lod = vm + vtx.i32(vm + 4);
-    if (vtx.i32(lod) !== meshCount) throw new Error("MDL/VTX mesh counts differ.");
-    const meshStart = model + mdl.i32(model + 76), vtxMeshStart = lod + vtx.i32(lod + 4);
-    mdl.table(meshStart, meshCount, 116);
-    vtx.table(vtxMeshStart, meshCount, 9);
-    for (let meshIndex = 0; meshIndex < meshCount; meshIndex++) {
-      const mesh = meshStart + meshIndex * 116;
-      const length = mdl.i32(mesh + 8), first = modelVertexByte / 48 + mdl.i32(mesh + 12);
-      if (length < 0 || first < 0 || first + length > vertices.count) throw new Error("MDL mesh exceeds VVD vertices.");
-      if (!length) continue;
-      const geometry = new THREE.BufferGeometry();
-      for (const [attribute, field, size] of [["position", "positions", 3], ["normal", "normals", 3], ["uv", "uv", 2], ["skinIndex", "skinIndex", 4], ["skinWeight", "skinWeight", 4]]) {
-        geometry.setAttribute(attribute, new THREE.BufferAttribute(vertices[field].slice(first * size, (first + length) * size), size));
+    for (const variant of variants) {
+      const model = bp + mdl.i32(bp + 12) + variant * 148;
+      const vm = vb + vtx.i32(vb + 4) + variant * 8;
+      const meshCount = mdl.i32(model + 72), modelVertexByte = mdl.i32(model + 84);
+      if (!meshCount) continue; // A legitimate blank bodygroup.
+      if (vtx.i32(vm) < 1 || modelVertexByte % 48) throw new Error("Invalid Source model vertex/LOD data.");
+      const lod = vm + vtx.i32(vm + 4);
+      if (vtx.i32(lod) !== meshCount) throw new Error("MDL/VTX mesh counts differ.");
+      const meshStart = model + mdl.i32(model + 76), vtxMeshStart = lod + vtx.i32(lod + 4);
+      mdl.table(meshStart, meshCount, 116);
+      vtx.table(vtxMeshStart, meshCount, 9);
+      for (let meshIndex = 0; meshIndex < meshCount; meshIndex++) {
+        const mesh = meshStart + meshIndex * 116;
+        const length = mdl.i32(mesh + 8), first = modelVertexByte / 48 + mdl.i32(mesh + 12);
+        if (length < 0 || first < 0 || first + length > vertices.count) throw new Error("MDL mesh exceeds VVD vertices.");
+        if (!length) continue;
+        const geometry = new THREE.BufferGeometry();
+        for (const [attribute, field, size] of [["position", "positions", 3], ["normal", "normals", 3], ["uv", "uv", 2], ["skinIndex", "skinIndex", 4], ["skinWeight", "skinWeight", 4]]) {
+          geometry.setAttribute(attribute, new THREE.BufferAttribute(vertices[field].slice(first * size, (first + length) * size), size));
+        }
+        geometry.setIndex(meshIndices(vtx, vtxMeshStart + meshIndex * 9, length));
+        geometry.computeBoundingSphere();
+        const ref = mdl.i32(mesh);
+        if (ref < 0 || (skinRefs && ref >= skinRefs)) throw new Error("Invalid Source mesh material reference.");
+        const materialIndex = skinFamilies ? mdl.u16(skinStart + (skin * skinRefs + ref) * 2) : ref;
+        if (!materials[materialIndex]) throw new Error(`Source material ${materialIndex} is missing.`);
+        const object = new THREE.SkinnedMesh(geometry, materials[materialIndex]);
+        object.name = `${name}_${variant}_${meshIndex}`;
+        object.userData.sourceBodygroup = { name, index: bpIndex, variant };
+        object.visible = variant === selected;
+        object.frustumCulled = false;
+        root.add(object);
+        object.bind(skeleton, new THREE.Matrix4());
       }
-      geometry.setIndex(meshIndices(vtx, vtxMeshStart + meshIndex * 9, length));
-      geometry.computeBoundingSphere();
-      const ref = mdl.i32(mesh);
-      if (ref < 0 || (skinRefs && ref >= skinRefs)) throw new Error("Invalid Source mesh material reference.");
-      const materialIndex = skinFamilies ? mdl.u16(skinStart + (skin * skinRefs + ref) * 2) : ref;
-      if (!materials[materialIndex]) throw new Error(`Source material ${materialIndex} is missing.`);
-      const object = new THREE.SkinnedMesh(geometry, materials[materialIndex]);
-      object.name = `${name}_${selected}_${meshIndex}`;
-      object.frustumCulled = false;
-      root.add(object);
-      object.bind(skeleton, new THREE.Matrix4());
     }
   }
 }
