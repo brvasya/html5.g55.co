@@ -13,6 +13,7 @@ pellets: 6,
 spread: 0.1,
 },
 anim: {
+deploy: "draw",
 idle: "idle",
 shoot: ["fire", "pump"],
 reload: ["reload_start", "reload", "reload_end"]

@@ -453,6 +453,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const slot = currentSlot();
     const now = weaponTime;
 
+    if (currentState === "deploy") return { ok: false, reason: "deploying" };
     if (isReloading) return { ok: false, reason: "reloading" };
     if (now < shootSequenceEndTime || now - lastShotTime < slot.fireCooldownMs) {
       return { ok: false, reason: "cooldown" };
@@ -512,7 +513,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       return { started: false, duration: 0 };
     }
 
-    if (isReloading || slot.ammo === slot.magazineSize || slot.reserveAmmo <= 0) {
+    if (currentState === "deploy" || isReloading || slot.ammo === slot.magazineSize || slot.reserveAmmo <= 0) {
       return { started: false, duration: 0 };
     }
 
@@ -800,9 +801,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     setupValveBipedBoneMerge();
     setupWeaponEffects();
 
-    // Evaluate the first animated pose and merge the hands before either is
-    // exposed. Callers must not restart idle after this synchronous setup.
-    play("idle");
+    // Evaluate the deploy pose and merge the hands before either is exposed.
+    // Weapons without a configured deploy action start in idle.
+    play(actions.has("deploy") ? "deploy" : "idle");
     if (!activeAction) syncValveBipedBoneMerge();
     model.visible = true;
     if (handsModel) handsModel.visible = boneMergePairs.length > 0;
@@ -955,6 +956,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     actions.clear();
     returnTimer = null;
     shootSequenceEndTime = 0;
+    currentState = "idle";
+    currentStateTime = 0;
+    currentStateDuration = 0;
   }
 
   function disposeModel(root) {

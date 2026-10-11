@@ -14,6 +14,7 @@ spread: 0,
 isSniper: true
 },
 anim: {
+deploy: "draw",
 idle: "idle",
 shoot: ["fire", "bolt"],
 reload: "reload_empty"

@@ -2205,7 +2205,6 @@ async function resetGame() {
   weapon.resetSlots();
   impacts.clear();
   bulletHoles.clear();
-  weapon.play("idle");
 
   updateHud();
 }
