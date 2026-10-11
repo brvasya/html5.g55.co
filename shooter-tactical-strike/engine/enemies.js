@@ -1,7 +1,6 @@
-import { loadCharacterAsset, loadCharacterAnimations, characterCacheKey } from "./characterLoader.js";
+import { loadCharacterAsset, characterCacheKey, findCharacterBone } from "./characterLoader.js";
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { updateSourceProceduralBones } from "./source/SourceProcedural.js";
-import { createIFPClips, findGTABone } from "./gta/IFPLoader.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
@@ -74,7 +73,6 @@ export function createEnemies({
 
   const modelCache = new Map();
   const weaponCache = new Map();
-  const animationCache = new Map();
   const audioCache = new Map();
   const hitboxTemplateCache = new Map();
 
@@ -98,12 +96,6 @@ export function createEnemies({
         .filter(src => typeof src === "string" && src.trim())
         .map(src => src.trim())
     )];
-  }
-
-  function getEnemyAnimationSource(asset) {
-    if (typeof asset?.animations !== "string") return null;
-    const src = asset.animations.trim();
-    return src || null;
   }
 
   function enemyWeaponCacheKey(asset) {
@@ -132,7 +124,7 @@ export function createEnemies({
     });
 
     return Promise.all(tasks).then(() => {
-      const failed = [...modelCache.values(), ...weaponCache.values(), ...animationCache.values()]
+      const failed = [...modelCache.values(), ...weaponCache.values()]
         .find(entry => entry.failed);
       if (failed) throw failed.error;
     });
@@ -144,11 +136,6 @@ export function createEnemies({
     if (!asset) return Promise.resolve(null);
 
     const tasks = getEnemyModelSources(asset).map(src => preloadEnemyModel(src, asset));
-    const animationSrc = getEnemyAnimationSource(asset);
-
-    if (animationSrc) {
-      tasks.push(preloadEnemyAnimationLibrary(animationSrc));
-    }
 
     if (asset.weapon) {
       tasks.push(preloadEnemyWeapon(asset));
@@ -178,6 +165,7 @@ export function createEnemies({
     modelCache.set(cacheKey, cached);
     cached.promise = loadCharacterAsset(src, asset).then(result => {
       cached.source = result.scene;
+      cached.animations = result.animations;
       prepareEnemyMeshes(cached.source);
       enemies.forEach(enemy => {
         if (characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset) === cacheKey) {
@@ -220,27 +208,6 @@ export function createEnemies({
       cached.failed = true;
       cached.error = error;
       console.warn(`Enemy weapon failed to preload: ${asset.weapon.model}`, error);
-      return cached;
-    });
-    return cached.promise;
-  }
-
-  function preloadEnemyAnimationLibrary(src) {
-    let cached = animationCache.get(src);
-    if (cached) return cached.promise;
-    cached = { ifp: null, failed: false, promise: null };
-    animationCache.set(src, cached);
-    cached.promise = loadCharacterAnimations(src).then(library => {
-      cached.ifp = library;
-      if (!library.animations.length) throw new Error(`Enemy animation library contains no clips: ${src}`);
-      enemies.forEach(enemy => {
-        if (enemy.userData.animationSrc === src) setupEnemyAnimationsIfReady(enemy);
-      });
-      return cached;
-    }).catch(error => {
-      cached.failed = true;
-      cached.error = error;
-      console.warn(`Enemy animation library failed to preload: ${src}`, error);
       return cached;
     });
     return cached.promise;
@@ -394,13 +361,11 @@ export function createEnemies({
     const modelSrc = modelSources.length
       ? modelSources[Math.floor(Math.random() * modelSources.length)]
       : null;
-    const animationSrc = getEnemyAnimationSource(asset);
 
     group.userData = {
       typeId: typeId,
       type,
       modelSrc,
-      animationSrc,
       health: asset.enemyHealth,
       // Choose once per enemy so movement and walk playback use the same speed.
       speed: pickEnemyStatValue(asset.enemySpeed, 0),
@@ -446,16 +411,8 @@ export function createEnemies({
   }
 
   function getEnemyAnimationClips(enemy) {
-    const animationSrc = enemy.userData.animationSrc;
-    if (!animationSrc) return [];
-
-    const cachedAnimations = animationCache.get(animationSrc);
-    if (cachedAnimations?.ifp && enemy.userData.model) {
-      const names = Object.values(enemy.userData.type.asset.anim || {}).flat()
-        .filter(name => typeof name === "string");
-      return createIFPClips(cachedAnimations.ifp, enemy.userData.model, names);
-    }
-    return [];
+    const key = characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset);
+    return modelCache.get(key)?.animations || [];
   }
 
   function setupEnemyAnimationsIfReady(enemy) {
@@ -479,7 +436,7 @@ export function createEnemies({
 
     const model = SkeletonUtils.clone(cached.source);
 
-    const assetScale = type.asset.scale || [1, 1, 1];
+    const assetScale = type.asset.scale || [0.0254, 0.0254, 0.0254];
     model.scale.set(assetScale[0], assetScale[1], assetScale[2]);
 
     const assetRotation = type.asset.rotation || [0, 0, 0];
@@ -517,8 +474,8 @@ export function createEnemies({
     if (!model || !cached?.source || enemy.userData.weapon) return;
 
     const asset = enemy.userData.type.asset;
-    const boneTarget = asset.weaponBone ?? 24;
-    const hand = findGTABone(model, boneTarget);
+    const boneTarget = asset.weaponBone || "ValveBiped.Bip01_R_Hand";
+    const hand = findCharacterBone(model, boneTarget);
 
     if (!hand?.isBone) {
       console.warn(`Missing enemy weapon attachment bone: ${boneTarget}`);
@@ -920,7 +877,7 @@ export function createEnemies({
   }
 
   function findRootMotionTrack(clip, model) {
-    const horizontalAxes = [0, 1]; // Native RenderWare horizontal plane.
+    const horizontalAxes = [0, 1]; // Native Source X/Y horizontal plane.
     const nodeDepthByName = new Map();
 
     model.traverse(object => {
@@ -977,8 +934,7 @@ export function createEnemies({
           valueSize,
           targetName,
           depth: nodeDepthByName.get(targetName) ?? Number.MAX_SAFE_INTEGER,
-          likelyRoot: /(root|hips|pelvis|armature)/i.test(targetName) ||
-            model.getObjectByProperty("uuid", targetName)?.userData.gtaBoneId === 0,
+          likelyRoot: /(root|hips|pelvis|armature)/i.test(targetName),
           horizontalAxes,
           horizontalMotion
         };
@@ -993,12 +949,19 @@ export function createEnemies({
       return b.horizontalMotion - a.horizontalMotion;
     });
 
-    return candidates[0];
+    return candidates.find(candidate => candidate.likelyRoot) || null;
   }
 
   function getRootMotionSpeed(clip, model) {
     if (!Number.isFinite(clip.duration) || clip.duration <= 0) return 0;
 
+    // Source locomotion is compiled in-place; distance lives in the MDL
+    // movement table, not the pelvis sway. Preserve its authored stride rate.
+    const movement = clip.userData?.source?.movement;
+    if (clip.userData?.source?.motionExtracted && movement) {
+      const scale = Math.abs(model.scale.x);
+      return Math.hypot(movement[0], movement[1]) * scale / clip.duration;
+    }
     const rootMotion = findRootMotionTrack(clip, model);
     if (!rootMotion) return 0;
 
@@ -1051,16 +1014,13 @@ export function createEnemies({
 
   function makeClipInPlace(clip, model) {
     const inPlaceClip = clip.clone();
+    if (clip.userData?.source?.motionExtracted) return inPlaceClip;
     const rootMotion = findRootMotionTrack(inPlaceClip, model);
 
     if (!rootMotion) return inPlaceClip;
 
     const [axisX, axisZ] = rootMotion.horizontalAxes;
-    // A multi-mesh DFF can have a separate skeleton for each skin. Freeze all
-    // copies of the root so clothing and body cannot drift apart.
-    const tracks = inPlaceClip.tracks.filter(track => track === rootMotion.track ||
-      (track.name.endsWith(".position") &&
-       model.getObjectByProperty("uuid", track.name.slice(0, -9))?.userData.gtaBoneId === 0));
+    const tracks = [rootMotion.track];
     for (const track of tracks) {
       const values = track.values;
       const startX = values[axisX];
@@ -1289,6 +1249,7 @@ export function createEnemies({
 
     enemies.forEach(enemy => {
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
+      if (enemy.userData.model) updateSourceProceduralBones(enemy.userData.model);
       updateEnemyMuzzleFlash(enemy, delta);
 
       if (enemy.userData.isDying) {

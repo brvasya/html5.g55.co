@@ -40,7 +40,7 @@ function channelValue(reader, ptr, axis, frame) {
 
 function readRecords(reader, offset, boneCount) {
   const records = new Map();
-  if (!offset) return records;
+  if (offset === null) return records;
   let cursor = offset;
   for (let count = 0; count <= boneCount; count++) {
     const index = reader.u8(cursor);
@@ -55,8 +55,11 @@ function readRecords(reader, offset, boneCount) {
   throw new Error(`${reader.label}: unterminated animation bone chain.`);
 }
 
-function sampleBone(reader, record, frame, bone) {
-  if (record === undefined) return { position: bone.position.clone(), quaternion: bone.quaternion.clone() };
+function sampleBone(reader, record, frame, bone, animationDelta = false) {
+  if (record === undefined) return {
+    position: animationDelta ? new THREE.Vector3() : bone.position.clone(),
+    quaternion: animationDelta ? new THREE.Quaternion() : bone.quaternion.clone()
+  };
   const flags = reader.u8(record + 1), data = record + 4;
   if (flags & 0xc0) throw new Error(`${reader.label}: unsupported animation encoding ${flags}.`);
   const delta = Boolean(flags & DELTA);
@@ -75,10 +78,6 @@ function sampleBone(reader, record, frame, bone) {
     const ptr = data + ((flags & ANIM_ROT) ? 6 : 0);
     position.fromArray(bone.positionScale.map((scale, axis) => channelValue(reader, ptr, axis, frame) * scale + (delta ? 0 : bone.position.getComponent(axis))));
   }
-  if (delta) {
-    position.add(bone.position);
-    quaternion.premultiply(bone.quaternion).normalize();
-  }
   return { position, quaternion };
 }
 
@@ -91,81 +90,249 @@ export function describeSequences(reader) {
   });
 }
 
+// PC Source v48/v49 sequence layout and composition follow Valve's studio.h
+// and bone_setup.cpp. Bake the configured pose into ordinary Three.js clips;
+// geometry and animation libraries can use different ValveBiped bone orders.
 export function parseAnimations(mdl, bones, options = {}, ani = null) {
   const count = mdl.i32(180), start = mdl.i32(184);
   mdl.table(start, count, 100);
-  const requested = options.animations ? new Set(options.animations.map(name => name.toLowerCase())) : null;
+  const requested = options.animations ? new Set(options.animations.map(name => name.trim().toLowerCase())) : null;
   const sequences = describeSequences(mdl);
-  const clips = [], warnings = [];
-  for (const sequence of sequences) {
-    if (requested && !requested.has(sequence.name.toLowerCase())) continue;
-    const seq = sequence.offset;
-    try {
-      if (mdl.i32(seq + 56) !== 1 || mdl.i32(seq + 148) || (sequence.flags & 4)) {
-        throw new Error("pose-parameter blends, sequence layers, and additive sequences are not supported");
+  const sequenceByName = new Map(sequences.map((seq, index) => [seq.name.toLowerCase(), index]));
+  const targetByName = new Map((options.targetBones || bones).map(bone => [bone.name.toLowerCase(), bone]));
+  const poses = options.poseParameters || {};
+  const clamp = value => Math.max(0, Math.min(1, value));
+  const descCache = new Map(), seqCache = new Map(), recordCache = new Map(), frameCache = new Map();
+  const poseCount = mdl.i32(300), poseStart = mdl.i32(304);
+  mdl.table(poseStart, poseCount, 20);
+  const poseValue = index => {
+    if (index < 0) return 0;
+    if (index >= poseCount) throw new Error("invalid pose parameter index");
+    const offset = poseStart + index * 20, name = mdl.relativeString(offset);
+    const value = Number(poses[name] ?? 0);
+    if (!Number.isFinite(value)) throw new Error(`invalid pose parameter ${name}`);
+    return value;
+  };
+  const bindPose = () => bones.map(bone => {
+    const target = targetByName.get(bone.name.toLowerCase()) || bone;
+    return { position: target.position.clone(), quaternion: target.quaternion.clone() };
+  });
+  const copyPose = pose => pose.map(bone => ({ position: bone.position.clone(), quaternion: bone.quaternion.clone() }));
+  function descriptor(index) {
+    if (descCache.has(index)) return descCache.get(index);
+    if (index < 0 || index >= count) throw new Error("animation is in an unavailable included model");
+    const offset = start + index * 100;
+    const frames = mdl.i32(offset + 16), fps = mdl.f32(offset + 8), flags = mdl.i32(offset + 12);
+    if (frames < 1 || frames > 100000 || fps <= 0) throw new Error("invalid animation frame count/rate");
+    if (flags & 64) throw new Error("frame-encoded animation is not supported");
+    if (mdl.i32(offset + 72)) throw new Error("animated local hierarchy is not supported");
+    const sectionFrames = mdl.i32(offset + 84), sectionOffset = mdl.i32(offset + 80);
+    if (sectionFrames < 0 || (sectionFrames && !sectionOffset)) throw new Error("invalid animation section table");
+    if (sectionFrames) mdl.table(offset + sectionOffset, Math.floor(frames / sectionFrames) + 2, 8);
+    const moves = mdl.i32(offset + 20), moveStart = offset + mdl.i32(offset + 24);
+    mdl.table(moveStart, moves, 44);
+    const movement = moves ? new THREE.Vector3().fromArray(mdl.floats(moveStart + (moves - 1) * 44 + 32, 3)) : new THREE.Vector3();
+    const result = { index, offset, frames, fps, flags, sectionFrames, sections: offset + sectionOffset, movement, moves };
+    descCache.set(index, result);
+    return result;
+  }
+  function sequence(index) {
+    if (seqCache.has(index)) return seqCache.get(index);
+    const info = sequences[index];
+    if (!info) throw new Error("sequence layer is in an unavailable included model");
+    const offset = info.offset, grid = [mdl.i32(offset + 68), mdl.i32(offset + 72)];
+    const blends = mdl.i32(offset + 56), indices = offset + mdl.i32(offset + 60);
+    if (grid.some(size => size < 1) || grid[0] * grid[1] !== blends) throw new Error("invalid sequence blend grid");
+    if (info.flags & (128 | 512 | 16384)) throw new Error("cycle-pose/local-context/world-space sequences are not supported");
+    mdl.table(indices, blends, 2);
+    const poseKey = mdl.i32(offset + 160);
+    if (poseKey) mdl.table(offset + poseKey, grid[0] + grid[1], 4);
+    const axes = grid.map((size, axis) => {
+      if (size === 1) return [{ index: 0, weight: 1 }];
+      const value = poseValue(mdl.i32(offset + 76 + axis * 4));
+      let cell, fraction;
+      if (poseKey) {
+        const keyStart = offset + poseKey + (axis ? grid[0] * 4 : 0);
+        cell = 0;
+        while (cell < size - 2 && value > mdl.f32(keyStart + (cell + 1) * 4)) cell++;
+        const low = mdl.f32(keyStart + cell * 4), high = mdl.f32(keyStart + (cell + 1) * 4);
+        fraction = high === low ? 0 : clamp((value - low) / (high - low));
+      } else {
+        const low = mdl.f32(offset + 84 + axis * 4), high = mdl.f32(offset + 92 + axis * 4);
+        const coordinate = (high === low ? 0 : clamp((value - low) / (high - low))) * (size - 1);
+        cell = Math.min(size - 2, Math.floor(coordinate));
+        fraction = coordinate - cell;
       }
-      const animIndex = mdl.i16(seq + mdl.i32(seq + 60));
-      if (animIndex < 0 || animIndex >= count) throw new Error("animation is in an external included model");
-      const desc = start + animIndex * 100;
-      const frames = mdl.i32(desc + 16), fps = mdl.f32(desc + 8);
-      if (frames < 1 || frames > 100000 || fps <= 0) throw new Error("invalid animation frame count/rate");
-      if (mdl.i32(desc + 12) & (4 | 64)) throw new Error("additive/frame-encoded animation is not supported");
-      if (mdl.i32(desc + 72)) throw new Error("animated local hierarchy is not supported");
-      const sectionFrames = mdl.i32(desc + 84), sections = desc + mdl.i32(desc + 80);
-      const cache = new Map();
+      return [{ index: cell, weight: 1 - fraction }, { index: cell + 1, weight: fraction }].filter(entry => entry.weight > 1e-6);
+    });
+    const samples = [];
+    for (const y of axes[1]) for (const x of axes[0]) {
+      samples.push({ desc: descriptor(mdl.i16(indices + (x.index + y.index * grid[0]) * 2)), weight: x.weight * y.weight });
+    }
+    const weights = mdl.i32(offset + 156);
+    if (weights) mdl.table(offset + weights, bones.length, 4);
+    const boneWeights = bones.map((_, bone) => weights ? clamp(mdl.f32(offset + weights + bone * 4)) : 1);
+    const layerCount = mdl.i32(offset + 148), layerStart = offset + mdl.i32(offset + 152);
+    mdl.table(layerStart, layerCount, 24);
+    const layers = Array.from({ length: layerCount }, (_, layer) => {
+      const entry = layerStart + layer * 24;
+      return { index: mdl.i16(entry), pose: mdl.i16(entry + 2), flags: mdl.i32(entry + 4), range: mdl.floats(entry + 8, 4) };
+    });
+    const rate = samples.reduce((sum, { desc, weight }) => sum + weight * desc.fps / Math.max(1, desc.frames - 1), 0);
+    const duration = 1 / rate;
+    const result = { ...info, index, samples, boneWeights, layers, duration, fps: Math.max(...samples.map(s => s.desc.fps)) };
+    seqCache.set(index, result);
+    return result;
+  }
+  function integerFrame(desc, frame) {
+    const key = `${desc.index}:${frame}`;
+    if (frameCache.has(key)) return frameCache.get(key);
+    let localFrame = frame, block = mdl.i32(desc.offset + 52), offset = mdl.i32(desc.offset + 56);
+    if (desc.sectionFrames) {
+      const last = desc.frames > desc.sectionFrames && frame === desc.frames - 1;
+      const section = last ? Math.floor(desc.frames / desc.sectionFrames) + 1 : Math.floor(frame / desc.sectionFrames);
+      localFrame = last ? 0 : frame % desc.sectionFrames;
+      block = mdl.i32(desc.sections + section * 8);
+      offset = mdl.i32(desc.sections + section * 8 + 4);
+    }
+    let records = new Map(), reader = mdl;
+    if (!(desc.flags & 32)) {
+      if (block < 0) throw new Error("missing compiled animation block");
+      let absolute = desc.offset + offset;
+      if (block > 0) {
+        if (!ani) throw new Error("external .ani file is required");
+        if (block >= mdl.i32(352)) throw new Error("invalid external animation block");
+        const entry = mdl.i32(356) + block * 8, first = mdl.i32(entry), end = mdl.i32(entry + 4);
+        ani.check(first, end - first);
+        // Offset zero is valid in an external block (including death_01).
+        if (offset < 0 || first + offset >= end) throw new Error("animation offset exceeds its external block");
+        reader = ani;
+        absolute = first + offset;
+      }
+      const recordKey = `${desc.index}:${block}:${absolute}`;
+      if (!recordCache.has(recordKey)) recordCache.set(recordKey, readRecords(reader, block || offset ? absolute : null, bones.length));
+      records = recordCache.get(recordKey);
+    }
+    const result = bones.map((bone, index) => sampleBone(reader, records.get(index), localFrame, bone, Boolean(desc.flags & 4)));
+    frameCache.set(key, result);
+    return result;
+  }
+  function sampleAnimation(desc, cycle) {
+    const frame = clamp(cycle) * (desc.frames - 1), first = Math.floor(frame), fraction = frame - first;
+    const pose = copyPose(integerFrame(desc, first));
+    if (fraction > 1e-6 && first + 1 < desc.frames) {
+      const next = integerFrame(desc, first + 1);
+      pose.forEach((bone, index) => {
+        bone.position.lerp(next[index].position, fraction);
+        bone.quaternion.slerp(next[index].quaternion, fraction);
+      });
+    }
+    return pose;
+  }
+  function blendPose(seq, cycle) {
+    let result = null, total = 0;
+    for (const { desc, weight } of seq.samples) {
+      const pose = sampleAnimation(desc, cycle);
+      total += weight;
+      if (!result) result = pose;
+      else result.forEach((bone, index) => {
+        bone.position.lerp(pose[index].position, weight / total);
+        bone.quaternion.slerp(pose[index].quaternion, weight / total);
+      });
+    }
+    return result;
+  }
+  function accumulate(pose, index, cycle, time, amount = 1, parents = []) {
+    if (amount <= 0) return;
+    if (parents.includes(index) || parents.length >= 32) throw new Error("cyclic/deep sequence layers");
+    const seq = sequence(index), path = [...parents, index];
+    if (seq.flags & 256) cycle = (time / seq.duration) % 1;
+    const incoming = blendPose(seq, cycle);
+    const applyLayers = (destination, local) => {
+      for (const layer of seq.layers) {
+        if (Boolean(layer.flags & 4096) !== local) continue;
+        let layerCycle = cycle, layerWeight = local ? 1 : amount;
+        const [start, peak, tail, end] = layer.range;
+        if (start !== end) {
+          const value = layer.flags & 16384 ? poseValue(layer.pose) : cycle;
+          if (value < start || value >= end) continue;
+          let weight = value < peak && peak !== start ? (value - start) / (peak - start)
+            : value > tail && end !== tail ? (end - value) / (end - tail) : 1;
+          if (layer.flags & 64) weight = weight * weight * (3 - 2 * weight);
+          if ((layer.flags & 128) && value > tail) layerWeight = weight * layerWeight / (1 - layerWeight + weight * layerWeight || 1);
+          else if (layer.flags & 512) layerWeight = weight;
+          else layerWeight *= weight;
+          if (!(layer.flags & 16384)) layerCycle = (cycle - start) / (end - start);
+        }
+        accumulate(destination, layer.index, layerCycle, time, layerWeight, path);
+      }
+    };
+    applyLayers(incoming, true);
+    pose.forEach((bone, boneIndex) => {
+      const weight = clamp(amount * seq.boneWeights[boneIndex]);
+      if (!weight) return;
+      const sample = incoming[boneIndex];
+      if (seq.flags & 4) {
+        const rotation = new THREE.Quaternion().slerp(sample.quaternion, weight);
+        if (seq.flags & 16) bone.quaternion.multiply(rotation);
+        else bone.quaternion.premultiply(rotation);
+        bone.quaternion.normalize();
+        bone.position.addScaledVector(sample.position, weight);
+      } else {
+        bone.position.lerp(sample.position, weight);
+        bone.quaternion.slerp(sample.quaternion, weight);
+      }
+    });
+    applyLayers(pose, false);
+  }
+  const clips = [], warnings = [];
+  for (let index = 0; index < sequences.length; index++) {
+    const info = sequences[index];
+    if (requested && !requested.has(info.name.toLowerCase())) continue;
+    try {
+      const seq = sequence(index);
+      const baseName = typeof options.baseSequence === "string" ? options.baseSequence : options.baseSequence?.[info.name];
+      const base = (seq.flags & 4) && baseName ? sequenceByName.get(baseName.toLowerCase()) : undefined;
+      if ((seq.flags & 4) && baseName && base === undefined) throw new Error(`base sequence "${baseName}" is missing`);
+      const frames = Math.max(2, Math.round(seq.duration * seq.fps) + 1);
+      if (frames > 100000) throw new Error("sequence is too long");
+      const times = Array.from({ length: frames }, (_, frame) => frame * seq.duration / (frames - 1));
       const samples = bones.map(() => ({ positions: [], quaternions: [] }));
-      const times = Array.from({ length: frames }, (_, frame) => frame / fps);
-      const weightOffset = mdl.i32(seq + 156);
+      let firstPose;
       for (let frame = 0; frame < frames; frame++) {
-        let localFrame = frame, block = mdl.i32(desc + 52), offset = mdl.i32(desc + 56);
-        if (sectionFrames > 0) {
-          const last = frames > sectionFrames && frame === frames - 1;
-          const section = last ? Math.floor(frames / sectionFrames) + 1 : Math.floor(frame / sectionFrames);
-          localFrame = last ? 0 : frame % sectionFrames;
-          block = mdl.i32(sections + section * 8);
-          offset = mdl.i32(sections + section * 8 + 4);
-        }
-        let reader = mdl, base = desc;
-        if (block < 0) throw new Error("missing compiled animation block");
-        if (block > 0) {
-          if (!ani) throw new Error("external .ani file is required");
-          if (block >= mdl.i32(352)) throw new Error("invalid external animation block");
-          reader = ani;
-          const entry = mdl.i32(356) + block * 8;
-          base = mdl.i32(entry);
-          reader.check(base, mdl.i32(entry + 4) - base);
-        }
-        const key = `${block}:${offset}`;
-        if (!cache.has(key)) cache.set(key, readRecords(reader, offset ? base + offset : 0, bones.length));
-        const records = cache.get(key);
-        for (let index = 0; index < bones.length; index++) {
-          const bone = bones[index];
-          const pose = sampleBone(reader, records.get(index), localFrame, bone);
-          const weight = weightOffset ? mdl.f32(seq + weightOffset + index * 4) : 1;
-          if (weight !== 1) {
-            pose.position.lerpVectors(bone.position, pose.position, Math.max(0, Math.min(1, weight)));
-            pose.quaternion.copy(bone.quaternion.clone().slerp(pose.quaternion, Math.max(0, Math.min(1, weight))));
-          }
-          samples[index].positions.push(...pose.position.toArray());
-          samples[index].quaternions.push(...pose.quaternion.toArray());
-        }
+        let pose = bindPose();
+        const time = times[frame], cycle = frame / (frames - 1);
+        if (base !== undefined) accumulate(pose, base, 0, 0);
+        accumulate(pose, index, cycle, time);
+        // Real-time breathing layers must also close at a looping clip's seam.
+        if ((seq.flags & 1) && frame === frames - 1) pose = firstPose;
+        if (!frame) firstPose = copyPose(pose);
+        pose.forEach((bone, boneIndex) => {
+          samples[boneIndex].positions.push(...bone.position.toArray());
+          samples[boneIndex].quaternions.push(...bone.quaternion.toArray());
+        });
       }
       const tracks = [];
-      bones.forEach((bone, index) => {
-        tracks.push(new THREE.VectorKeyframeTrack(`${bone.name}.position`, times, samples[index].positions));
-        tracks.push(new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`, times, samples[index].quaternions));
+      bones.forEach((bone, boneIndex) => {
+        const target = targetByName.get(bone.name.toLowerCase());
+        if (!target) return;
+        tracks.push(new THREE.VectorKeyframeTrack(`${target.name}.position`, times, samples[boneIndex].positions));
+        tracks.push(new THREE.QuaternionKeyframeTrack(`${target.name}.quaternion`, times, samples[boneIndex].quaternions));
       });
-      clips.push(new THREE.AnimationClip(sequence.name, Math.max(1, frames - 1) / fps, tracks).optimize());
+      if (!tracks.length) throw new Error("animation skeleton has no matching character bones");
+      const clip = new THREE.AnimationClip(seq.name, seq.duration, tracks).optimize();
+      const movement = new THREE.Vector3();
+      seq.samples.forEach(({ desc, weight }) => movement.addScaledVector(desc.movement, weight));
+      clip.userData = { source: { movement: movement.toArray(), motionExtracted: seq.samples.some(({ desc }) => desc.moves > 0) } };
+      clips.push(clip);
     } catch (error) {
-      const message = `Source sequence "${sequence.name}": ${error.message}`;
+      const message = `Source sequence "${info.name}": ${error.message}`;
       if (requested) throw new Error(message);
       warnings.push(message);
     }
   }
-  if (requested) {
-    for (const name of requested) {
-      if (!clips.some(clip => clip.name.toLowerCase() === name)) throw new Error(`Source animation "${name}" is missing. Available: ${sequences.map(s => s.name).join(", ")}`);
-    }
+  if (requested) for (const name of requested) {
+    if (!clips.some(clip => clip.name.toLowerCase() === name)) throw new Error(`Source animation "${name}" is missing. Available: ${sequences.map(s => s.name).join(", ")}`);
   }
   return { clips, warnings };
 }

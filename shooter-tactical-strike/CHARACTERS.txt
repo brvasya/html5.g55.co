@@ -1,0 +1,68 @@
+Garry's Mod / Source MDL characters
+
+This ZIP contains the full updated game. Replace your old game directory with
+this one so obsolete loaders and assets are removed. Copy any textures you
+added separately into the new assets/textures directory.
+
+Character configuration: assets/soldier.js
+
+Included character files:
+  assets/sas_pm.mdl
+  assets/sas_pm.vvd
+  assets/sas_pm.dx90.vtx
+
+Included shared animation files:
+  assets/m_anm.mdl
+  assets/m_anm.ani
+
+To swap characters, put a matching .mdl, .vvd and .dx90.vtx together, then
+change the models array in soldier.js. You can list several models for random
+selection. Characters sharing the ValveBiped skeleton reuse m_anm animations;
+bones are matched by name, not by their order in the file. Characters with a
+different rig need animations compiled for that rig.
+
+The animations setting points to the animation-library .mdl. Its .ani is
+loaded automatically beside it. No .vvd or .vtx is required for an animation
+library. An optional animationSource: { ani: "./assets/other.ani" } overrides
+the companion path. Omit animations to use the character's own local clips.
+Only the explicitly selected library is loaded; other included models are
+not required for the configured clips.
+
+The anim arrays select exact sequence names. This character uses:
+  walk: walk_ar2
+  attack: idle_ar2 (rifle aiming stance, existing attack timing retained)
+  hit: flinch_01, flinch_02, flinch_back_01
+  death: death_01, death_02, death_03, death_04
+  headshot death: death_04
+
+animationBase: "idle_ar2" supplies the full-body pose under additive flinch
+clips. poseParameters selects the baked movement/aim pose; move_x: 1 and
+move_y: 0 select forward walking. Movement-table distance synchronizes the
+walking animation to enemySpeed. Each enemy has an independent skeleton.
+
+Source model units are converted with scale: [0.0254, 0.0254, 0.0254].
+positionY defaults to zero. The loader preserves Source's axis conversion
+inside the model, so the usual rotation setting remains usable.
+weaponBone uses a Source bone name, e.g. "ValveBiped.Bip01_R_Hand".
+weaponPosition, weaponRotation and weaponScale adjust the attached weapon.
+Weapon offsets are in the character's native Source units; weaponScale is 1
+for the supplied rifle because the character already supplies the unit scale.
+
+Textures
+The supplied SAS archive has no textures. Add matching WEBP, PNG, JPG or VTF
+files to assets/textures using these material names:
+  mtl_sas_ct_head_sp
+  mtl_sas_ct_goggle_sp
+  mtl_sas_ct_bodies_sp
+Example: assets/textures/mtl_sas_ct_head_sp.webp
+Native VMT/VTF folders under assets/materials are also supported. An optional
+source object can override textureRoot/materialRoot or select skin/bodygroups.
+Missing textures use plain materials and do not prevent the game from loading.
+
+Supported animation features
+PC Source MDL v48/v49, external ANI blocks, sectioned RLE tracks, packed bone
+transforms, fixed pose-parameter blends, weighted sequence layers and additive
+clips. The supplied SAS character and configured m_anm clips are verified.
+Live Source IK, facial flex animation, physics ragdolls, animated local bone
+hierarchy, and frame-encoded animation are not implemented. Unsupported
+selected sequence encodings report a descriptive loading error.

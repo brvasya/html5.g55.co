@@ -8,7 +8,7 @@ function matrix3x4(reader, offset) {
   return new THREE.Matrix4().set(...v.slice(0, 4), ...v.slice(4, 8), ...v.slice(8, 12), 0, 0, 0, 1);
 }
 
-function parseBones(mdl) {
+export function parseSourceBones(mdl) {
   const count = mdl.i32(156), start = mdl.i32(160);
   mdl.table(start, count, 216);
   if (count < 1 || count > 256) throw new Error("Source MDL requires 1–256 bones.");
@@ -217,7 +217,7 @@ export class SourceModelLoader {
   parse(mdlBuffer, vvdBuffer, vtxBuffer, options = {}) {
     const mdl = new BinaryReader(mdlBuffer, "MDL");
     this.validateHeader(mdl);
-    const boneData = parseBones(mdl);
+    const boneData = parseSourceBones(mdl);
     const bones = boneData.map(data => {
       const bone = new THREE.Bone();
       bone.name = data.name;
@@ -271,6 +271,6 @@ export class SourceModelLoader {
     if (procedural.length) warnings.push(`Source procedural bones use their bind transforms: ${procedural.map(bone => bone.sourceName).join(", ")}`);
     const metadata = { format: "source-mdl", version: mdl.i32(4), name: mdl.string(12, 64), materialNames, directories, attachments, includedModels, proceduralBones, sequences: describeSequences(mdl).map(sequence => sequence.name) };
     scene.userData.source = metadata;
-    return { scene, animations, metadata, materials, warnings };
+    return { scene, animations, metadata, materials, warnings, boneData };
   }
 }
