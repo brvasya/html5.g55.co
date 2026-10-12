@@ -29,8 +29,6 @@ animationBase: "idle_ar2",
 anim: {
 walk: ["walk_ar2"],
 attack: ["idle_ar2"],
-hit: ["flinch_01", "flinch_02", "flinch_back_01"],
-headshot: ["death_04"],
-death: ["death_01", "death_02", "death_03"]
+hit: ["flinch_01", "flinch_02", "flinch_back_01"]
 },
 };
