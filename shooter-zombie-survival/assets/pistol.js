@@ -13,10 +13,11 @@ pellets: 1,
 spread: 0.025,
 },
 anim: {
+deploy: "deploy",
 idle: "idle",
 shoot: "fire",
 reload: "reload_empty"
 },
-model: "./assets/pistol.glb",
+model: "./assets/pistol/v_re4usp.mdl",
 fireSound: "./assets/pistol.ogg"
 };

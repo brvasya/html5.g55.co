@@ -1,4 +1,6 @@
-import { createGLTFLoader } from "./gltfLoader.js";
+import { loadCharacterAsset, characterCacheKey, findCharacterBone, pickCharacterBodygroups, applyCharacterBodygroups } from "./characterLoader.js";
+import { loadWeaponAsset } from "./weaponLoader.js";
+import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
@@ -70,7 +72,7 @@ export function createEnemies({
   const ATTACK_RAY_EPSILON = 0.002;
 
   const modelCache = new Map();
-  const animationCache = new Map();
+  const weaponCache = new Map();
   const audioCache = new Map();
   const hitboxTemplateCache = new Map();
 
@@ -89,27 +91,15 @@ export function createEnemies({
     const configured = Array.isArray(asset?.models)
       ? asset.models
       : (typeof asset?.model === "string" ? [asset.model] : []);
-    const animationSrc = getEnemyAnimationSource(asset);
-
     return [...new Set(
       configured
         .filter(src => typeof src === "string" && src.trim())
         .map(src => src.trim())
-        // The shared animation GLB is never a visual enemy model.
-        .filter(src => src !== animationSrc)
     )];
   }
 
-  function getEnemyAnimationSource(asset) {
-    if (typeof asset?.animations !== "string") return null;
-    const src = asset.animations.trim();
-    return src || null;
-  }
-
-  function getEnemyWeaponSource(asset) {
-    if (typeof asset?.weapon !== "string") return null;
-    const src = asset.weapon.trim();
-    return src || null;
+  function enemyWeaponCacheKey(asset) {
+    return JSON.stringify(asset?.weapon || null);
   }
 
   function pickEnemyStatValue(configured, fallback) {
@@ -133,7 +123,11 @@ export function createEnemies({
       if (asset?.deathSound) tasks.push(preloadSound(asset.deathSound));
     });
 
-    return Promise.all(tasks);
+    return Promise.all(tasks).then(() => {
+      const failed = [...modelCache.values(), ...weaponCache.values()]
+        .find(entry => entry.failed);
+      if (failed) throw failed.error;
+    });
   }
 
   function preloadEnemyType(typeId) {
@@ -141,175 +135,81 @@ export function createEnemies({
     const asset = type?.asset;
     if (!asset) return Promise.resolve(null);
 
-    const tasks = getEnemyModelSources(asset).map(preloadEnemyModel);
-    const animationSrc = getEnemyAnimationSource(asset);
-    const weaponSrc = getEnemyWeaponSource(asset);
+    const tasks = getEnemyModelSources(asset).map(src => preloadEnemyModel(src, asset));
 
-    if (animationSrc) {
-      tasks.push(preloadEnemyAnimationLibrary(animationSrc));
-    }
-
-    if (weaponSrc) {
-      tasks.push(preloadEnemyModel(weaponSrc));
+    if (asset.weapon) {
+      tasks.push(preloadEnemyWeapon(asset));
     }
 
     return tasks.length ? Promise.all(tasks) : Promise.resolve(null);
   }
 
-  function preloadEnemyModel(src) {
-    let cached = modelCache.get(src);
-
-    if (cached?.promise) return cached.promise;
-    if (cached?.source || cached?.failed) return Promise.resolve(cached);
-
-    cached = {
-      source: null,
-      loading: true,
-      failed: false,
-      promise: null
-    };
-
-    modelCache.set(src, cached);
-
-    const loader = createGLTFLoader();
-
-    cached.promise = new Promise(resolve => {
-      loader.load(
-        src,
-        gltf => {
-          cached.source = gltf.scene;
-          cached.loading = false;
-          cached.failed = false;
-
-          cached.source.traverse(object => {
-            if (!object.isMesh) return;
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            // Let the body cast its animated silhouette. Blended wound/hair
-            // overlays without an alpha cutoff must not cast solid cards.
-            object.castShadow = materials.some(material =>
-              material && (!material.transparent || material.alphaTest > 0)
-            );
-            object.receiveShadow = true;
-            object.frustumCulled = true;
-          });
-
-          enemies.forEach(enemy => {
-            if (enemy.userData.modelSrc === src && !enemy.userData.model) {
-              attachEnemyModel(enemy);
-            }
-            if (enemy.userData.weaponSrc === src) {
-              attachEnemyWeapon(enemy);
-            }
-          });
-
-          resolve(cached);
-        },
-        undefined,
-        error => {
-          cached.loading = false;
-          cached.failed = true;
-          console.warn(`Enemy model failed to preload: ${src}`, error);
-          resolve(cached);
-        }
+  function prepareEnemyMeshes(root) {
+    root.traverse(object => {
+      if (!object.isMesh) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      // Transparent overlays must not cast solid cards.
+      object.castShadow = materials.some(material =>
+        material && (!material.transparent || material.alphaTest > 0)
       );
+      object.receiveShadow = true;
+      object.frustumCulled = false;
     });
+  }
 
+  function preloadEnemyModel(src, asset) {
+    const cacheKey = characterCacheKey(src, asset);
+    let cached = modelCache.get(cacheKey);
+    if (cached) return cached.promise;
+    cached = { source: null, failed: false, promise: null };
+    modelCache.set(cacheKey, cached);
+    cached.promise = loadCharacterAsset(src, asset).then(result => {
+      cached.source = result.scene;
+      cached.animations = result.animations;
+      prepareEnemyMeshes(cached.source);
+      enemies.forEach(enemy => {
+        if (characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset) === cacheKey) {
+          attachEnemyModel(enemy);
+        }
+      });
+      return cached;
+    }).catch(error => {
+      cached.failed = true;
+      cached.error = error;
+      console.warn(`Enemy character failed to preload: ${src}`, error);
+      return cached;
+    });
     return cached.promise;
   }
 
-  function discardAnimationLibraryScenes(gltf) {
-    // anim.glb is data-only at runtime. Keep AnimationClips, then immediately
-    // release any skeleton/mesh/material payload that happened to be exported
-    // with the animation library so it can never become a visible enemy.
-    const scenes = Array.isArray(gltf?.scenes) && gltf.scenes.length
-      ? gltf.scenes
-      : (gltf?.scene ? [gltf.scene] : []);
-
-    const disposedTextures = new Set();
-    const disposedMaterials = new Set();
-    const disposedGeometries = new Set();
-
-    const disposeMaterial = material => {
-      if (!material || disposedMaterials.has(material)) return;
-      disposedMaterials.add(material);
-
-      Object.values(material).forEach(value => {
-        if (!value || !value.isTexture || disposedTextures.has(value)) return;
-        disposedTextures.add(value);
-        value.dispose?.();
+  function preloadEnemyWeapon(asset) {
+    const cacheKey = enemyWeaponCacheKey(asset);
+    let cached = weaponCache.get(cacheKey);
+    if (cached) return cached.promise;
+    cached = { source: null, failed: false, promise: null };
+    weaponCache.set(cacheKey, cached);
+    cached.promise = loadWeaponAsset(asset.weapon).then(result => {
+      cached.source = result.scene;
+      // World weapons follow the character's hand. Hold their native idle pose.
+      if (result.animations.length) {
+        const mixer = new THREE.AnimationMixer(cached.source);
+        mixer.clipAction(result.animations[0]).play();
+        mixer.update(0);
+        // Keep the evaluated pose without retaining a mixer for each enemy.
+      }
+      updateSourceProceduralBones(cached.source);
+      cached.source.updateMatrixWorld(true);
+      prepareEnemyMeshes(cached.source);
+      enemies.forEach(enemy => {
+        if (enemyWeaponCacheKey(enemy.userData.type.asset) === cacheKey) attachEnemyWeapon(enemy);
       });
-
-      material.dispose?.();
-    };
-
-    scenes.forEach(animationScene => {
-      animationScene.traverse(object => {
-        if (object.geometry && !disposedGeometries.has(object.geometry)) {
-          disposedGeometries.add(object.geometry);
-          object.geometry.dispose?.();
-        }
-
-        if (Array.isArray(object.material)) {
-          object.material.forEach(disposeMaterial);
-        } else {
-          disposeMaterial(object.material);
-        }
-      });
-
-      animationScene.clear();
+      return cached;
+    }).catch(error => {
+      cached.failed = true;
+      cached.error = error;
+      console.warn(`Enemy weapon failed to preload: ${asset.weapon.model}`, error);
+      return cached;
     });
-  }
-
-  function preloadEnemyAnimationLibrary(src) {
-    let cached = animationCache.get(src);
-
-    if (cached?.promise) return cached.promise;
-    if (cached?.animations || cached?.failed) return Promise.resolve(cached);
-
-    cached = {
-      animations: null,
-      loading: true,
-      failed: false,
-      promise: null
-    };
-
-    animationCache.set(src, cached);
-
-    const loader = createGLTFLoader();
-
-    cached.promise = new Promise(resolve => {
-      loader.load(
-        src,
-        gltf => {
-          // Keep clips only. No scene, skeleton, mesh, material, or texture from
-          // anim.glb is retained or attached to an enemy.
-          cached.animations = (gltf.animations || []).map(clip => clip.clone());
-          discardAnimationLibraryScenes(gltf);
-          cached.loading = false;
-          cached.failed = false;
-
-          if (!cached.animations.length) {
-            console.warn(`Enemy animation library contains no clips: ${src}`);
-          }
-
-          enemies.forEach(enemy => {
-            if (enemy.userData.animationSrc === src) {
-              setupEnemyAnimationsIfReady(enemy);
-            }
-          });
-
-          resolve(cached);
-        },
-        undefined,
-        error => {
-          cached.loading = false;
-          cached.failed = true;
-          console.warn(`Enemy animation library failed to preload: ${src}`, error);
-          resolve(cached);
-        }
-      );
-    });
-
     return cached.promise;
   }
 
@@ -461,14 +361,12 @@ export function createEnemies({
     const modelSrc = modelSources.length
       ? modelSources[Math.floor(Math.random() * modelSources.length)]
       : null;
-    const animationSrc = getEnemyAnimationSource(asset);
 
     group.userData = {
       typeId: typeId,
       type,
       modelSrc,
-      animationSrc,
-      weaponSrc: getEnemyWeaponSource(asset),
+      bodygroups: pickCharacterBodygroups(asset),
       health: asset.enemyHealth,
       // Choose once per enemy so movement and walk playback use the same speed.
       speed: pickEnemyStatValue(asset.enemySpeed, 0),
@@ -514,11 +412,8 @@ export function createEnemies({
   }
 
   function getEnemyAnimationClips(enemy) {
-    const animationSrc = enemy.userData.animationSrc;
-    if (!animationSrc) return [];
-
-    const cachedAnimations = animationCache.get(animationSrc);
-    return cachedAnimations?.animations || [];
+    const key = characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset);
+    return modelCache.get(key)?.animations || [];
   }
 
   function setupEnemyAnimationsIfReady(enemy) {
@@ -536,13 +431,14 @@ export function createEnemies({
 
   function attachEnemyModel(enemy) {
     const type = enemy.userData.type;
-    const cached = modelCache.get(enemy.userData.modelSrc);
+    const cached = modelCache.get(characterCacheKey(enemy.userData.modelSrc, type.asset));
 
     if (!cached || !cached.source || enemy.userData.model) return;
 
     const model = SkeletonUtils.clone(cached.source);
+    applyCharacterBodygroups(model, enemy.userData.bodygroups);
 
-    const assetScale = type.asset.scale || [1, 1, 1];
+    const assetScale = type.asset.scale || [0.0254, 0.0254, 0.0254];
     model.scale.set(assetScale[0], assetScale[1], assetScale[2]);
 
     const assetRotation = type.asset.rotation || [0, 0, 0];
@@ -576,19 +472,20 @@ export function createEnemies({
 
   function attachEnemyWeapon(enemy) {
     const model = enemy.userData.model;
-    const cached = modelCache.get(enemy.userData.weaponSrc);
+    const cached = weaponCache.get(enemyWeaponCacheKey(enemy.userData.type.asset));
     if (!model || !cached?.source || enemy.userData.weapon) return;
 
     const asset = enemy.userData.type.asset;
-    const boneName = THREE.PropertyBinding.sanitizeNodeName(asset.weaponBone || "_R_Hand");
-    const hand = model.getObjectByName(boneName);
+    const boneTarget = asset.weaponBone || "ValveBiped.Bip01_R_Hand";
+    const hand = findCharacterBone(model, boneTarget);
 
     if (!hand?.isBone) {
-      console.warn(`Missing enemy weapon attachment bone: ${boneName}`);
+      console.warn(`Missing enemy weapon attachment bone: ${boneTarget}`);
       return;
     }
 
     const weapon = SkeletonUtils.clone(cached.source);
+    weapon.name = "EnemyWeaponMDL";
     cloneEnemyMaterials(weapon);
 
     const socket = new THREE.Group();
@@ -690,8 +587,12 @@ export function createEnemies({
     if (!model) return;
 
     // Templates contain only bind-space data and node paths. They are safe to
-    // share across clones with different placement, scale, rotation and poses.
-    const cacheKey = enemy.userData.modelSrc || null;
+    // share across clones with the same parts and different placement/poses.
+    // Different bodygroups need different bounds and mesh node paths.
+    const cacheKey = JSON.stringify([
+      characterCacheKey(enemy.userData.modelSrc, enemy.userData.type.asset),
+      enemy.userData.bodygroups
+    ]);
     let template = cacheKey ? hitboxTemplateCache.get(cacheKey) : null;
 
     if (!template) {
@@ -982,6 +883,7 @@ export function createEnemies({
   }
 
   function findRootMotionTrack(clip, model) {
+    const horizontalAxes = [0, 1]; // Native Source X/Y horizontal plane.
     const nodeDepthByName = new Map();
 
     model.traverse(object => {
@@ -995,6 +897,7 @@ export function createEnemies({
         parent = parent.parent;
       }
 
+      nodeDepthByName.set(object.uuid.toLowerCase(), depth);
       const key = object.name.trim().toLowerCase();
       const currentDepth = nodeDepthByName.get(key);
 
@@ -1017,10 +920,10 @@ export function createEnemies({
         let maxZ = -Infinity;
 
         for (let i = 0; i < values.length; i += valueSize) {
-          minX = Math.min(minX, values[i]);
-          maxX = Math.max(maxX, values[i]);
-          minZ = Math.min(minZ, values[i + 2]);
-          maxZ = Math.max(maxZ, values[i + 2]);
+          minX = Math.min(minX, values[i + horizontalAxes[0]]);
+          maxX = Math.max(maxX, values[i + horizontalAxes[0]]);
+          minZ = Math.min(minZ, values[i + horizontalAxes[1]]);
+          maxZ = Math.max(maxZ, values[i + horizontalAxes[1]]);
         }
 
         const horizontalMotion = Math.hypot(maxX - minX, maxZ - minZ);
@@ -1038,6 +941,7 @@ export function createEnemies({
           targetName,
           depth: nodeDepthByName.get(targetName) ?? Number.MAX_SAFE_INTEGER,
           likelyRoot: /(root|hips|pelvis|armature)/i.test(targetName),
+          horizontalAxes,
           horizontalMotion
         };
       })
@@ -1051,12 +955,19 @@ export function createEnemies({
       return b.horizontalMotion - a.horizontalMotion;
     });
 
-    return candidates[0];
+    return candidates.find(candidate => candidate.likelyRoot) || null;
   }
 
   function getRootMotionSpeed(clip, model) {
     if (!Number.isFinite(clip.duration) || clip.duration <= 0) return 0;
 
+    // Source locomotion is compiled in-place; distance lives in the MDL
+    // movement table, not the pelvis sway. Preserve its authored stride rate.
+    const movement = clip.userData?.source?.movement;
+    if (clip.userData?.source?.motionExtracted && movement) {
+      const scale = Math.abs(model.scale.x);
+      return Math.hypot(movement[0], movement[1]) * scale / clip.duration;
+    }
     const rootMotion = findRootMotionTrack(clip, model);
     if (!rootMotion) return 0;
 
@@ -1064,16 +975,17 @@ export function createEnemies({
     const valueSize = rootMotion.valueSize;
     const last = values.length - valueSize;
 
-    let scaleX = Math.abs(model.scale.x) || 1;
-    let scaleZ = Math.abs(model.scale.z) || 1;
+    const [axisX, axisZ] = rootMotion.horizontalAxes;
+    let scaleX = Math.abs(model.scale.getComponent(axisX)) || 1;
+    let scaleZ = Math.abs(model.scale.getComponent(axisZ)) || 1;
 
     // Root-position keys are transformed by the animated node's parent scale.
     // Use that world scale when the target node can be resolved; otherwise the
-    // model scale is a good fallback for normal GLB skeletons.
+    // character scale supplies the fallback.
     let targetObject = null;
     model.traverse(object => {
       if (targetObject || !object.name) return;
-      if (object.name.trim().toLowerCase() === rootMotion.targetName) {
+      if (object.name.trim().toLowerCase() === rootMotion.targetName || object.uuid.toLowerCase() === rootMotion.targetName) {
         targetObject = object;
       }
     });
@@ -1083,20 +995,20 @@ export function createEnemies({
       scaleObject.updateWorldMatrix(true, false);
       const worldScale = new THREE.Vector3();
       scaleObject.getWorldScale(worldScale);
-      scaleX = Math.abs(worldScale.x) || scaleX;
-      scaleZ = Math.abs(worldScale.z) || scaleZ;
+      scaleX = Math.abs(worldScale.getComponent(axisX)) || scaleX;
+      scaleZ = Math.abs(worldScale.getComponent(axisZ)) || scaleZ;
     }
 
-    const startX = values[0];
-    const startZ = values[2];
+    const startX = values[axisX];
+    const startZ = values[axisZ];
     let strideDistance = 0;
 
     // Use the farthest horizontal displacement from the first key rather than
-    // only first-to-last. Some looping GLB clips snap the root back to its start
+    // only first-to-last. Some looping clips snap the root back to its start
     // position on the final key, which would otherwise look like zero motion.
     for (let i = 0; i < values.length; i += valueSize) {
-      const dx = (values[i] - startX) * scaleX;
-      const dz = (values[i + 2] - startZ) * scaleZ;
+      const dx = (values[i + axisX] - startX) * scaleX;
+      const dz = (values[i + axisZ] - startZ) * scaleZ;
       strideDistance = Math.max(strideDistance, Math.hypot(dx, dz));
     }
 
@@ -1108,17 +1020,21 @@ export function createEnemies({
 
   function makeClipInPlace(clip, model) {
     const inPlaceClip = clip.clone();
+    if (clip.userData?.source?.motionExtracted) return inPlaceClip;
     const rootMotion = findRootMotionTrack(inPlaceClip, model);
 
     if (!rootMotion) return inPlaceClip;
 
-    const values = rootMotion.track.values;
-    const startX = values[0];
-    const startZ = values[2];
-
-    for (let i = 0; i < values.length; i += rootMotion.valueSize) {
-      values[i] = startX;
-      values[i + 2] = startZ;
+    const [axisX, axisZ] = rootMotion.horizontalAxes;
+    const tracks = [rootMotion.track];
+    for (const track of tracks) {
+      const values = track.values;
+      const startX = values[axisX];
+      const startZ = values[axisZ];
+      for (let i = 0; i < values.length; i += track.getValueSize()) {
+        values[i + axisX] = startX;
+        values[i + axisZ] = startZ;
+      }
     }
 
     return inPlaceClip;
@@ -1339,6 +1255,7 @@ export function createEnemies({
 
     enemies.forEach(enemy => {
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
+      if (enemy.userData.model) updateSourceProceduralBones(enemy.userData.model);
       updateEnemyMuzzleFlash(enemy, delta);
 
       if (enemy.userData.isDying) {

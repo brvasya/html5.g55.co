@@ -13,10 +13,11 @@ pellets: 1,
 spread: 0.05,
 },
 anim: {
-idle: "ta_rifle_run_trans_idle",
+deploy: "deploy",
+idle: "idle",
 shoot: "fire",
 reload: "reload"
 },
-model: "./assets/rifle.glb",
+model: "./assets/rifle/v_re4cqbr.mdl",
 fireSound: "./assets/rifle.ogg"
 };

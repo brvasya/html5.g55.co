@@ -1,10 +1,11 @@
-import { createGLTFLoader } from "./gltfLoader.js";
+import { updateSourceProceduralBones } from "./SourceProcedural.js";
+import { loadWeaponAsset } from "./weaponLoader.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { WEAPON_UPGRADE_TIERS, MAX_WEAPON_UPGRADE_LEVEL, getWeaponUpgradeStats, getWeaponUpgradePrice } from "./weaponUpgrades.js";
 
-export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, onStateChange, onReloadStart, onShootSecondaryStart }) {
-  const HANDS_MODEL_URL = "./assets/hands.glb";
+export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, handsAsset, onStateChange, onReloadStart, onShootSecondaryStart }) {
+  const handsConfig = handsAsset;
   const VALVEBIPED_SOURCE_PREFIX = "ValveBiped.Bip01";
   const VALVEBIPED_MERGE_PREFIX = THREE.PropertyBinding.sanitizeNodeName(VALVEBIPED_SOURCE_PREFIX);
   const slots = createSlots(weaponSlots);
@@ -228,6 +229,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     tasks.push(preloadHandsAsset());
 
     return Promise.all(tasks).then(() => {
+      const failed = Array.from(modelCache.values()).find(entry => entry.failed);
+      if (failed) throw failed.error || new Error("A weapon model failed to load.");
+      if (handsCache.failed) throw handsCache.error || new Error("The hands model failed to load.");
       attachCurrentModel();
     });
   }
@@ -250,63 +254,46 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
     modelCache.set(key, cached);
 
-    const loader = createGLTFLoader();
-
-    cached.promise = new Promise(resolve => {
-      loader.load(
-        asset.model,
-        gltf => {
-          cached.source = gltf.scene;
-          cached.animations = gltf.animations;
-          cached.loading = false;
-          cached.failed = false;
-
-          cached.source.traverse(object => {
-            if (!object.isMesh) return;
-            object.frustumCulled = false;
-            object.castShadow = false;
-            object.receiveShadow = true;
-          });
-
-          resolve(cached);
-        },
-        undefined,
-        error => {
-          cached.loading = false;
-          cached.failed = true;
-          console.warn("Weapon model failed to preload:", key, error);
-          resolve(cached);
-        }
-      );
+    cached.promise = loadWeaponAsset(asset).then(result => {
+      cached.source = result.scene;
+      cached.animations = result.animations;
+      cached.loading = false;
+      cached.failed = false;
+      cached.source.traverse(object => {
+        if (!object.isMesh) return;
+        object.frustumCulled = false;
+        object.castShadow = false;
+        object.receiveShadow = true;
+      });
+      return cached;
+    }).catch(error => {
+      cached.loading = false;
+      cached.failed = true;
+      cached.error = error;
+      console.warn("Weapon model failed to preload:", key, error);
+      return cached;
     });
 
     return cached.promise;
   }
 
   function preloadHandsAsset() {
+    if (slots.every(slot => slot.asset.hands === false)) return Promise.resolve(null);
     if (handsCache.promise) return handsCache.promise;
     if (handsCache.source || handsCache.failed) return Promise.resolve(handsCache);
 
     handsCache.loading = true;
-    const loader = createGLTFLoader();
-
-    handsCache.promise = new Promise(resolve => {
-      loader.load(
-        HANDS_MODEL_URL,
-        gltf => {
-          handsCache.source = gltf.scene;
-          handsCache.loading = false;
-          handsCache.failed = false;
-          resolve(handsCache);
-        },
-        undefined,
-        error => {
-          handsCache.loading = false;
-          handsCache.failed = true;
-          console.warn("Hands model failed to preload:", HANDS_MODEL_URL, error);
-          resolve(handsCache);
-        }
-      );
+    handsCache.promise = loadWeaponAsset(handsConfig, { hands: true }).then(result => {
+      handsCache.source = result.scene;
+      handsCache.loading = false;
+      handsCache.failed = false;
+      return handsCache;
+    }).catch(error => {
+      handsCache.loading = false;
+      handsCache.failed = true;
+      handsCache.error = error;
+      console.warn("Hands model failed to preload:", handsConfig?.model, error);
+      return handsCache;
     });
 
     return handsCache.promise;
@@ -466,6 +453,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     const slot = currentSlot();
     const now = weaponTime;
 
+    if (currentState === "deploy") return { ok: false, reason: "deploying" };
     if (isReloading) return { ok: false, reason: "reloading" };
     if (now < shootSequenceEndTime || now - lastShotTime < slot.fireCooldownMs) {
       return { ok: false, reason: "cooldown" };
@@ -525,7 +513,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       return { started: false, duration: 0 };
     }
 
-    if (isReloading || slot.ammo === slot.magazineSize || slot.reserveAmmo <= 0) {
+    if (currentState === "deploy" || isReloading || slot.ammo === slot.magazineSize || slot.reserveAmmo <= 0) {
       return { started: false, duration: 0 };
     }
 
@@ -776,6 +764,8 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
     if (!cached || !cached.source) {
       clearModel();
+      // Stop here on failure; reattaching a rejected asset would loop forever.
+      if (cached?.failed) return;
       preloadWeaponAsset(config).then(() => {
         if (currentModelConfig() === config) {
           attachCurrentModel();
@@ -787,7 +777,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     clearModel();
 
     model = SkeletonUtils.clone(cached.source);
-    model.name = "WeaponGLB";
+    model.name = "WeaponMDL";
     model.visible = false;
 
     model.traverse(object => {
@@ -811,9 +801,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     setupValveBipedBoneMerge();
     setupWeaponEffects();
 
-    // Evaluate the first animated pose and merge the hands before either is
-    // exposed. Callers must not restart idle after this synchronous setup.
-    play("idle");
+    // Evaluate the deploy pose and merge the hands before either is exposed.
+    // Weapons without a configured deploy action start in idle.
+    play(actions.has("deploy") ? "deploy" : "idle");
     if (!activeAction) syncValveBipedBoneMerge();
     model.visible = true;
     if (handsModel) handsModel.visible = boneMergePairs.length > 0;
@@ -821,6 +811,10 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
 
   function setupValveBipedBoneMerge() {
     boneMergePairs = [];
+    if (currentModelConfig().hands === false) {
+      if (handsModel) handsModel.visible = false;
+      return;
+    }
 
     const hands = ensureHandsModel();
     if (!model || !hands) return;
@@ -875,12 +869,8 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   function getCanonicalValveBipedBoneName(name) {
     if (!name) return null;
 
-    // GLTFLoader sanitizes Object3D/Bone names with PropertyBinding rules.
-    // Reserved characters such as the dot in `ValveBiped.Bip01_*` are
-    // REMOVED (not replaced), so at runtime the same bone is typically named
-    // `ValveBipedBip01_*`. Sanitizing again is idempotent and also supports
-    // unsanitized names, making weapon and hands matching independent of how
-    // the GLB was exported or cloned.
+    // Source bones use Three.js PropertyBinding names. Apply the same rules
+    // to authored names so the weapon and shared hands match after cloning.
     const runtimeName = THREE.PropertyBinding.sanitizeNodeName(String(name));
     if (!runtimeName.startsWith(VALVEBIPED_MERGE_PREFIX)) return null;
 
@@ -900,7 +890,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
   }
 
   function syncValveBipedBoneMerge() {
-    if (!model || !handsModel || !boneMergePairs.length) return;
+    if (!model) return;
+    updateSourceProceduralBones(model);
+    if (!handsModel || !boneMergePairs.length) return;
 
     // GMod-style bone merge: each c_hands ValveBiped bone is driven by the
     // matching animated view-model bone in world space. This deliberately
@@ -929,6 +921,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
       targetBone.updateWorldMatrix(false, false);
     }
 
+    updateSourceProceduralBones(handsModel);
     handsModel.updateWorldMatrix(false, true);
   }
 
@@ -963,6 +956,9 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     actions.clear();
     returnTimer = null;
     shootSequenceEndTime = 0;
+    currentState = "idle";
+    currentStateTime = 0;
+    currentStateDuration = 0;
   }
 
   function disposeModel(root) {
@@ -1162,7 +1158,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     action.play();
     if (canCrossFade) {
       // Equal fade durations keep total animation influence at one instead
-      // of briefly mixing the GLB's default pose into a transition.
+      // of briefly mixing the model's bind pose into a transition.
       previousAction.setEffectiveWeight(1).fadeOut(0.04);
       action.fadeIn(0.04);
     }

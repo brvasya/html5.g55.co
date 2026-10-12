@@ -14,10 +14,11 @@ spread: 0,
 isSniper: true
 },
 anim: {
-idle: "a_idle_1",
+deploy: "deploy",
+idle: "idle",
 shoot: "shoot",
 reload: ["reload", "reload_1", "reload_end"]
 },
-model: "./assets/sniper.glb",
+model: "./assets/sniper/v_re4sr.mdl",
 fireSound: "./assets/sniper.ogg"
 };

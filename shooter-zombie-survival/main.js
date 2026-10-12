@@ -5,8 +5,7 @@ import { isTouchDevice } from "./engine/touchControls.js";
 
 // The config-driven selector is complete before the first visible menu frame.
 if (await window.mapMenuReady) {
-  document.title = GAME_CONFIG.gameTitle;
-  renderGameTitle(document.querySelector("#panel h1"), GAME_CONFIG.gameTitle);
+  renderGameTitle(document.querySelector("#panel h1"), document.title);
   // Preserve the head-selected HTML controls instead of replacing text after paint.
   const touch = isTouchDevice();
   const description = document.querySelector("#panel p");

@@ -13,10 +13,11 @@ pellets: 6,
 spread: 0.1,
 },
 anim: {
-idle: "a_idle_1",
+deploy: "deploy",
+idle: "idle",
 shoot: "fire",
 reload: ["reload", "reload_loop", "reload_end"]
 },
-model: "./assets/shotgun.glb",
+model: "./assets/shotgun/v_re4870.mdl",
 fireSound: "./assets/shotgun.ogg"
 };

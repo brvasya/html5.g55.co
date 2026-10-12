@@ -11,13 +11,13 @@ fireCooldownMs: 90,
 reloadSpeed: 1,
 pellets: 1,
 spread: 0.05,
-hasScope: true
 },
 anim: {
-idle: "idling",
+deploy: "deploy",
+idle: "idle",
 shoot: "shoot1",
 reload: "reload"
 },
-model: "./assets/smg.glb",
+model: "./assets/smg/v_re4le5.mdl",
 fireSound: "./assets/smg.ogg"
 };

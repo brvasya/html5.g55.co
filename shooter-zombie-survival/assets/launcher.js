@@ -14,10 +14,11 @@ spread: 0,
 projectile: "grenade"
 },
 anim: {
-idle: "ta_trans_idle",
+deploy: "deploy",
+idle: "idle",
 shoot: "fire",
 reload: "reload"
 },
-model: "./assets/launcher.glb",
+model: "./assets/launcher/v_re2gl.mdl",
 fireSound: "./assets/launcher.ogg"
 };

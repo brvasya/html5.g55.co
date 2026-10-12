@@ -1,19 +1,28 @@
 export const ZOMBIE = {
-animations: "./assets/zombie.glb",
-models: ["./assets/zombie1.glb", "./assets/zombie2.glb", "./assets/zombie3.glb", "./assets/zombie6.glb", "./assets/zombie8.glb"],
-attackSound: "./assets/enemy.ogg",
-positionY: 1.2,
-scale: [1.2, 1.2, -1.2],
+animations: "./assets/m_anm.mdl",
+models: ["./assets/zombie/sas_pm.mdl"],
+source: {
+bodygroups: {
+head: [0, 1, 2],
+gear: [0, 1, 2, 3, 4, 5],
+upper: [0, 1],
+lower: [0, 1]
+}
+},
+animationBase: "idle_ar2",
+poseParameters: { move_x: 1, move_y: 0, aim_yaw: 0, aim_pitch: 0 },
+attackSound: "./assets/rifle.ogg",
+scale: [0.032, 0.032, 0.032],
 enemyHealth: 100,
-enemySpeed: 1,
-enemyDamage: 10,
+enemySpeed: [1.5, 3],
+enemyDamage: 1,
 attackDistance: 2,
-attackDamageDelay: 0.3,
+attackDamageDelay: 1,
 anim: {
-walk: ["WALK_drunk"],
-attack: ["FightA_1", "FightA_2", "FightA_3"],
-hit: ["HIT_L", "HIT_R", "HIT_back"],
-headshot: ["KO_shot_face"],
-death: ["KO_shot_front", "KO_spin_L", "KO_spin_R", "KO_skid_front", "KO_skid_back", "KO_shot_stom"]
+walk: ["walk_ar2"],
+attack: ["idle_ar2"],
+hit: ["flinch_01", "flinch_02", "flinch_back_01"],
+headshot: ["death_04"],
+death: ["death_01", "death_02", "death_03"]
 },
 };
