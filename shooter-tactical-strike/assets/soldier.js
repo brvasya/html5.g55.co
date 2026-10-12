@@ -9,7 +9,6 @@ upper: [0, 1],
 lower: [0, 1]
 }
 },
-animationBase: "idle_ar2",
 poseParameters: { move_x: 1, move_y: 0, aim_yaw: 0, aim_pitch: 0 },
 weapon: {
 model: "./assets/rifle/w_iw5_m16a4.mdl",
@@ -26,6 +25,7 @@ enemySpeed: [1.5, 3],
 enemyDamage: 1,
 attackDistance: [6, 9, 12],
 attackDamageDelay: 1,
+animationBase: "idle_ar2",
 anim: {
 walk: ["walk_ar2"],
 attack: ["idle_ar2"],
