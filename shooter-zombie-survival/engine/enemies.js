@@ -111,6 +111,32 @@ export function createEnemies({
       : fallback;
   }
 
+  function pickEnemyLocomotion(asset) {
+    const speeds = asset.enemySpeed;
+    const walkClips = asset.anim?.walk;
+    const paired = Array.isArray(speeds) && speeds.length > 1
+      && Array.isArray(walkClips) && walkClips.length > 1;
+
+    if (paired) {
+      // Keep original indices when skipping invalid or unpaired entries.
+      const indices = walkClips
+        .map((clipName, index) => Number.isFinite(speeds[index]) && speeds[index] >= 0
+          && typeof clipName === "string" && clipName.trim() ? index : -1)
+        .filter(index => index >= 0);
+
+      if (indices.length) {
+        const index = indices[Math.floor(Math.random() * indices.length)];
+        return { speed: speeds[index], walkAnimationIndex: index };
+      }
+
+      console.warn("Enemy walk and speed arrays have no valid matching entries.");
+      return { speed: 0, walkAnimationIndex: null };
+    }
+
+    // One speed or one walk clip can still be shared by all other variants.
+    return { speed: pickEnemyStatValue(speeds, 0), walkAnimationIndex: null };
+  }
+
   function preloadAll() {
     const tasks = [];
 
@@ -361,6 +387,7 @@ export function createEnemies({
     const modelSrc = modelSources.length
       ? modelSources[Math.floor(Math.random() * modelSources.length)]
       : null;
+    const locomotion = pickEnemyLocomotion(asset);
 
     group.userData = {
       typeId: typeId,
@@ -368,8 +395,9 @@ export function createEnemies({
       modelSrc,
       bodygroups: pickCharacterBodygroups(asset),
       health: asset.enemyHealth,
-      // Choose once per enemy so movement and walk playback use the same speed.
-      speed: pickEnemyStatValue(asset.enemySpeed, 0),
+      // Choose the speed/walk pair once, including before an async model load.
+      speed: locomotion.speed,
+      walkAnimationIndex: locomotion.walkAnimationIndex,
       damage: asset.enemyDamage,
       // Choose once per enemy so attack start and damage checks use the same range.
       attackDistance: pickEnemyStatValue(asset.attackDistance),
@@ -1059,7 +1087,11 @@ export function createEnemies({
       // Empty arrays are allowed for optional actions such as hit reactions.
       if (clipNames.length === 0) return;
 
-      const validClipNames = clipNames
+      // Select before filtering so a missing clip cannot shift the speed pairing.
+      const selectedClipNames = name === "walk" && Number.isInteger(enemy.userData.walkAnimationIndex)
+        ? [clipNames[enemy.userData.walkAnimationIndex]]
+        : clipNames;
+      const validClipNames = selectedClipNames
         .filter(clipName => typeof clipName === "string" && clipName.trim())
         .map(clipName => clipName.trim());
 
