@@ -20,7 +20,7 @@
       let selected = config.defaultId;
       if (config.rememberSelection) {
         try {
-          const saved = localStorage.getItem(`g55:${GAME_CONFIG.gameTitle}:map`);
+          const saved = localStorage.getItem(`g55:${document.title}:map`);
           if (config.items.some(item => item.id === saved)) selected = saved;
         } catch {}
       }

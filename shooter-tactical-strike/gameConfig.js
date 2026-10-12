@@ -8,7 +8,6 @@ import { MINIGUN } from "./assets/minigun.js";
 import { SOLDIER } from "./assets/soldier.js";
 
 export const GAME_CONFIG = {
-gameTitle: "Shooter: Tactical Strike",
 weaponFov: 50,
 
 maps: {

@@ -761,7 +761,7 @@ async function loadMap(id) {
   updateMapLighting();
   world.resetPlayer(player);
   if (CONFIG.maps.rememberSelection !== false) {
-    try { localStorage.setItem(`g55:${CONFIG.gameTitle}:map`, id); } catch {}
+    try { localStorage.setItem(`g55:${document.title}:map`, id); } catch {}
   }
 }
 
@@ -817,7 +817,7 @@ function returnToMainMenu() {
   dom.overlay.classList.add("main-menu");
   dom.overlay.style.display = "grid";
   dom.damageFlash.style.opacity = "0";
-  renderGameTitle(dom.panelTitle, CONFIG.gameTitle);
+  renderGameTitle(dom.panelTitle, document.title);
   dom.panelText.textContent = controlsText(touchControls.enabled);
   dom.startButton.textContent = "Start Game";
   if (mapSelectionPending) loadingButton.show();
