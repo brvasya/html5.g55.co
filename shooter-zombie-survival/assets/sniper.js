@@ -19,6 +19,12 @@ idle: "idle",
 shoot: "shoot",
 reload: ["reload", "reload_1", "reload_end"]
 },
+source: {
+bodygroups: {
+sight: 2,
+rail: 1
+}
+},
 model: "./assets/sniper/v_re4sr.mdl",
 fireSound: "./assets/sniper.ogg"
 };
