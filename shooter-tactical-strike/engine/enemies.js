@@ -1,4 +1,4 @@
-import { loadCharacterAsset, characterCacheKey, findCharacterBone, pickCharacterBodygroups, applyCharacterBodygroups } from "./characterLoader.js";
+import { CHARACTER_ANIMATION_ACTIONS, loadCharacterAsset, characterCacheKey, findCharacterBone, pickCharacterBodygroups, applyCharacterBodygroups } from "./characterLoader.js";
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
@@ -398,6 +398,7 @@ export function createEnemies({
       modelSrc,
       bodygroups: pickCharacterBodygroups(asset),
       health: asset.enemyHealth,
+      isDead: false,
       // Choose the speed/walk pair once, including before an async model load.
       speed: locomotion.speed,
       walkAnimationIndex: locomotion.walkAnimationIndex,
@@ -598,7 +599,7 @@ export function createEnemies({
     muzzleLightEnemy = null;
     let nearestDistance = Infinity;
     for (const enemy of enemies) {
-      if (enemy.userData.muzzleFlashTime <= 0 || enemy.userData.isDying) continue;
+      if (enemy.userData.muzzleFlashTime <= 0 || enemy.userData.isDead) continue;
       const distance = enemy.position.distanceToSquared(camera.position);
       if (distance < nearestDistance) {
         nearestDistance = distance;
@@ -1082,7 +1083,9 @@ export function createEnemies({
     enemy.userData.hitActions = [];
     enemy.userData.selectedAnimationClips = {};
 
-    Object.entries(assetAnim).forEach(([name, clipNames]) => {
+    CHARACTER_ANIMATION_ACTIONS.forEach(name => {
+      const clipNames = assetAnim[name];
+      if (clipNames == null) return;
       if (!Array.isArray(clipNames)) {
         console.warn(`Enemy animation action must be a clip-name array: ${name}`);
         return;
@@ -1292,23 +1295,12 @@ export function createEnemies({
     const nowTime = performance.now();
     const playerPosition = camera.position;
 
-    // Reverse iteration keeps death-animation removals from skipping an enemy.
     for (let index = enemies.length - 1; index >= 0; index--) {
       const enemy = enemies[index];
-      if (enemy.userData.ragdoll) continue;
+      if (enemy.userData.isDead) continue;
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
       if (enemy.userData.model) updateSourceProceduralBones(enemy.userData.model);
       updateEnemyMuzzleFlash(enemy, delta);
-
-      if (enemy.userData.isDying) {
-        enemy.userData.deathTimer -= delta;
-
-        if (enemy.userData.deathTimer <= 0) {
-          removeEnemy(enemy);
-        }
-
-        continue;
-      }
 
       if (enemy.userData.isHitReacting) {
         enemy.userData.hitTimer = Math.max(0, enemy.userData.hitTimer - delta);
@@ -1522,7 +1514,7 @@ export function createEnemies({
     const far = Number.isFinite(activeRaycaster.far) ? activeRaycaster.far : Infinity;
 
     for (const enemy of enemies) {
-      if (enemy.userData.isDying && !enemy.userData.ragdoll) continue;
+      if (enemy.userData.isDead && !enemy.userData.ragdoll) continue;
 
       const hitboxes = enemy.userData.hitboxes;
       if (!hitboxes || hitboxes.length === 0) continue;
@@ -1579,7 +1571,7 @@ export function createEnemies({
     if (!Number.isFinite(radius) || radius <= 0) return hits;
 
     for (const enemy of enemies) {
-      if ((enemy.userData.isDying && !enemy.userData.ragdoll) || !enemy.userData.hitboxes?.length) continue;
+      if ((enemy.userData.isDead && !enemy.userData.ragdoll) || !enemy.userData.hitboxes?.length) continue;
       const bounds = updateEnemyHitboxBounds(enemy);
       if (bounds.isEmpty() || bounds.distanceToPoint(origin) >= radius) continue;
       let bestDistance = radius;
@@ -1624,9 +1616,9 @@ export function createEnemies({
     return /(?:^|_)(?:head|mixamorighead|bip\d*head)\d*(?:_|$)/.test(name);
   }
 
-  function damageEnemy(enemy, damage, { instantKill = false, headshot = false, ...impact } = {}) {
+  function damageEnemy(enemy, damage, { instantKill = false, ...impact } = {}) {
     if (!enemy || !enemies.includes(enemy)) return false;
-    if (enemy.userData.isDying) {
+    if (enemy.userData.isDead) {
       ragdolls.hit(enemy, { ...impact, damage });
       return false; // A corpse can react to force, but never award another kill.
     }
@@ -1639,7 +1631,7 @@ export function createEnemies({
 
     if (enemy.userData.health <= 0) {
       clearEnemyMuzzleFlash(enemy);
-      enemy.userData.isDying = true;
+      enemy.userData.isDead = true;
       enemy.userData.isHitReacting = false;
       enemy.userData.hitTimer = 0;
       enemy.userData.isAttacking = false;
@@ -1647,33 +1639,11 @@ export function createEnemies({
 
       const deathSound = enemy.userData.type.asset.deathSound;
       if (deathSound) playAssetSound(deathSound, 1.0);
-      if (ragdolls.create(enemy, enemy.userData.ragdollDefinition, { ...impact, damage })) {
-        enemy.userData.deathTimer = Infinity;
-        return true;
-      }
-      if (enemy.userData.currentAction) {
-        enemy.userData.currentAction.fadeOut(0.05);
-      }
-
-      // Headshot kills get their own death animation. If the configured
-      // headshot clip is missing, fall back to the normal death action.
-      const deathAction = headshot
-        ? (enemy.userData.actions["headshot"] || enemy.userData.actions["death"])
-        : enemy.userData.actions["death"];
-
-      if (deathAction) {
-        deathAction.reset();
-        deathAction.clampWhenFinished = true;
-        deathAction.setLoop(THREE.LoopOnce, 1);
-        deathAction.play();
-        enemy.userData.currentAction = deathAction;
-
-        enemy.userData.deathTimer = deathAction.getClip().duration;
-      } else {
+      if (!ragdolls.create(enemy, enemy.userData.ragdollDefinition, { ...impact, damage })) {
+        // Preload requires valid PHY data. Clean up an unexpected runtime
+        // failure immediately so a dead enemy cannot remain active or frozen.
         removeEnemy(enemy);
-        return true;
       }
-
       return true;
     }
 
@@ -1744,7 +1714,7 @@ export function createEnemies({
     damageEnemy,
     reset,
     get count() {
-      return enemies.filter(enemy => !enemy.userData.isDying).length;
+      return enemies.filter(enemy => !enemy.userData.isDead).length;
     }
   };
 }

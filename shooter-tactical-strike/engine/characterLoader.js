@@ -6,9 +6,12 @@ import { parseAnimations, describeSequences } from "./SourceAnimations.js";
 // Animation-only MDLs need their .ani companion, but no VVD/VTX geometry.
 // Raw libraries are shared by every character; failed requests can be retried.
 const animationLibraries = new Map();
+// Only living character actions are animated; deaths are handled by physics.
+export const CHARACTER_ANIMATION_ACTIONS = ["walk", "attack", "hit"];
 export const characterCacheKey = (src, asset = {}) => JSON.stringify([
   src, asset.source || {}, asset.animations || "", asset.animationSource || {},
-  asset.anim || {}, asset.animationBase || "", asset.poseParameters || {}, asset.ragdoll ?? true
+  CHARACTER_ANIMATION_ACTIONS.map(name => asset.anim?.[name]),
+  asset.animationBase || "", asset.poseParameters || {}, asset.ragdoll?.phy || ""
 ]);
 
 function characterBodygroupOptions(asset) {
@@ -89,7 +92,7 @@ export async function loadCharacterAsset(src, asset = {}) {
   if (typeof src !== "string" || !/\.mdl(?:[?#]|$)/i.test(src)) {
     throw new Error("Character models must use a Source/Garry's Mod .mdl file.");
   }
-  const names = [...new Set(Object.values(asset.anim || {}).flat()
+  const names = [...new Set(CHARACTER_ANIMATION_ACTIONS.flatMap(name => asset.anim?.[name] || [])
     .filter(name => typeof name === "string" && name.trim()).map(name => name.trim()))];
   const animationOptions = {
     animations: names,
