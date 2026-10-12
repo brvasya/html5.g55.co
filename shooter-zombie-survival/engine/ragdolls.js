@@ -16,7 +16,7 @@ function loadAmmo() {
 }
 
 const defaults = {
-  enabled: true, maxRagdolls: 12, lifetime: 24, fadeDuration: 3,
+  maxRagdolls: 12, lifetime: 24, fadeDuration: 3,
   gravity: 18, fixedTimeStep: 1 / 120, maxSubSteps: 8, solverIterations: 20,
   bulletImpulseScale: 0.32, explosionStrength: 5.5
 };
@@ -35,7 +35,6 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
   const maxSteps = clamp(Math.floor(options.maxSubSteps), 1, 16);
 
   function initialize() {
-    if (!options.enabled) return Promise.resolve(false);
     if (!readyPromise) readyPromise = loadAmmo().then(ammo => {
       A = ammo;
       av = new A.btVector3(0, 0, 0); aq = new A.btQuaternion(0, 0, 0, 1);
@@ -49,14 +48,12 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
       world.getSolverInfo().set_m_splitImpulse(true);
       return true;
     }).catch(error => {
-      console.warn("Ragdoll physics unavailable; using configured death animations.", error);
-      return false;
+      throw new Error("Required ragdoll physics could not initialize.", { cause: error });
     });
     return readyPromise;
   }
 
-  async function loadModel(src, result, setting = true) {
-    if (!options.enabled || setting === false) return null;
+  async function loadModel(src, result, setting = {}) {
     const url = setting?.phy || src.replace(/\.mdl(?=([?#]|$))/i, ".phy");
     const key = `${url}:${result.metadata.checksum}`;
     if (!models.has(key)) models.set(key, (async () => {
@@ -72,8 +69,7 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
         }
         return definition;
       } catch (error) {
-        console.warn(`Ragdoll PHY unavailable for ${src}; using death animations.`, error);
-        return null;
+        throw new Error(`Required ragdoll PHY could not load: ${url}`, { cause: error });
       }
     })());
     return models.get(key);
@@ -88,7 +84,7 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
   // Capture the last two evaluated poses, including navigation motion. Those
   // derivatives carry a running/falling enemy into physics without a dead stop.
   function trackPose(enemy, definition, delta) {
-    if (!definition || !enemy.userData.model || enemy.userData.isDying || !(delta > 0)) return;
+    if (!definition || !enemy.userData.model || enemy.userData.isDead || !(delta > 0)) return;
     let history = enemy.userData.ragdollHistory;
     if (!history) {
       const bones = boneMap(enemy.userData.model);
@@ -199,7 +195,7 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
     for (const bone of mapped) {
       bone.matrixWorld.decompose(p, q, scale);
       if (scale.x <= 0 || Math.abs(scale.x - scale.y) > 0.00001 || Math.abs(scale.x - scale.z) > 0.00001) {
-        console.warn("Ragdolls require positive uniform character scale; using death animation.");
+        console.warn("Ragdolls require positive uniform character scale.");
         return false;
       }
     }
@@ -301,9 +297,8 @@ export function createRagdolls({ colliders = [], floorObjects = [], config = {},
     } catch (error) {
       if (records.includes(record)) records.splice(records.indexOf(record), 1);
       delete enemy.userData.ragdoll;
-      if (enemy.userData.mixer) enemy.userData.mixer.timeScale = 1;
       destroyRecord(record);
-      console.warn("Could not create PHY ragdoll; using death animation.", error);
+      console.warn("Could not create PHY ragdoll.", error);
       return false;
     }
   }

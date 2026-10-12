@@ -1487,7 +1487,7 @@ function handleProjectileExplosion({ position, hit, damage, selfDamage = damage,
   let kills = 0;
   let enemyWasHit = false;
   for (const target of targets) {
-    if (target.enemy.userData.isDying && !target.enemy.userData.ragdoll) continue;
+    if (target.enemy.userData.isDead && !target.enemy.userData.ragdoll) continue;
     const amount = target.enemy === directEnemy
       ? damage : damage * Math.max(0, 1 - target.distance / radius);
     if (!(amount > 0)) continue;
@@ -1521,7 +1521,7 @@ function resolveBulletImpact(shot, hit) {
     const headshot = Boolean(hit.headshot);
     const killed = enemies.damageEnemy(hit.enemy, shot.damage, {
       instantKill: shouldInstantKillHeadshot(hit),
-      headshot, point: hit.point, direction: hit.direction, bone: hit.bone
+      point: hit.point, direction: hit.direction, bone: hit.bone
     });
 
     impacts.spawnBlood(hit.point, hit.normal, {
@@ -1831,20 +1831,18 @@ function updateSniperEnemyImpactSlowMotion(delta) {
   }
 
   const enemy = sniperBulletCam.hit?.enemy;
-  if (!enemy?.userData) return;
+  if (!enemy?.userData || enemy.userData.isDead) return;
 
   const slowDelta = delta * sniperBulletCam.enemyHitSlowMoScale;
 
   // Advance only the struck enemy's animation while normal gameplay stays frozen.
   // This creates the impact slow-motion effect without running enemy AI/movement.
-  if (enemy.userData.mixer && !enemy.userData.ragdoll) {
+  if (enemy.userData.mixer) {
     enemy.userData.mixer.update(slowDelta);
   }
 
-  // Keep animation-state timers roughly synchronized with the slowed mixer.
-  if (enemy.userData.isDying && Number.isFinite(enemy.userData.deathTimer)) {
-    enemy.userData.deathTimer = Math.max(0, enemy.userData.deathTimer - slowDelta);
-  } else if (enemy.userData.isHitReacting && Number.isFinite(enemy.userData.hitTimer)) {
+  // Keep the living enemy's hit reaction synchronized with the slowed mixer.
+  if (enemy.userData.isHitReacting && Number.isFinite(enemy.userData.hitTimer)) {
     enemy.userData.hitTimer = Math.max(0, enemy.userData.hitTimer - slowDelta);
   }
 }
