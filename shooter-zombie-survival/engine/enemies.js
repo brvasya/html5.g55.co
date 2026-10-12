@@ -1207,11 +1207,14 @@ export function createEnemies({
     enemy.userData.attackTimer = 0;
     enemy.userData.attackElapsed = 0;
 
-    if (enemy.userData.currentAction && enemy.userData.currentAction !== hitAction) {
-      enemy.userData.currentAction.fadeOut(0.08);
+    const previousAction = enemy.userData.currentAction;
+    if (previousAction === hitAction) {
+      // Repeated hits must not fade the only active pose back toward bind pose.
+      hitAction.reset().setEffectiveWeight(1).play();
+    } else {
+      if (previousAction) previousAction.fadeOut(0.08);
+      hitAction.reset().fadeIn(0.08).play();
     }
-
-    hitAction.reset().fadeIn(0.08).play();
     enemy.userData.currentAction = hitAction;
     enemy.userData.isHitReacting = true;
     enemy.userData.hitTimer = hitAction.getClip().duration;
