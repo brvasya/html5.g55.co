@@ -352,6 +352,7 @@ async function boot() {
 
   try {
     await world.ready;
+    world.resetPlayer(player);
     setupLights();
     renderer.render(scene, camera);
     createEnemySystemIfNeeded();
