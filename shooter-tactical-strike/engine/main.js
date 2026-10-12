@@ -357,7 +357,7 @@ async function boot() {
     renderer.render(scene, camera);
     createEnemySystemIfNeeded();
     await preloadAllAssets();
-    await resetGame();
+    mainMenuNeedsReset = true;
     loadingButton.setProgress(100);
     bootLoadingActive = false;
     bootReady = true;
