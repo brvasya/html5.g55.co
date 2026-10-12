@@ -292,8 +292,10 @@ export function parseAnimations(mdl, bones, options = {}, ani = null) {
     try {
       const seq = sequence(index);
       const baseName = typeof options.baseSequence === "string" ? options.baseSequence : options.baseSequence?.[info.name];
-      const base = (seq.flags & 4) && baseName ? sequenceByName.get(baseName.toLowerCase()) : undefined;
-      if ((seq.flags & 4) && baseName && base === undefined) throw new Error(`base sequence "${baseName}" is missing`);
+      // Masked/layer-only clips also need a posed underlay, even without STUDIO_DELTA.
+      const needsBase = Boolean(seq.flags & 4) || seq.boneWeights.some(weight => weight < 1);
+      const base = needsBase && baseName ? sequenceByName.get(baseName.toLowerCase()) : undefined;
+      if (needsBase && baseName && base === undefined) throw new Error(`base sequence "${baseName}" is missing`);
       const frames = Math.max(2, Math.round(seq.duration * seq.fps) + 1);
       if (frames > 100000) throw new Error("sequence is too long");
       const times = Array.from({ length: frames }, (_, frame) => frame * seq.duration / (frames - 1));
