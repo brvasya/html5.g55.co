@@ -20,7 +20,7 @@
       let selected = config.defaultId;
       if (config.rememberSelection) {
         try {
-          const saved = localStorage.getItem(`g55:${GAME_CONFIG.gameTitle}:map`);
+          const saved = localStorage.getItem(`g55:${document.title}:map`);
           if (config.items.some(item => item.id === saved)) selected = saved;
         } catch {}
       }
@@ -165,8 +165,6 @@ html.ui-font-fallback { --ui-font: Arial, sans-serif; }
   background:
     linear-gradient(90deg, rgba(3,7,10,.94) 0%, rgba(3,7,10,.78) 27%, rgba(3,7,10,.42) 50%, rgba(3,7,10,.10) 76%, rgba(3,7,10,.02) 100%),
     linear-gradient(180deg, rgba(0,0,0,.26) 0%, transparent 36%, rgba(0,0,0,.28) 100%);
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
 }
 #overlay.main-menu #panel {
   position: relative;
