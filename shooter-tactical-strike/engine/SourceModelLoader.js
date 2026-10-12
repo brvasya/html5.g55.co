@@ -290,7 +290,7 @@ export class SourceModelLoader {
     }
     const procedural = boneData.filter(bone => bone.procedure && bone.procedure !== 2);
     if (procedural.length) warnings.push(`Source procedural bones use their bind transforms: ${procedural.map(bone => bone.sourceName).join(", ")}`);
-    const metadata = { format: "source-mdl", version: mdl.i32(4), name: mdl.string(12, 64), materialNames, directories, attachments, includedModels, proceduralBones, sequences: describeSequences(mdl).map(sequence => sequence.name) };
+    const metadata = { format: "source-mdl", checksum: mdl.i32(8), version: mdl.i32(4), name: mdl.string(12, 64), materialNames, directories, attachments, includedModels, proceduralBones, sequences: describeSequences(mdl).map(sequence => sequence.name) };
     scene.userData.source = metadata;
     return { scene, animations, metadata, materials, warnings, boneData };
   }

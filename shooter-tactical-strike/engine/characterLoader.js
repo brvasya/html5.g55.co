@@ -8,7 +8,7 @@ import { parseAnimations, describeSequences } from "./SourceAnimations.js";
 const animationLibraries = new Map();
 export const characterCacheKey = (src, asset = {}) => JSON.stringify([
   src, asset.source || {}, asset.animations || "", asset.animationSource || {},
-  asset.anim || {}, asset.animationBase || "", asset.poseParameters || {}
+  asset.anim || {}, asset.animationBase || "", asset.poseParameters || {}, asset.ragdoll ?? true
 ]);
 
 function characterBodygroupOptions(asset) {

@@ -802,6 +802,7 @@ function showOverlay(title, text, action) {
 
 function returnToMainMenu() {
   cancelPendingStart();
+  enemies?.reset();
   projectiles.clear();
   clearTimeout(gameOverOverlayTimer);
   state.isPlaying = false;
@@ -1109,7 +1110,8 @@ function handleEnemyKilled({ headshot = false, count = 1 } = {}) {
 
   // A simultaneous self-kill must stay Game Over, even on the final enemy.
   if (!state.isGameOver && state.waveScore >= state.waveTargetScore) {
-    enemies.reset();
+    // Leave corpses visible while their physics settles behind the overlay.
+    // startWave / returning to menu / map changes still clear every body.
     showWaveComplete();
     return true;
   }
@@ -1485,14 +1487,16 @@ function handleProjectileExplosion({ position, hit, damage, selfDamage = damage,
   let kills = 0;
   let enemyWasHit = false;
   for (const target of targets) {
-    if (target.enemy.userData.isDying) continue;
+    if (target.enemy.userData.isDying && !target.enemy.userData.ragdoll) continue;
     const amount = target.enemy === directEnemy
       ? damage : damage * Math.max(0, 1 - target.distance / radius);
     if (!(amount > 0)) continue;
     const blastDirection = target.point.clone().sub(position);
     if (blastDirection.lengthSq() > 1e-8) blastDirection.normalize();
     else blastDirection.copy(direction);
-    const killed = enemies.damageEnemy(target.enemy, amount);
+    const killed = enemies.damageEnemy(target.enemy, amount, {
+      point: target.point, direction: blastDirection, blastOrigin: position, blastRadius: radius
+    });
     impacts.spawnBlood(target.point, blastDirection, { direction: blastDirection, damage: amount });
     enemyWasHit = true;
     if (killed) kills += 1;
@@ -1517,7 +1521,7 @@ function resolveBulletImpact(shot, hit) {
     const headshot = Boolean(hit.headshot);
     const killed = enemies.damageEnemy(hit.enemy, shot.damage, {
       instantKill: shouldInstantKillHeadshot(hit),
-      headshot
+      headshot, point: hit.point, direction: hit.direction, bone: hit.bone
     });
 
     impacts.spawnBlood(hit.point, hit.normal, {
@@ -1568,7 +1572,9 @@ function handleMeleeHit(shot) {
     return;
   }
 
-  const killed = enemies.damageEnemy(enemyHit.enemy, shot.damage);
+  const killed = enemies.damageEnemy(enemyHit.enemy, shot.damage, {
+    point: enemyHit.point, direction, bone: enemyHit.bone, melee: true
+  });
 
   impacts.spawnBlood(enemyHit.point, enemyHit.normal, { direction, damage: shot.damage, melee: true });
   sounds.playEnemyHit();
@@ -1831,7 +1837,7 @@ function updateSniperEnemyImpactSlowMotion(delta) {
 
   // Advance only the struck enemy's animation while normal gameplay stays frozen.
   // This creates the impact slow-motion effect without running enemy AI/movement.
-  if (enemy.userData.mixer) {
+  if (enemy.userData.mixer && !enemy.userData.ragdoll) {
     enemy.userData.mixer.update(slowDelta);
   }
 
@@ -2410,6 +2416,13 @@ function animate(now = performance.now()) {
 
   if (enemies) {
     enemies.update(delta, gameplayActive, takeDamage);
+    // Pause freezes physics; bullet-cam impact uses the same slow-motion clock.
+    // Completed waves/game over may settle, then startWave/reset cleans them up.
+    const physicsDelta = sniperBulletCam.active
+      ? (sniperBulletCam.phase === "impact" && state.isPlaying ? delta * sniperBulletCam.enemyHitSlowMoScale : 0)
+      : (gameplayActive || ((state.isWaveComplete || state.isGameOver) && !isTouchPortrait()) ? delta : 0);
+    enemies.updateRagdolls(physicsDelta);
+    if (physicsDelta > 0 && enemies.ragdollCount && now - lastShadowTime >= 1000 / renderSettings.shadowUpdateHz) shadowsDirty = true;
   }
 
   weapon.update(delta, state.isPlaying && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden, player.inputState);
