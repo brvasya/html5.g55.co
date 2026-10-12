@@ -13,8 +13,6 @@ animationBase: "Idle",
 anim: {
 walk: ["Run_OnFire", "Run_OnFire_01"],
 attack: ["Melee_Moving01"],
-hit: ["Flinch_01"],
-headshot: ["HeadshotFront"],
-death: ["Death_01"]
+hit: ["Flinch_01"]
 },
 };
