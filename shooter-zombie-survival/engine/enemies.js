@@ -2,6 +2,7 @@ import { loadCharacterAsset, characterCacheKey, findCharacterBone, pickCharacter
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
+import { createRagdolls } from "./ragdolls.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 export function createEnemies({
@@ -21,6 +22,7 @@ export function createEnemies({
   }
 }) {
   const enemies = [];
+  const ragdolls = createRagdolls({ colliders, floorObjects, config: config.ragdolls, onExpire: removeEnemy });
   const toPlayer = new THREE.Vector3();
 
   const TERRAIN_TUNING = {
@@ -138,7 +140,7 @@ export function createEnemies({
   }
 
   function preloadAll() {
-    const tasks = [];
+    const tasks = [ragdolls.initialize()];
 
     Object.keys(enemyTypes).forEach(typeId => {
       tasks.push(preloadEnemyType(typeId));
@@ -189,7 +191,8 @@ export function createEnemies({
     if (cached) return cached.promise;
     cached = { source: null, failed: false, promise: null };
     modelCache.set(cacheKey, cached);
-    cached.promise = loadCharacterAsset(src, asset).then(result => {
+    cached.promise = loadCharacterAsset(src, asset).then(async result => {
+      cached.ragdoll = await ragdolls.loadModel(src, result, asset.ragdoll);
       cached.source = result.scene;
       cached.animations = result.animations;
       prepareEnemyMeshes(cached.source);
@@ -479,6 +482,7 @@ export function createEnemies({
 
     enemy.add(model);
     enemy.userData.model = model;
+    enemy.userData.ragdollDefinition = cached.ragdoll;
     enemy.updateMatrixWorld(true);
 
     setupEnemyBoneHitboxes(enemy);
@@ -1288,7 +1292,10 @@ export function createEnemies({
     const nowTime = performance.now();
     const playerPosition = camera.position;
 
-    enemies.forEach(enemy => {
+    // Reverse iteration keeps death-animation removals from skipping an enemy.
+    for (let index = enemies.length - 1; index >= 0; index--) {
+      const enemy = enemies[index];
+      if (enemy.userData.ragdoll) continue;
       if (enemy.userData.mixer) enemy.userData.mixer.update(delta);
       if (enemy.userData.model) updateSourceProceduralBones(enemy.userData.model);
       updateEnemyMuzzleFlash(enemy, delta);
@@ -1300,7 +1307,7 @@ export function createEnemies({
           removeEnemy(enemy);
         }
 
-        return;
+        continue;
       }
 
       if (enemy.userData.isHitReacting) {
@@ -1321,7 +1328,7 @@ export function createEnemies({
           playEnemyAnimation(enemy, "walk");
         }
 
-        return;
+        continue;
       }
 
       if (enemy.userData.isAttacking) {
@@ -1378,7 +1385,8 @@ export function createEnemies({
         enemy.userData.pendingDamage = false;
         playEnemyAnimation(enemy, "walk");
       }
-    });
+    }
+    for (const enemy of enemies) ragdolls.trackPose(enemy, enemy.userData.ragdollDefinition, delta);
     syncEnemyMuzzleLight();
   }
 
@@ -1514,7 +1522,7 @@ export function createEnemies({
     const far = Number.isFinite(activeRaycaster.far) ? activeRaycaster.far : Infinity;
 
     for (const enemy of enemies) {
-      if (enemy.userData.isDying) continue;
+      if (enemy.userData.isDying && !enemy.userData.ragdoll) continue;
 
       const hitboxes = enemy.userData.hitboxes;
       if (!hitboxes || hitboxes.length === 0) continue;
@@ -1564,14 +1572,14 @@ export function createEnemies({
     };
   }
 
-  // Snapshot one exposed point per live enemy BEFORE applying any damage.
+  // Snapshot one exposed point per live enemy/corpse BEFORE applying damage.
   // Reuses the existing animated bone boxes; no new model-specific hitbox setup.
   function getExplosionHits(origin, radius, canReach = null) {
     const hits = [];
     if (!Number.isFinite(radius) || radius <= 0) return hits;
 
     for (const enemy of enemies) {
-      if (enemy.userData.isDying || !enemy.userData.hitboxes?.length) continue;
+      if ((enemy.userData.isDying && !enemy.userData.ragdoll) || !enemy.userData.hitboxes?.length) continue;
       const bounds = updateEnemyHitboxBounds(enemy);
       if (bounds.isEmpty() || bounds.distanceToPoint(origin) >= radius) continue;
       let bestDistance = radius;
@@ -1616,9 +1624,12 @@ export function createEnemies({
     return /(?:^|_)(?:head|mixamorighead|bip\d*head)\d*(?:_|$)/.test(name);
   }
 
-  function damageEnemy(enemy, damage, { instantKill = false, headshot = false } = {}) {
+  function damageEnemy(enemy, damage, { instantKill = false, headshot = false, ...impact } = {}) {
     if (!enemy || !enemies.includes(enemy)) return false;
-    if (enemy.userData.isDying) return false;
+    if (enemy.userData.isDying) {
+      ragdolls.hit(enemy, { ...impact, damage });
+      return false; // A corpse can react to force, but never award another kill.
+    }
 
     if (instantKill) {
       enemy.userData.health = 0;
@@ -1634,6 +1645,12 @@ export function createEnemies({
       enemy.userData.isAttacking = false;
       enemy.userData.pendingDamage = false;
 
+      const deathSound = enemy.userData.type.asset.deathSound;
+      if (deathSound) playAssetSound(deathSound, 1.0);
+      if (ragdolls.create(enemy, enemy.userData.ragdollDefinition, { ...impact, damage })) {
+        enemy.userData.deathTimer = Infinity;
+        return true;
+      }
       if (enemy.userData.currentAction) {
         enemy.userData.currentAction.fadeOut(0.05);
       }
@@ -1645,12 +1662,6 @@ export function createEnemies({
         : enemy.userData.actions["death"];
 
       if (deathAction) {
-        const deathSound = enemy.userData.type.asset.deathSound;
-
-        if (deathSound) {
-          playAssetSound(deathSound, 1.0);
-        }
-
         deathAction.reset();
         deathAction.clampWhenFinished = true;
         deathAction.setLoop(THREE.LoopOnce, 1);
@@ -1681,6 +1692,7 @@ export function createEnemies({
   }
 
   function removeEnemy(enemy) {
+    ragdolls.remove(enemy);
     clearEnemyMuzzleFlash(enemy);
     const mixer = enemy.userData.mixer;
     if (mixer) {
@@ -1725,6 +1737,8 @@ export function createEnemies({
     spawnWave,
     spawnOne,
     update,
+    updateRagdolls: ragdolls.update,
+    get ragdollCount() { return ragdolls.count; },
     getHit,
     getExplosionHits,
     damageEnemy,

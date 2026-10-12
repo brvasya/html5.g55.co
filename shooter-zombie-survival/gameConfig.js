@@ -10,6 +10,21 @@ import { ZOMBIE } from "./assets/zombie.js";
 export const GAME_CONFIG = {
 weaponFov: 40,
 
+// Native .phy companion files are discovered beside each character .mdl.
+// Missing/unsupported PHY files fall back to the configured death animation.
+ragdolls: {
+enabled: true,
+maxRagdolls: 12,
+lifetime: 24,
+fadeDuration: 3,
+gravity: 18,
+fixedTimeStep: 1 / 120,
+maxSubSteps: 8,
+solverIterations: 20,
+bulletImpulseScale: 0.32,
+explosionStrength: 5.5
+},
+
 maps: {
 defaultId: "world",
 rememberSelection: true,
