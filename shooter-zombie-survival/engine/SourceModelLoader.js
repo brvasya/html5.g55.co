@@ -35,6 +35,30 @@ export function parseSourceBones(mdl) {
   });
 }
 
+// Source/GMod v48/v49: 12-byte hitbox sets, 68-byte bone-local boxes.
+// Keep authored bounds and hitgroups exactly; do not fit boxes to the mesh.
+export function parseSourceHitboxSets(mdl, boneCount) {
+  const count = mdl.i32(172), start = mdl.i32(176);
+  mdl.table(start, count, 12);
+  return Array.from({ length: count }, (_, setIndex) => {
+    const set = start + setIndex * 12;
+    const boxCount = mdl.i32(set + 4), boxes = set + mdl.i32(set + 8);
+    mdl.table(boxes, boxCount, 68);
+    const hitboxes = Array.from({ length: boxCount }, (_, index) => {
+      const offset = boxes + index * 68;
+      const bone = mdl.i32(offset), hitgroup = mdl.i32(offset + 4);
+      if (bone < 0 || bone >= boneCount) throw new Error("Invalid Source MDL hitbox bone.");
+      if (hitgroup < 0) throw new Error("Invalid Source MDL hitgroup.");
+      const min = mdl.floats(offset + 8, 3), max = mdl.floats(offset + 20, 3);
+      if (min.some((value, axis) => value > max[axis])) {
+        throw new Error("Invalid Source MDL hitbox bounds.");
+      }
+      return { index, bone, hitgroup, name: mdl.relativeString(offset, 32), min, max };
+    });
+    return { index: setIndex, name: mdl.relativeString(set), hitboxes };
+  });
+}
+
 function parseVertices(vvd, checksum, boneCount) {
   if (vvd.string(0, 4) !== "IDSV" || vvd.i32(4) !== 4) throw new Error("Expected Source VVD version 4 (IDSV).");
   if (vvd.i32(8) !== checksum) throw new Error("MDL/VVD checksums differ. Use companion files from the same model export.");
@@ -239,10 +263,12 @@ export class SourceModelLoader {
     const mdl = new BinaryReader(mdlBuffer, "MDL");
     this.validateHeader(mdl);
     const boneData = parseSourceBones(mdl);
-    const bones = boneData.map(data => {
+    const hitboxSets = parseSourceHitboxSets(mdl, boneData.length);
+    const bones = boneData.map((data, index) => {
       const bone = new THREE.Bone();
       bone.name = data.name;
       bone.userData.sourceName = data.sourceName;
+      bone.userData.sourceBoneIndex = index;
       bone.position.copy(data.position);
       bone.quaternion.copy(data.quaternion);
       return bone;
@@ -292,6 +318,6 @@ export class SourceModelLoader {
     if (procedural.length) warnings.push(`Source procedural bones use their bind transforms: ${procedural.map(bone => bone.sourceName).join(", ")}`);
     const metadata = { format: "source-mdl", checksum: mdl.i32(8), version: mdl.i32(4), name: mdl.string(12, 64), materialNames, directories, attachments, includedModels, proceduralBones, sequences: describeSequences(mdl).map(sequence => sequence.name) };
     scene.userData.source = metadata;
-    return { scene, animations, metadata, materials, warnings, boneData };
+    return { scene, animations, metadata, materials, warnings, boneData, hitboxSets };
   }
 }

@@ -106,6 +106,16 @@ export async function loadCharacterAsset(src, asset = {}) {
     }),
     asset.animations ? loadCharacterAnimations(asset.animations, asset.animationSource) : null
   ]);
+  // Character hit detection always uses this model's native set, never the
+  // shared animation library's hitboxes. Source defaults to set zero.
+  const selectedHitboxSet = asset.source?.hitboxSet ?? 0;
+  const hitboxSet = typeof selectedHitboxSet === "string"
+    ? result.hitboxSets.find(set => set.name === selectedHitboxSet)
+    : (Number.isInteger(selectedHitboxSet) ? result.hitboxSets[selectedHitboxSet] : null);
+  if (!hitboxSet?.hitboxes.length) {
+    throw new Error(`Character requires a nonempty native MDL hitbox set (${selectedHitboxSet}): ${src}`);
+  }
+  result.hitboxSet = hitboxSet;
   if (library) {
     const parsed = parseAnimations(library.mdl, library.bones,
       { ...animationOptions, targetBones: result.boneData }, library.ani);
