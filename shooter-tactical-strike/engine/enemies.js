@@ -919,23 +919,15 @@ export function createEnemies({
         return;
       }
 
-      let clip = availableClips[Math.floor(Math.random() * availableClips.length)];
-      enemy.userData.selectedAnimationClips[name] = clip.name;
+      // Attack and hit actions returned above; walking is the only remaining action.
+      const clip = availableClips[Math.floor(Math.random() * availableClips.length)];
+      enemy.userData.selectedAnimationClips.walk = clip.name;
 
-      let walkNaturalSpeed = 0;
+      // Measure authored root motion before converting the clip to in-place.
+      const walkNaturalSpeed = getRootMotionSpeed(clip, model);
+      const action = mixer.clipAction(makeClipInPlace(clip, model));
 
-      if (name === "walk") {
-        // Measure the original root motion before converting the clip to in-place.
-        // The resulting playback multiplier keeps the feet synchronized with the
-        // actual movement speed controlled by enemySpeed.
-        walkNaturalSpeed = getRootMotionSpeed(clip, model);
-        clip = makeClipInPlace(clip, model);
-      }
-
-      const action = mixer.clipAction(clip);
-      const loop = name === "walk";
-
-      if (loop && walkNaturalSpeed > 0) {
+      if (walkNaturalSpeed > 0) {
         const movementSpeed = Number(enemy.userData.speed) || 0;
         action.timeScale = movementSpeed > 0
           ? movementSpeed / walkNaturalSpeed
@@ -943,7 +935,7 @@ export function createEnemies({
 
         enemy.userData.walkNaturalSpeed = walkNaturalSpeed;
         enemy.userData.walkTimeScale = action.timeScale;
-      } else if (loop) {
+      } else {
         // A walk clip with no measurable root translation cannot be auto-synced.
         // Keep its authored playback rate rather than guessing a stride length.
         enemy.userData.walkNaturalSpeed = 0;
@@ -951,10 +943,9 @@ export function createEnemies({
         console.warn(`Enemy walk clip has no measurable root motion for speed sync: ${clip.name}`);
       }
 
-      action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
-      action.clampWhenFinished = !loop;
-
-      enemy.userData.actions[name] = action;
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.clampWhenFinished = false;
+      enemy.userData.actions.walk = action;
     });
   }
 

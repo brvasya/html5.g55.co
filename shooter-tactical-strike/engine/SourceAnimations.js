@@ -204,7 +204,7 @@ export function parseAnimations(mdl, bones, options = {}, ani = null) {
         if (block >= mdl.i32(352)) throw new Error("invalid external animation block");
         const entry = mdl.i32(356) + block * 8, first = mdl.i32(entry), end = mdl.i32(entry + 4);
         ani.check(first, end - first);
-        // Offset zero is valid in an external block (including death_01).
+        // Offset zero is valid in an external animation block.
         if (offset < 0 || first + offset >= end) throw new Error("animation offset exceeds its external block");
         reader = ani;
         absolute = first + offset;
