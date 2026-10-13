@@ -11,12 +11,12 @@ export const GAME_CONFIG = {
 weaponFov: 50,
 
 maps: {
-defaultId: "office",
+defaultId: "map_office",
 rememberSelection: true,
 items: [
-{ id: "office", name: "Office", load: () => import("./assets/office.js") },
-{ id: "assault", name: "Assault", load: () => import("./assets/assault.js") },
-{ id: "militia", name: "Militia", load: () => import("./assets/militia.js") }
+{ id: "map_office", name: "Office", load: () => import("./assets/map_office.js") },
+{ id: "map_assault", name: "Assault", load: () => import("./assets/map_assault.js") },
+{ id: "map_militia", name: "Militia", load: () => import("./assets/map_militia.js") }
 ]
 },
 
