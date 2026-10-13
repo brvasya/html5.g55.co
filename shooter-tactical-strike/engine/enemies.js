@@ -775,7 +775,6 @@ export function createEnemies({
 
     const values = rootMotion.track.values;
     const valueSize = rootMotion.valueSize;
-    const last = values.length - valueSize;
 
     const [axisX, axisZ] = rootMotion.horizontalAxes;
     let scaleX = Math.abs(model.scale.getComponent(axisX)) || 1;
@@ -818,28 +817,6 @@ export function createEnemies({
     // in-place. There is no reliable stride distance to synchronize in that case.
     if (strideDistance < 0.05) return 0;
     return strideDistance / clip.duration;
-  }
-
-  function makeClipInPlace(clip, model) {
-    const inPlaceClip = clip.clone();
-    if (clip.userData?.source?.motionExtracted) return inPlaceClip;
-    const rootMotion = findRootMotionTrack(inPlaceClip, model);
-
-    if (!rootMotion) return inPlaceClip;
-
-    const [axisX, axisZ] = rootMotion.horizontalAxes;
-    const tracks = [rootMotion.track];
-    for (const track of tracks) {
-      const values = track.values;
-      const startX = values[axisX];
-      const startZ = values[axisZ];
-      for (let i = 0; i < values.length; i += track.getValueSize()) {
-        values[i + axisX] = startX;
-        values[i + axisZ] = startZ;
-      }
-    }
-
-    return inPlaceClip;
   }
 
   function setupEnemyAnimations(enemy, model, animations) {
@@ -898,14 +875,8 @@ export function createEnemies({
       // random action is chosen each time that state starts.
       if (name === "attack" || name === "hit") {
         const randomActions = availableClips.map(clip => {
-          // Attacks use the same in-place treatment as walking so root-motion
-          // X/Z translation cannot move the visual model independently of the
-          // enemy group. Hit reactions keep their original motion.
-          const actionClip = name === "attack"
-            ? makeClipInPlace(clip, model)
-            : clip;
-
-          const action = mixer.clipAction(actionClip);
+          // Preserve the native MDL bone-position tracks for both actions.
+          const action = mixer.clipAction(clip);
           action.setLoop(THREE.LoopOnce, 1);
           action.clampWhenFinished = true;
           return action;
@@ -923,9 +894,9 @@ export function createEnemies({
       const clip = availableClips[Math.floor(Math.random() * availableClips.length)];
       enemy.userData.selectedAnimationClips.walk = clip.name;
 
-      // Measure authored root motion before converting the clip to in-place.
+      // Synchronize walking speed while preserving the native MDL clip.
       const walkNaturalSpeed = getRootMotionSpeed(clip, model);
-      const action = mixer.clipAction(makeClipInPlace(clip, model));
+      const action = mixer.clipAction(clip);
 
       if (walkNaturalSpeed > 0) {
         const movementSpeed = Number(enemy.userData.speed) || 0;
