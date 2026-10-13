@@ -15,7 +15,8 @@ defaultId: "map_city",
 rememberSelection: true,
 items: [
 { id: "map_city", name: "Raccoon City", load: () => import("./assets/map_city.js") },
-{ id: "map_police", name: "Police Station", load: () => import("./assets/map_police.js") }
+{ id: "map_police", name: "Police Station", load: () => import("./assets/map_police.js") },
+{ id: "map_lab", name: "Umbrella Lab", load: () => import("./assets/map_lab.js") }
 ]
 },
 
