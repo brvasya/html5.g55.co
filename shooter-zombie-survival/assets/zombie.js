@@ -1,6 +1,13 @@
 export const ZOMBIE = {
 animations: "./assets/anim_common.mdl",
 models: ["./assets/zombie/common_male_suit.mdl", "./assets/zombie/common_police_male01.mdl"],
+source: {
+bodygroups: {
+Head: [2],
+UpperBody: [0, 1],
+LowerBody: [0]
+}
+},
 poseParameters: { move_x: 1, move_y: 0, aim_yaw: 0, aim_pitch: 0 },
 attackSound: "./assets/zombie.ogg",
 scale: [0.03, 0.03, 0.03],
