@@ -16,7 +16,8 @@ const LAB = {
   tanks: [[-3.2, -5], [3.2, -5]],
   benches: [[-20, 19, 5.5, 2.3], [-19, 1, 5.8, 2.4], [-19, -8, 4.5, 2.4]],
   cargo: [[18, -18, 3.2, 3, 2.2], [23, -11, 3, 2.8, 1.4], [16, 21, 3, 2.4, 1.3], [5, 14.5, 2.8, 2.2, 1.35]],
-  cabinets: [[25.3, 5, 1.5, 5.8], [14.8, 4, 1.6, 4.2], [-25.2, 24, 1.8, 4]],
+  // Wall-mounted banks meet the perimeter: no player-only slots behind them.
+  cabinets: [[25.85, 5, 1.5, 5.8], [14.8, 4, 1.6, 4.2], [-25.7, 24, 1.8, 4]],
   cryo: [[-23.5, -18], [-23.5, -24], [-17, -24]]
 };
 
@@ -100,6 +101,10 @@ export function createWorld({ THREE, scene }) {
     root.add(mesh); colliders.push(mesh);
     // The square plinth below the vessel already owns its navigation footprint.
   }
+  function solidCylinder(x, y, z, r, h, material, name) {
+    cylinder(x, y, z, r, h, material);
+    cylinderCollider(x, y, z, r, h, name);
+  }
   function floorMark(x, z, w, d, material, y = 0.018) {
     instance(planeGeo, material, x, y, z, w, d, 1, -Math.PI / 2, 0, 0, false);
   }
@@ -174,10 +179,9 @@ export function createWorld({ THREE, scene }) {
   function createEquipment() {
     for (const [x, z] of LAB.tanks) {
       box(x, 0.46, z, 3.8, 0.92, 3.8, mat.dark, true, "Containment vessel plinth");
-      cylinder(x, 3, z, 1.52, 4.18, mat.liquid);
-      cylinderCollider(x, 3, z, 1.58, 4.18, "Sealed containment vessel");
-      cylinder(x, 5.18, z, 1.68, 0.48, mat.steel);
-      cylinder(x, 1.02, z, 1.68, 0.3, mat.steel);
+      solidCylinder(x, 3, z, 1.52, 4.18, mat.liquid, "Sealed containment vessel");
+      solidCylinder(x, 5.18, z, 1.68, 0.48, mat.steel, "Containment vessel cap");
+      solidCylinder(x, 1.02, z, 1.68, 0.3, mat.steel, "Containment vessel base collar");
     }
     for (const [x, z, w, d] of LAB.benches) {
       box(x, 0.53, z, w - 0.18, 1.06, d - 0.12, mat.equipment, true, "Research bench");
@@ -188,8 +192,7 @@ export function createWorld({ THREE, scene }) {
     for (const [x, z, w, d] of LAB.cabinets) box(x, 1.6, z, w, 3.2, d, mat.dark, true, "Control cabinet");
     for (const [x, z] of LAB.cryo) {
       box(x, 0.4, z, 2.8, 0.8, 2.8, mat.steel, true, "Cryogenic tank base");
-      cylinder(x, 2.4, z, 1.18, 3.6, mat.equipment);
-      cylinderCollider(x, 2.4, z, 1.2, 3.6, "Cryogenic tank");
+      solidCylinder(x, 2.4, z, 1.18, 3.6, mat.equipment, "Cryogenic tank");
     }
     // High horizontal duct enclosure and central consoles divide the long view.
     box(-4.9, 1.4, 9, 3.2, 2.8, 2.6, mat.duct, true, "Air handling unit");
@@ -359,6 +362,8 @@ export function createWorld({ THREE, scene }) {
       instance(boxGeo, mat.dark, x, y + 0.63, z, 1.07, 0.63, 0.13, 0, yaw, 0);
       plaque(id, x + Math.sin(yaw) * 0.072, y + 0.63, z + Math.cos(yaw) * 0.072,
         0.96, 0.53, yaw, true);
+      // Follow the housing/screen surface; the bench already blocks navigation.
+      collider(x, y + 0.63, z, 1.07, 0.63, 0.145, yaw, "Monitor housing", false);
     }
     function hazardEdge(x, z, w, d) {
       for (const side of [-1, 1]) {
@@ -368,10 +373,13 @@ export function createWorld({ THREE, scene }) {
       }
     }
     function luminaire(x, z, length = 2.8, warm = false) {
-      box(x, 6.72, z, 0.72, 0.2, length + 0.2, mat.dark, false, "Light housing", false);
-      box(x, 6.6, z, 0.46, 0.055, length, warm ? mat.amberLight : mat.whiteLight,
+      // Suspend the fitting below the crossbeam instead of inside its flange.
+      for (const end of [-1, 1]) box(x, 6.7, z + end * length * 0.35,
+        0.045, 1, 0.045, mat.steel, false, "Lamp suspension", false);
+      box(x, 6.1, z, 0.72, 0.2, length + 0.2, mat.dark, false, "Light housing", false);
+      box(x, 5.98, z, 0.46, 0.055, length, warm ? mat.amberLight : mat.whiteLight,
         false, "Fluorescent lamp", false);
-      for (const side of [-1, 1]) box(x + side * 0.27, 6.57, z, 0.045, 0.07,
+      for (const side of [-1, 1]) box(x + side * 0.27, 5.95, z, 0.045, 0.07,
         length, mat.steel, false, "Lamp guard", false);
     }
     function vent(x, y, z, w, h, yaw = 0) {
@@ -408,8 +416,8 @@ export function createWorld({ THREE, scene }) {
       box(0, 6.72, z, 20, 0.7, 0.3, mat.steel);
       box(0, 6.33, z, 20, 0.1, 0.58, mat.dark);
       for (const x of [-9.57, 9.57]) {
-        // Recessed structural brackets are above head height.
-        box(x, 5.1, z, 0.27, 2.4, 0.38, mat.steel);
+        // Keep the full doorway signage clear below the structural bracket.
+        box(x, 5.6, z, 0.27, 1.4, 0.38, mat.steel);
         box(x, 6.24, z, 0.65, 0.22, 0.5, mat.edge);
       }
     }
@@ -423,8 +431,9 @@ export function createWorld({ THREE, scene }) {
         box(x, 6.79, z, 0.07, 0.66, 0.07, mat.dark, false, "Duct hanger", false);
       }
     }
-    box(-4.9, 4.12, 9, 1.24, 2.35, 1.24, mat.duct);
-    collider(-4.9, 4.12, 9, 1.24, 2.35, 1.24, 0, "Air handler riser", false);
+    const riserY = 4.14, riserHeight = 2.72;
+    box(-4.9, riserY, 9, 1.24, riserHeight, 1.24, mat.duct);
+    collider(-4.9, riserY, 9, 1.24, riserHeight, 1.24, 0, "Air handler riser", false);
     vent(-4.9, 1.64, 10.325, 2.7, 1.8);
     wallPlaque(12, -4.9, 0.45, 10.325, 1.28, 0.55);
     for (const x of [8.7, 9.1]) {
@@ -441,11 +450,17 @@ export function createWorld({ THREE, scene }) {
     for (const z of [-28.5, 28.5]) {
       const yaw = z < 0 ? 0 : Math.PI;
       box(0, 2.04, z, 8.2, 4.08, 0.19, mat.dark);
-      box(0, 2, z + (z < 0 ? 0.12 : -0.12), 7.65, 3.78, 0.08, mat.panel);
+      collider(0, 2.04, z, 8.2, 4.08, 0.19, 0, "Sealed door frame", false);
+      const doorFace = z + (z < 0 ? 0.12 : -0.12);
+      box(0, 2, doorFace, 7.65, 3.78, 0.08, mat.panel);
+      collider(0, 2, doorFace, 7.65, 3.78, 0.08, 0, "Sealed door panel", false);
+      // Flush metal seams stay within the existing bullet-decal surface offset.
       for (let x = -3.6; x < 3.8; x += 0.45) box(x, 2,
-        z + (z < 0 ? 0.172 : -0.172), 0.04, 3.7, 0.03, mat.steel, false, "Bulkhead ribs", false);
+        doorFace + (z < 0 ? 0.041 : -0.041), 0.04, 3.7, 0.003, mat.steel, false, "Bulkhead seams", false);
       wallPlaque(z < 0 ? 1 : 11, 0, 4.65, z + (z < 0 ? 0.15 : -0.15), 6.2, 1.12, yaw);
       wallPlaque(15, 0, 2.3, z + (z < 0 ? 0.23 : -0.23), 1.9, 1.65, yaw);
+      collider(0, 2.3, z + (z < 0 ? 0.23 : -0.23), 2.06, 1.81, 0.122,
+        0, "Sealed door emblem", false);
       for (const x of [-4.1, 4.1]) {
         box(x, 2.1, z, 0.23, 4.2, 0.48, mat.steel);
         box(x, 3.2, z + (z < 0 ? 0.25 : -0.25), 0.07, 1.3, 0.04, mat.amberLight, false, "Bulkhead indicator", false);
@@ -470,11 +485,14 @@ export function createWorld({ THREE, scene }) {
     // Containment vessels: pressure collars, protective cages, plumbing, gauges.
     for (let i = 0; i < LAB.tanks.length; i++) {
       const [x, z] = LAB.tanks[i]; hazardEdge(x, z, 3.8, 3.8);
-      for (const y of [1.25, 3.08, 4.88]) cylinder(x, y, z, 1.58, 0.12, mat.edge);
+      for (const y of [1.25, 3.08, 4.88])
+        solidCylinder(x, y, z, 1.58, 0.12, mat.edge, "Containment pressure collar");
       cylinder(x, 5.56, z, 0.6, 0.37, mat.dark);
       cylinder(x, 6.48, z, 0.24, 1.65, mat.steel);
       for (const side of [-1, 1]) for (const front of [-1, 1]) {
         box(x + side * 1.16, 3.03, z + front * 1.16, 0.14, 4.1, 0.14, mat.steel);
+        collider(x + side * 1.16, 3.03, z + front * 1.16, 0.14, 4.1, 0.14,
+          0, "Containment cage upright", false);
         box(x + side * 1.17, 3.1, z + front * 1.25, 0.055, 2.6, 0.055, mat.cyanLight, false, "Containment indicator", false);
       }
       box(x, 0.56, z + 1.94, 1.48, 0.44, 0.13, mat.equipment);
@@ -487,7 +505,8 @@ export function createWorld({ THREE, scene }) {
       }
     }
     for (const [x, z] of LAB.cryo) {
-      for (const y of [0.84, 4.21]) cylinder(x, y, z, 1.29, 0.2, mat.edge);
+      for (const y of [0.84, 4.21])
+        solidCylinder(x, y, z, 1.29, 0.2, mat.edge, "Cryogenic pressure collar");
       cylinder(x, 4.43, z, 0.43, 0.28, mat.steel);
       box(x, 2.5, z + 1.17, 0.66, 1.6, 0.11, mat.glass, false, "Cryogenic inspection panel", false);
       wallPlaque(10, x, 1.33, z + 1.19, 0.92, 0.38);
@@ -528,8 +547,11 @@ export function createWorld({ THREE, scene }) {
     for (const [x, z, w, d] of LAB.cabinets) {
       const yaw = x > 20 ? -Math.PI / 2 : Math.PI / 2;
       const face = x + (x > 20 ? -w / 2 : w / 2);
-      for (let dz = -d / 2 + 0.6; dz < d / 2; dz += 1.2) {
-        instance(boxGeo, mat.equipment, face, 1.62, z + dz, 1.06, 2.98, 0.07, 0, yaw, 0);
+      const panelCount = Math.max(1, Math.round(d / 1.2)), panelPitch = d / panelCount;
+      for (let i = 0; i < panelCount; i++) {
+        const dz = -d / 2 + (i + 0.5) * panelPitch;
+        instance(boxGeo, mat.equipment, face, 1.62, z + dz,
+          Math.min(1.06, panelPitch - 0.1), 2.98, 0.07, 0, yaw, 0);
         plaque(9, face + Math.sin(yaw) * 0.044, 2.17, z + dz, 0.82, 0.5, yaw, true);
         vent(face + Math.sin(yaw) * 0.052, 0.88, z + dz, 0.77, 0.75, yaw);
         for (let j = 0; j < 3; j++) instance(boxGeo, j === 2 ? mat.amberLight : mat.cyanLight,
@@ -558,9 +580,9 @@ export function createWorld({ THREE, scene }) {
       cylinder(x + s * 0.16, 1.63, z, 0.07, 0.13, mat.steel);
       wallPlaque(12, x + s * 0.2, 2.18, z, 0.65, 0.3, yaw);
     }
-    for (const [x, z] of [[-18, -11.55], [18, 16.45]]) {
-      box(x, 3.33, z, 5.7, 0.06, 0.12, mat.amberLight, false, "Decontamination rail", false);
-      for (const dx of [-2.7, 2.7]) box(x + dx, 2.7, z, 0.08, 1.05, 0.11, mat.edge);
+    for (const [x, z] of [[-17, -11.55], [20, 16.45]]) {
+      box(x, 3.46, z, 6.4, 0.08, 0.12, mat.amberLight, false, "Decontamination rail", false);
+      for (const dx of [-3.11, 3.11]) box(x + dx, 2.72, z, 0.08, 1.48, 0.11, mat.edge);
     }
     for (const [x, z] of [[-9.5, -12], [9.5, 20], [26.4, -25]]) {
       const pulse = standard(0x9b4233, { emissive: 0xe6663e, emissiveIntensity: 0.5 });
