@@ -11,10 +11,11 @@ export const GAME_CONFIG = {
 weaponFov: 40,
 
 maps: {
-defaultId: "world",
+defaultId: "map_city",
 rememberSelection: true,
 items: [
-{ id: "world", name: "world", load: () => import("./assets/world.js") }
+{ id: "map_city", name: "Raccoon City", load: () => import("./assets/map_city.js") },
+{ id: "map_police", name: "Police Station", load: () => import("./assets/map_police.js") }
 ]
 },
 
