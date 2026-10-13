@@ -27,7 +27,7 @@ attackDistance: [6, 9, 12],
 attackDamageDelay: 1,
 animationBase: "idle_ar2",
 anim: {
-walk: ["walk_ar2"],
+walk: ["walk_ar2", "run_ar2"],
 attack: ["idle_ar2"],
 hit: ["flinch_01", "flinch_02", "flinch_back_01"]
 },
