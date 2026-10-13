@@ -66,16 +66,24 @@ export function createWorld({ THREE, scene }) {
     const mesh = new THREE.Mesh(boxGeo,hiddenMaterial);
     mesh.name=name; mesh.position.set(x,y,z); mesh.rotation.y=yaw; mesh.scale.set(w,h,d);
     root.add(mesh); colliders.push(mesh);
-    if (navigationBlock) obstacles.push({x,z,halfW:w/2,halfD:d/2,cos:Math.cos(yaw),sin:Math.sin(yaw)});
+    if (navigationBlock) navigationObstacle(x,z,w,d,yaw);
     return mesh;
+  }
+  function navigationObstacle(x,z,w,d,yaw=0) {
+    obstacles.push({x,z,halfW:w/2,halfD:d/2,cos:Math.cos(yaw),sin:Math.sin(yaw)});
   }
   function floorBox(x,z,w,d,top,material=mat.tile) {
     const h=Math.max(0.16,top+0.16);
     const m=box(x,top-h/2,z,w,h,d,material,true,'G55FLR_RPD',false);
     floorObjects.push(m); return m;
   }
-  function cylinder(x,y,z,r,h,material,rx=0,ry=0,rz=0) {
+  function cylinder(x,y,z,r,h,material,rx=0,ry=0,rz=0,solid=false) {
     instance(cylinderGeo,material,x,y,z,r,h,r,rx,ry,rz);
+    if(solid) {
+      const mesh=new THREE.Mesh(cylinderGeo,hiddenMaterial);mesh.name='RPD column';
+      mesh.position.set(x,y,z);mesh.rotation.set(rx,ry,rz);mesh.scale.set(r,h,r);
+      root.add(mesh);colliders.push(mesh);navigationObstacle(x,z,r*2,r*2);
+    }
   }
   function ball(x,y,z,sx,sy,sz,material) {
     instance(sphereGeo,material,x,y,z,sx,sy,sz);
@@ -116,11 +124,6 @@ export function createWorld({ THREE, scene }) {
     staircase(0,-6,8,14,4.2,20,'Grand staircase');
     for (const side of [-1,1]) {
       rail(side*9.25,4.2,-20,10.5,0,false);
-      // Rails also stop the flat navigation field crossing a vertical deck edge.
-      for (let i=0;i<20;i++) {
-        const z=-6-(i+0.5)*0.7, y=(i+1)*0.21;
-        collider(side*4.15,y+0.42,z,0.3,0.84,0.7,0,'Grand stair balustrade');
-      }
       stairRail(side*4.15,-6,14,4.2,mat.stone);
     }
   }
@@ -134,20 +137,20 @@ export function createWorld({ THREE, scene }) {
   }
   function galleryGuard(side) {
     rail(side*14,4.2,-7,26,Math.PI/2,false);
-    for(let i=0;i<20;i++) {
-      const z=20-(i+0.5)*0.7,y=(i+1)*0.21;
-      collider(side*14,y+0.42,z,0.26,0.84,0.7,0,'Gallery stair parapet');
-    }
     stairRail(side*14,20,14,4.2,mat.green);
   }
   function stairRail(x,startZ,length,rise,material) {
     const slope=Math.atan2(rise,length),midY=rise/2;
-    // Continuous sloped parapet replaces overlapping sawtooth wall segments.
-    instance(boxGeo,material,x,midY+.49,startZ-length/2,.3,.98,Math.hypot(length,rise),slope);
-    beam([x,.21+1.2,startZ],[x,rise+1.2,startZ-length],.085,mat.wood,true);
+    // Match the sloped surface exactly, including its continuous navigation footprint.
+    const slopedLength=Math.hypot(length,rise),zMid=startZ-length/2;
+    instance(boxGeo,material,x,midY+.49,zMid,.3,.98,slopedLength,slope);
+    const parapet=collider(x,midY+.49,zMid,.3,.98,slopedLength,0,'Stair parapet',false);
+    parapet.rotation.x=slope;
+    navigationObstacle(x,zMid,.3,length+.98*Math.sin(slope));
+    beam([x,1.2,startZ],[x,rise+1.2,startZ-length],.085,mat.wood,true);
     for(let i=0;i<=10;i++) {
-      const t=i/10,z=startZ-t*length,y=t*rise+.21;
-      cylinder(x,y+.97,z,.047,.48,mat.iron);
+      const t=i/10,z=startZ-t*length,y=t*rise;
+      beam([x,y+.91,z],[x,y+1.2,z],.047,mat.iron,true);
     }
   }
   function rail(x,y,z,length,yaw=0,metal=true) {
@@ -167,7 +170,7 @@ export function createWorld({ THREE, scene }) {
   }
   function createCombatCover() {
     box(0,0.58,14,7.6,1.16,1.55,mat.wood,true,'Reception counter');
-    box(0,1.2,14,8,0.16,1.8,mat.woodLight);
+    box(0,1.2,14,8,0.16,1.8,mat.woodLight,true,'Reception countertop',false);
     for(const x of [-3.7,3.7]) box(x,0.55,12.6,0.45,1.1,1.6,mat.wood,true,'Reception return');
     barricade(-6,0,2,4.5,2.2,'West shelter');
     barricade(7,0,-6,4,1.35,'East hall barricade');
@@ -317,12 +320,12 @@ export function createWorld({ THREE, scene }) {
     // Side galleries are built over closed station offices.
     for(const side of [-1,1]) {
       const yaw=-side*Math.PI/2;
-      for(const z of [-13,-3,4.7])decorativeDoor(side*13.975,z,yaw,z<0?'WEST / EAST OFFICE':'RECORDS');
+      for(const z of [-13,-3,4.7])decorativeDoor(side*13.975,z,yaw,z<0?(side<0?'WEST OFFICE':'EAST OFFICE'):'RECORDS');
       for(const z of [-18,-9,0,10,20]) {
         archFrame(side*21.96,5.15,z,3.9,5.1,yaw);
         for(const dz of [-2.8,2.8]) {
-          box(side*21.7,7.45,z+dz,.5,5.5,.48,mat.stone);
-          box(side*21.65,4.72,z+dz,.7,.35,.77,mat.trim);
+          box(side*21.7,7.45,z+dz,.5,5.5,.48,mat.stone,true,'Gallery pilaster');
+          box(side*21.65,4.72,z+dz,.7,.35,.77,mat.trim,true,'Pilaster base');
           box(side*21.65,10.15,z+dz,.76,.3,.82,mat.trim);
         }
       }
@@ -344,8 +347,8 @@ export function createWorld({ THREE, scene }) {
     for(const side of [-1,1]) {
       archFrame(side*15,5.05,-25.95,4.6,5.1,0);
       for(const x of [7.6,9.1]) {
-        cylinder(side*x,7.65,-25.35,.3,6.2,mat.stone);
-        cylinder(side*x,4.65,-25.35,.46,.45,mat.trim);
+        cylinder(side*x,7.65,-25.35,.3,6.2,mat.stone,0,0,0,true);
+        cylinder(side*x,4.65,-25.35,.46,.45,mat.trim,0,0,0,true);
         cylinder(side*x,10.8,-25.35,.5,.35,mat.trim);
         for(let i=0;i<8;i++){const a=i*Math.PI/4;cylinder(side*x+Math.cos(a)*.27,7.7,-25.35+Math.sin(a)*.27,.032,5.4,mat.trim);}
       }
@@ -456,10 +459,10 @@ export function createWorld({ THREE, scene }) {
     plane(0,.012,-2,3.7,8,mat.red,-Math.PI/2);
     for(const x of [-1.76,1.76])plane(x,.02,-2,.065,8,mat.bronze,-Math.PI/2);
     for(const x of [-10,10]) {
-      box(x,.42,18.8,3.4,.19,.76,mat.wood);
-      box(x,.95,19.12,3.4,.85,.13,mat.wood);
-      for(const dx of [-1.3,1.3])box(x+dx,.22,18.8,.13,.44,.62,mat.iron);
-      collider(x,.65,18.98,3.5,1.3,.92,0,'Waiting bench');
+      box(x,.42,18.8,3.4,.19,.76,mat.wood,true,'Bench seat',false);
+      box(x,.95,19.12,3.4,.85,.13,mat.wood,true,'Bench back',false);
+      for(const dx of [-1.3,1.3])box(x+dx,.22,18.8,.13,.44,.62,mat.iron,true,'Bench leg',false);
+      navigationObstacle(x,18.98,3.5,.92);
     }
   }
   function createFieldFortifications() {
@@ -474,7 +477,10 @@ export function createWorld({ THREE, scene }) {
       beam([x,3.35,2],[x,3.35,-.5],.055,mat.iron);
     }
     beam([-8.4,3.35,2],[-3.6,3.35,2],.055,mat.iron);
-    instance(boxGeo,mat.sheet,-6,3.32,.75,4.9,.07,2.65,0,0,-.04);
+    // A closed framed roof clears the controller's ground probe after a head hit.
+    instance(boxGeo,mat.sheet,-6,3.465,.75,4.9,.36,2.65,0,0,-.04);
+    const canopy=collider(-6,3.465,.75,4.9,.36,2.65,0,'Shelter canopy',false);
+    canopy.rotation.z=-.04;
     sign('KEEP OUT','QUARANTINE ZONE',-6,1.43,2.194,2.35,.62,0,'#8b835e','#302f25');
     sign('EVIDENCE','R.P.D. / DO NOT REMOVE',-10,5,-24.185,2,.45,0,'#6b674e','#c8c2a8');
     for(const x of [-11.1,-8.9])box(x,4.85,-24.16,.12,1.3,.08,mat.wood);
@@ -483,7 +489,7 @@ export function createWorld({ THREE, scene }) {
     }
     // A supported tarp panel and scaffold cross-braces on the east gallery.
     for(const x of [20.6,21.5])beam([x,4.2,-15],[x,7.0,-15],.045,mat.iron);
-    box(21.05,5.75,-15,.88,2.1,.07,mat.fabric);
+    box(21.05,5.75,-15,.88,2.1,.07,mat.fabric,true,'Gallery tarp');
     beam([20.6,4.2,-15],[21.5,7.0,-15],.035,mat.iron);
     box(-21.82,6,-3,.16,.55,.7,mat.dark);box(-21.72,6,-3,.1,.25,.45,mat.emergency);
   }
