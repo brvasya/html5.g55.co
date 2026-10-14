@@ -11,10 +11,25 @@
   const root = document.documentElement;
   root.classList.add("menu-config-pending");
   const markupReady = new Promise(resolve => { window.finishMapMenuMarkup = resolve; });
+  window.showGameLoadError = async error => {
+    await markupReady;
+    console.warn("Game failed to load:", error);
+    const button = document.getElementById("startButton");
+    button.disabled = false;
+    button.textContent = "Retry";
+    delete button.dataset.loading;
+    button.removeAttribute("aria-busy");
+    button.style.removeProperty("--load-progress");
+    button.onclick = () => window.location.reload();
+    document.getElementById("uiStatus").textContent = "The game could not load. Try again.";
+    document.getElementById("uiStatus").classList.add("visible");
+    return false;
+  };
   window.mapMenuReady = (async () => {
     try {
       const [{ GAME_CONFIG }, { resolveMapConfig }] = await Promise.all([
-        import("./gameConfig.js"), import("./engine/mapManager.js")
+        import("./gameConfig.js"),
+        import("./engineLoader.js").then(({ importEngine }) => importEngine("mapManager.js"))
       ]);
       const config = resolveMapConfig(GAME_CONFIG.maps);
       let selected = config.defaultId;
@@ -54,18 +69,7 @@
       root.dataset.selectedMap = selected;
       return true;
     } catch (error) {
-      await markupReady;
-      console.warn("Map configuration failed to load:", error);
-      const button = document.getElementById("startButton");
-      button.disabled = false;
-      button.textContent = "Retry";
-      delete button.dataset.loading;
-      button.removeAttribute("aria-busy");
-      button.style.removeProperty("--load-progress");
-      button.onclick = () => window.location.reload();
-      document.getElementById("uiStatus").textContent = "The game could not load. Try again.";
-      document.getElementById("uiStatus").classList.add("visible");
-      return false;
+      return await window.showGameLoadError(error);
     } finally {
       root.classList.remove("menu-config-pending");
       delete window.finishMapMenuMarkup;
