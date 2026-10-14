@@ -10,6 +10,8 @@ import { createHud } from "./hud.js";
 import { createSounds } from "./sounds.js";
 import { createImpactParticles } from "./impactParticles.js";
 import { createBulletHoles } from "./bulletHoles.js";
+import { createTeamDeathmatch } from "./teamDeathmatch.js";
+import { createTeamArena } from "./teamNavigation.js";
 
 const KILL_REWARD = 100;
 const HEADSHOT_REWARD = 100;
@@ -69,7 +71,15 @@ const CONFIG = {
   fallY: -50
 };
 
+const teamMatch = CONFIG.mode === "teamDeathmatch" ? createTeamDeathmatch(CONFIG.teamDeathmatch) : null;
+let teamArena = null;
+let playerRespawnAt = 0;
+
 const state = {
+  mode: teamMatch ? "teamDeathmatch" : "waves",
+  isRespawning: false,
+  respawnRemaining: 0,
+  spawnProtectedUntil: 0,
   health: 100,
   score: 0,
   wave: 1,
@@ -192,7 +202,7 @@ let resolutionSettleUntil = 0;
 applyRenderSize();
 document.body.appendChild(renderer.domElement);
 
-const hud = createHud();
+const hud = createHud({ mode: state.mode });
 hud.setBuyCallback(handleBuyMenuSlot);
 hud.setBuyCloseCallback(() => closeBuyMenu(true));
 const world = createMapWorld({
@@ -214,7 +224,7 @@ const weapon = createWeaponSystem({
   onStateChange: () => updateHud()
 });
 const touchControls = createTouchControls({
-  isActive: () => state.isPlaying && !state.isGameOver && !state.isMapComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
+  isActive: () => state.isPlaying && !state.isRespawning && !state.isGameOver && !state.isMapComplete && !state.isWaveComplete && !state.isBuyMenuOpen && !sniperBulletCam.active,
   setMove: (x, y) => player.setTouchMove(x, y),
   setFire: active => {
     player.setFiring(active);
@@ -388,6 +398,8 @@ function createEnemySystemIfNeeded() {
     navigation: world.navigation,
     enemyTypes: GAME_ASSETS.enemies.types,
     defaultEnemyType: GAME_ASSETS.enemies.defaultType,
+    teamMatch,
+    onTeamKill: (attackerTeam, victimTeam) => teamMatch?.recordKill(attackerTeam, victimTeam),
     playAudio: sounds.playAudio
   });
 
@@ -592,7 +604,7 @@ function setupInput() {
       return;
     }
     if (e.code === "KeyB") { e.preventDefault(); if (!e.repeat) toggleBuyMenu(); return; }
-    if (sniperBulletCam.active || isTouchPortrait() || touchControls.isPickerOpen) return;
+    if (state.isRespawning || sniperBulletCam.active || isTouchPortrait() || touchControls.isPickerOpen) return;
     if (!touchControls.enabled && !player.pointerLockActive) { pauseGame(); return; }
     if (/^(Digit|Numpad)[1-6]$/.test(e.code)) { e.preventDefault(); if (!e.repeat) switchWeapon(Number(e.code.slice(-1))); }
     if (e.code === "KeyR") { e.preventDefault(); if (!e.repeat) reload(); }
@@ -796,7 +808,7 @@ function showOverlay(title, text, action) {
   dom.startButton.textContent = action;
   dom.startButton.disabled = false;
   dom.mainMenuButton.hidden = false;
-  setWaveShopVisible(state.isWaveComplete && !state.isGameOver);
+  setWaveShopVisible(!teamMatch && state.isWaveComplete && !state.isGameOver);
   focusMenu(dom.overlay);
 }
 
@@ -807,6 +819,9 @@ function returnToMainMenu() {
   clearTimeout(gameOverOverlayTimer);
   state.isPlaying = false;
   state.isBuyMenuOpen = false;
+  state.isRespawning = false;
+  state.respawnRemaining = 0;
+  hud.updateMatch?.({ ...teamMatch?.getHudState(), ...state });
   hud.hideBuyMenu();
   hud.clearHeadshot();
   resetKillCombo();
@@ -905,7 +920,7 @@ function pauseGame() {
 }
 
 function toggleBuyMenu() {
-  if (sniperBulletCam.active || state.isGameOver || mainMenuNeedsReset) return;
+  if (state.isRespawning || sniperBulletCam.active || state.isGameOver || mainMenuNeedsReset) return;
 
   if (state.isBuyMenuOpen) {
     closeBuyMenu(true);
@@ -915,7 +930,7 @@ function toggleBuyMenu() {
 }
 
 function openBuyMenu() {
-  if (state.isBuyMenuOpen || state.isGameOver || mainMenuNeedsReset ||
+  if (state.isRespawning || state.isBuyMenuOpen || state.isGameOver || mainMenuNeedsReset ||
       mapSelectionPending || world.isLoading ||
       (!state.isPlaying && !state.isWaveComplete)) return;
 
@@ -1060,8 +1075,92 @@ function shouldInstantKillHeadshot(hit) {
   return Boolean(hit?.headshot);
 }
 
+function startTeamMatch() {
+  teamMatch.reset();
+  enemies.reset();
+  resetKillCombo();
+  projectiles.clear();
+  teamArena = createTeamArena({ THREE, navigation: world.navigation,
+    floorObjects: world.floorObjects, spawn: world.spawn });
+  state.isRespawning = false;
+  state.respawnRemaining = 0;
+  if (!respawnPlayer()) throw new Error("No valid player spawn found for team deathmatch.");
+  enemies.startTeams(teamArena);
+  shadowsDirty = true;
+  renderInvalidated = true;
+  updateHud();
+}
+
+function respawnPlayer() {
+  const team = teamMatch.options.playerTeam;
+  // Exclude the dead/old player position when looking for a new free slot.
+  const actors = enemies.getTeamActors().filter(actor => !actor.isPlayer);
+  const point = teamArena.getSpawnPoint(team, actors);
+  if (!point) return false;
+  point.y += CONFIG.playerHeight;
+  player.reset({ position: point, yaw: teamArena.facing(team) });
+  player.clearMovement();
+  touchControls.reset();
+  state.health = 100;
+  state.isRespawning = false;
+  state.respawnRemaining = 0;
+  state.spawnProtectedUntil = teamMatch.elapsed + teamMatch.options.spawnProtection;
+  dom.damageFlash.style.opacity = "0";
+  cameraShake.damageShakeTime = 0;
+  cameraShake.deathShakeTime = 0;
+  cameraShake.positionOffset.set(0, 0, 0);
+  viewPunch.pitch = viewPunch.yaw = viewPunch.pitchVelocity = viewPunch.yawVelocity = 0;
+  weapon.refillOwnedSlots();
+  updateHud();
+  return true;
+}
+
+function beginPlayerRespawn(attackerTeam = null) {
+  if (state.isRespawning || teamMatch.ended) return;
+  state.isRespawning = true;
+  state.respawnRemaining = teamMatch.options.respawnDelay;
+  playerRespawnAt = teamMatch.elapsed + teamMatch.options.respawnDelay;
+  state.spawnProtectedUntil = 0;
+  player.clearMovement();
+  touchControls.reset();
+  stopSecondaryAction();
+  resetKillCombo();
+  hud.clearHeadshot();
+  dom.damageFlash.style.opacity = "0";
+  sounds.playPlayerDie();
+  teamMatch.recordKill(attackerTeam, teamMatch.options.playerTeam);
+}
+
+function updateTeamMatch(delta) {
+  teamMatch.tick(delta);
+  if (teamMatch.ended) { finishTeamMatch(); return; }
+  if (state.isRespawning) {
+    state.respawnRemaining = Math.max(0, playerRespawnAt - teamMatch.elapsed);
+    if (state.respawnRemaining === 0) respawnPlayer();
+  }
+}
+
+function finishTeamMatch() {
+  if (state.isMapComplete) return;
+  projectiles.clear({ effects: false });
+  stopSecondaryAction();
+  state.isPlaying = false;
+  state.isMapComplete = true;
+  state.isWaveComplete = true;
+  state.isRespawning = false;
+  state.respawnRemaining = 0;
+  player.clearMovement();
+  touchControls.reset();
+  if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+  updateHud();
+  const scores = teamMatch.scores;
+  const title = !teamMatch.winner ? "Draw" : teamMatch.winner === teamMatch.options.playerTeam ? "Victory" : "Defeat";
+  showOverlay(title, `Blue ${scores.blue} — ${scores.red} Red`, "Next Map");
+}
+
 function startWave() {
   if (!enemies) return;
+  if (teamMatch) { startTeamMatch(); return; }
 
   resetKillCombo();
   state.waveScore = 0;
@@ -1106,6 +1205,9 @@ function handleEnemyKilled({ headshot = false, count = 1 } = {}) {
   }
 
   state.score += points;
+  // The damage callback awards team points for player AND bot kills. Cash is
+  // awarded only here, once per player kill; multikills never multiply team score.
+  if (teamMatch) return teamMatch.ended;
   state.waveScore += killCount;
 
   // A simultaneous self-kill must stay Game Over, even on the final enemy.
@@ -1182,6 +1284,9 @@ async function continueMap() {
     state.wave = 1;
     state.isMapComplete = false;
     state.isWaveComplete = false;
+    state.isRespawning = false;
+    state.respawnRemaining = 0;
+    if (teamMatch) weapon.refillOwnedSlots();
     hud.clearHeadshot();
     dom.damageFlash.style.opacity = "0";
     setWaveShopVisible(false);
@@ -1271,7 +1376,7 @@ function onPointerLockError() {
 }
 
 function startZoom() {
-  if (sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (state.isRespawning || sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
 
   const asset = weapon.getCurrentAsset();
   if (!weapon.hasScope()) return;
@@ -1296,7 +1401,7 @@ function stopZoom() {
 }
 
 function startSecondaryAction() {
-  if (sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (state.isRespawning || sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
 
   if (weapon.hasScope()) {
     startZoom();
@@ -1318,7 +1423,7 @@ function endSecondaryAction() {
 }
 
 function switchWeapon(slotNumber) {
-  if (sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return false;
+  if (state.isRespawning || sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return false;
 
   const slot = weapon.getShopState().find(item => item.id === slotNumber);
 
@@ -1349,12 +1454,12 @@ function switchWeaponByWheel(direction) {
 
 function updateHud() {
   state.enemiesLeft = enemies ? enemies.count : 0;
-  hud.update({ ...state, ...weapon.getHudState() });
+  hud.update({ ...state, ...teamMatch?.getHudState(), ...weapon.getHudState() });
   updateBuyMenu();
 }
 
 function shoot() {
-  if (!enemies || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen || sniperBulletCam.active) return;
+  if (!enemies || state.isRespawning || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen || sniperBulletCam.active) return;
 
   const shot = weapon.shoot();
 
@@ -1366,6 +1471,7 @@ function shoot() {
     return;
   }
 
+  if (teamMatch) state.spawnProtectedUntil = 0;
   const asset = weapon.getCurrentAsset();
   let projectileOrigin = null;
   if (shot.projectile) {
@@ -1403,7 +1509,7 @@ function shoot() {
   // Only scoped sniper shots can use the bullet camera. Non-sniper scoped
   // weapons and unscoped sniper shots stay on the normal hitscan path.
   // The cinematic hit is resolved only when the bullet arrives.
-  if (shot.isSniper && isZooming && pelletCount === 1) {
+  if (!teamMatch && shot.isSniper && isZooming && pelletCount === 1) {
     const direction = getShotDirection(shot.spread);
     const bulletConfig = weapon.getCurrentAsset().bulletCamera ?? {};
     const maxDistance = Math.max(1, Number(bulletConfig.maxDistance) || 140);
@@ -1487,6 +1593,7 @@ function handleProjectileExplosion({ position, hit, damage, selfDamage = damage,
   let kills = 0;
   let enemyWasHit = false;
   for (const target of targets) {
+    if (!enemies.canPlayerDamage(target.enemy)) continue;
     if (target.enemy.userData.isDead && !target.enemy.userData.ragdoll) continue;
     const amount = target.enemy === directEnemy
       ? damage : damage * Math.max(0, 1 - target.distance / radius);
@@ -1518,6 +1625,7 @@ function handleProjectileExplosion({ position, hit, damage, selfDamage = damage,
 
 function resolveBulletImpact(shot, hit) {
   if (hit?.type === "enemy") {
+    if (!enemies.canPlayerDamage(hit.enemy)) return { enemyWasHit: false, waveComplete: false };
     const headshot = Boolean(hit.headshot);
     const killed = enemies.damageEnemy(hit.enemy, shot.damage, {
       instantKill: shouldInstantKillHeadshot(hit),
@@ -1572,6 +1680,7 @@ function handleMeleeHit(shot) {
     return;
   }
 
+  if (!enemies.canPlayerDamage(enemyHit.enemy)) { resetImpactRaycasterRange(); return; }
   const killed = enemies.damageEnemy(enemyHit.enemy, shot.damage, {
     point: enemyHit.point, direction, bone: enemyHit.bone, melee: true
   });
@@ -1615,7 +1724,7 @@ function getShotDirection(spread) {
 }
 
 function reload() {
-  if (sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete) return;
+  if (state.isRespawning || sniperBulletCam.active || !state.isPlaying || state.isGameOver || state.isWaveComplete) return;
 
   const result = weapon.reload();
   if (!result.started) return;
@@ -2081,16 +2190,19 @@ function updateTracers(delta) {
 }
 
 function recoverPlayerFall() {
-  if (!state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
+  if (state.isRespawning || !state.isPlaying || state.isGameOver || state.isWaveComplete || state.isBuyMenuOpen) return;
   if (camera.position.y > CONFIG.fallY) return;
+  if (teamMatch) { state.health = 0; beginPlayerRespawn(); return; }
 
   player.clearMovement();
   player.velocity.set(0, 0, 0);
   world.resetPlayer(player);
 }
 
-function takeDamage(amount) {
-  if (state.isGameOver || state.isWaveComplete) return;
+function takeDamage(amount, attackerTeam = null) {
+  if (state.isGameOver || state.isWaveComplete || state.isRespawning) return;
+  if (teamMatch && (teamMatch.ended || attackerTeam === teamMatch.options.playerTeam ||
+      teamMatch.elapsed < state.spawnProtectedUntil)) return;
 
   state.health = Math.max(0, state.health - amount);
 
@@ -2106,6 +2218,11 @@ function takeDamage(amount) {
   viewPunch.yawVelocity += (Math.random() - 0.5) * 0.035;
 
   if (state.health <= 0) {
+    if (teamMatch) {
+      beginPlayerRespawn(attackerTeam);
+      updateHud();
+      return;
+    }
     endGame();
     updateHud();
     return;
@@ -2186,6 +2303,9 @@ async function resetGame() {
   state.isFinalWave = false;
   state.isWaveComplete = false;
   state.isBuyMenuOpen = false;
+  state.isRespawning = false;
+  state.respawnRemaining = 0;
+  state.spawnProtectedUntil = 0;
   hud.hideBuyMenu();
   setWaveShopVisible(false);
 
@@ -2208,6 +2328,7 @@ async function resetGame() {
 
   startWave();
   weapon.resetSlots();
+  if (teamMatch) weapon.switchSlot(CONFIG.teamDeathmatch?.startingWeaponSlot ?? 3);
   impacts.clear();
   bulletHoles.clear();
 
@@ -2355,7 +2476,7 @@ function renderWithCameraShake() {
 
   renderer.clear();
   renderer.render(scene, camera);
-  if (!isZooming) {
+  if (!isZooming && !state.isRespawning) {
     syncWeaponWorldLighting();
     renderer.clearDepth();
     renderer.render(weaponScene, weaponCamera);
@@ -2391,12 +2512,17 @@ function animate(now = performance.now()) {
   lastMenuFrameTime = now;
   if (active) updateRenderResolution(frameMs, now);
 
-  const delta = Math.min(clock.getDelta(), 0.05);
+  const frameDelta = clock.getDelta();
+  const delta = Math.min(frameDelta, 0.05);
   touchControls.update(delta);
   if (state.isPlaying && !touchControls.enabled && !player.pointerLockActive) pauseGame();
-  const gameplayActive = state.isPlaying && !sniperBulletCam.active && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden;
+  let gameplayActive = state.isPlaying && !sniperBulletCam.active && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden;
 
-  player.update(delta, gameplayActive);
+  if (teamMatch && gameplayActive) {
+    updateTeamMatch(frameDelta);
+    gameplayActive = state.isPlaying;
+  }
+  player.update(delta, gameplayActive && !state.isRespawning);
   recoverPlayerFall();
   world.update?.(delta, camera);
 
@@ -2414,6 +2540,7 @@ function animate(now = performance.now()) {
 
   if (enemies) {
     enemies.update(delta, gameplayActive, takeDamage);
+    if (teamMatch?.ended && !state.isMapComplete) finishTeamMatch();
     // Pause freezes physics; bullet-cam impact uses the same slow-motion clock.
     // Completed waves/game over may settle, then startWave/reset cleans them up.
     const physicsDelta = sniperBulletCam.active
@@ -2423,7 +2550,7 @@ function animate(now = performance.now()) {
     if (physicsDelta > 0 && enemies.ragdollCount && now - lastShadowTime >= 1000 / renderSettings.shadowUpdateHz) shadowsDirty = true;
   }
 
-  weapon.update(delta, state.isPlaying && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden, player.inputState);
+  weapon.update(delta, state.isPlaying && !state.isRespawning && !isTouchPortrait() && !touchControls.isPickerOpen && !document.hidden, player.inputState);
   updateSniperBulletCamera(delta);
   updateSniperEnemyImpactSlowMotion(delta);
 
@@ -2435,6 +2562,9 @@ function animate(now = performance.now()) {
 
   projectiles.update(document.hidden ? 0 : delta * impactTimeScale,
     gameplayActive && state.isPlaying && !state.isGameOver && !state.isWaveComplete);
+  if (teamMatch?.ended && !state.isMapComplete) finishTeamMatch();
+  if (teamMatch) hud.updateMatch({ ...teamMatch.getHudState(),
+    isRespawning: state.isRespawning, respawnRemaining: state.respawnRemaining });
   updateTracers(delta);
   impacts.update(delta * impactTimeScale, sniperBulletCam.active ? sniperBulletCamera : camera);
   bulletHoles.update(delta);

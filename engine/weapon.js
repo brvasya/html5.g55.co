@@ -435,6 +435,19 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     return { ok: true, price, slot: getSlotShopState(slot) };
   }
 
+  // A deathmatch respawn replenishes owned weapons without resetting purchases
+  // or upgrades, and starts a clean deploy animation for the equipped weapon.
+  function refillOwnedSlots() {
+    cancelReload();
+    for (const slot of slots) if (slot.owned) {
+      slot.ammo = slot.magazineSize;
+      slot.reserveAmmo = slot.defaultReserveAmmo;
+    }
+    lastShotTime = Number.NEGATIVE_INFINITY;
+    shootSequenceEndTime = 0;
+    attachCurrentModel();
+  }
+
   function resetSlots() {
     slots.forEach(slot => {
       applyUpgradeLevel(slot, 0);
@@ -1531,6 +1544,7 @@ export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamer
     buyAmmo,
     upgradeSlot,
     resetSlots,
+    refillOwnedSlots,
     addReserveAmmo,
     addReserveAmmoToSlot,
     getHudState,

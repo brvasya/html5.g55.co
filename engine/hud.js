@@ -1,7 +1,7 @@
 import { focusControl, focusMenu } from "./ui.js";
 import { isTouchDevice as detectTouch } from "./touchControls.js";
 
-export function createHud() {
+export function createHud({ mode = "waves" } = {}) {
   const hud = document.getElementById("hud");
   const stats = document.getElementById("stats");
   const crosshair = document.getElementById("crosshair");
@@ -16,6 +16,49 @@ export function createHud() {
     weaponSlot: document.getElementById("weaponSlot"),
     weaponName: document.getElementById("weaponName")
   };
+
+  let matchRefs = null;
+  if (mode === "teamDeathmatch") {
+    const topbar = hud.querySelector(".cs-topbar");
+    topbar.classList.add("cs-team-topbar");
+    // Keep the established cash reference and shop integration, below health.
+    const cash = refs.score.closest(".cs-score");
+    cash.classList.add("cs-team-cash");
+    refs.health.closest(".cs-bottom-left").appendChild(cash);
+    for (const child of [...topbar.children]) child.hidden = true;
+    const make = (className, label) => {
+      const node = document.createElement("div");
+      node.className = className;
+      node.setAttribute("aria-label", label);
+      node.title = label;
+      topbar.appendChild(node);
+      return node;
+    };
+    matchRefs = {
+      blue: make("cs-team-score cs-team-blue", "Blue team score"),
+      timer: make("cs-match-timer", "Time remaining"),
+      red: make("cs-team-score cs-team-red", "Red team score"),
+      respawn: document.createElement("div")
+    };
+    matchRefs.respawn.className = "cs-respawn-notice";
+    matchRefs.respawn.setAttribute("role", "status");
+    matchRefs.respawn.hidden = true;
+    hud.appendChild(matchRefs.respawn);
+    updateMatch({ blueScore: 0, redScore: 0, timeRemaining: 0 });
+  }
+
+  function updateMatch(state) {
+    if (!matchRefs) return;
+    const set = (node, text) => { if (node.textContent !== text) node.textContent = text; };
+    set(matchRefs.blue, String(state.blueScore ?? 0));
+    set(matchRefs.red, String(state.redScore ?? 0));
+    const seconds = Math.max(0, Math.ceil(state.timeRemaining ?? 0));
+    set(matchRefs.timer, `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`);
+    matchRefs.timer.classList.toggle("urgent", seconds <= 30);
+    matchRefs.respawn.hidden = !state.isRespawning;
+    if (state.isRespawning) set(matchRefs.respawn, `Respawning in ${Math.max(1, Math.ceil(state.respawnRemaining ?? 0))}`);
+    hud.classList.toggle("is-respawning", Boolean(state.isRespawning));
+  }
 
   const weaponLevel = document.createElement("span");
   weaponLevel.className = "cs-upgrade-level cs-hud-weapon-level";
@@ -161,6 +204,7 @@ export function createHud() {
   }
 
   function update(state) {
+    updateMatch(state);
     refs.health.textContent = state.health;
     refs.ammo.textContent = state.ammo;
     refs.reserve.textContent = state.reserveAmmo;
@@ -293,6 +337,7 @@ export function createHud() {
 
   return {
     update,
+    updateMatch,
     setCrosshairFire,
     setCrosshairVisible,
     showHeadshot,

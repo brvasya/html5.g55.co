@@ -15,6 +15,8 @@ export function createEnemies({
   colliders = [],
   navigation = null,
   enemyTypes,
+  teamMatch = null,
+  onTeamKill = () => {},
   playAudio = (audio, volume = 1.0) => {
     audio.volume = volume;
     audio.currentTime = 0;
@@ -22,6 +24,12 @@ export function createEnemies({
   }
 }) {
   const enemies = [];
+  let teamArena = null;
+  const respawns = [];
+  const playerActor = { isPlayer: true, team: teamMatch?.options.playerTeam, position: new THREE.Vector3() };
+  const targetEye = new THREE.Vector3();
+  let markerTexture = null;
+
   const ragdolls = createRagdolls({ colliders, floorObjects, config: config.ragdolls, onExpire: removeEnemy });
   const toPlayer = new THREE.Vector3();
 
@@ -373,8 +381,9 @@ export function createEnemies({
     return point;
   }
 
-  function createEnemy(x, y, z, typeId) {
-    const type = getEnemyType(typeId);
+  function createEnemy(x, y, z, typeId, team = null) {
+    const sourceType = getEnemyType(typeId);
+    const type = team ? { ...sourceType, asset: { ...sourceType.asset, ...teamMatch.options.teams[team].stats } } : sourceType;
 
     const group = new THREE.Group();
     group.position.set(x, y, z);
@@ -388,6 +397,10 @@ export function createEnemies({
 
     group.userData = {
       typeId: typeId,
+      team,
+      target: null,
+      nextTargetTime: 0,
+      protectedUntil: team ? teamMatch.elapsed + teamMatch.options.spawnProtection : 0,
       type,
       modelSrc,
       bodygroups: pickCharacterBodygroups(asset),
@@ -435,6 +448,8 @@ export function createEnemies({
     attachEnemyModel(group);
     group.updateMatrixWorld(true);
     preloadEnemyType(typeId);
+    if (team) addTeamMarker(group);
+    return group;
   }
 
   function getEnemyAnimationClips(enemy) {
@@ -1026,8 +1041,151 @@ export function createEnemies({
     return attackIntersections.length === 0;
   }
 
+  function syncPlayerActor() {
+    playerActor.position.copy(camera.position);
+    playerActor.position.y -= config.playerHeight;
+  }
+
+  function getTeamActors() {
+    syncPlayerActor();
+    const actors = enemies.filter(enemy => !enemy.userData.isDead).map(enemy => ({
+      position: enemy.position, team: enemy.userData.team
+    }));
+    if (!state.isRespawning && state.health > 0) actors.push(playerActor);
+    return actors;
+  }
+
+  function spawnTeamBot(team) {
+    const point = teamArena.getSpawnPoint(team, getTeamActors());
+    if (!point) return false;
+    const definition = teamMatch.options.teams[team];
+    if (!enemyTypes[definition.type]) throw new Error(`Unknown ${team} team character: ${definition.type}`);
+    const enemy = createEnemy(point.x, point.y, point.z, definition.type, team);
+    enemy.rotation.y = teamArena.facing(team) + Math.PI;
+    enemy.userData.lastAttack = teamMatch.elapsed;
+    return true;
+  }
+
+  function startTeams(arena) {
+    reset();
+    teamArena = arena;
+    for (const team of ["blue", "red"]) {
+      for (let i = 0; i < teamMatch.options.teams[team].bots; i++) {
+        if (!spawnTeamBot(team)) respawns.push({ team, due: teamMatch.elapsed + 0.5 });
+      }
+    }
+  }
+
+  function addTeamMarker(enemy) {
+    if (!markerTexture) {
+      const canvas = document.createElement("canvas"); canvas.width = canvas.height = 32;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "white";
+      ctx.beginPath(); ctx.moveTo(16, 3); ctx.lineTo(28, 16); ctx.lineTo(16, 29); ctx.lineTo(4, 16); ctx.closePath(); ctx.fill();
+      markerTexture = new THREE.CanvasTexture(canvas);
+    }
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: markerTexture, color: enemy.userData.team === "blue" ? 0x4cabff : 0xff5959,
+      depthTest: true, depthWrite: false, transparent: true, toneMapped: false
+    }));
+    marker.position.y = 2.65;
+    marker.scale.set(0.26, 0.26, 1);
+    enemy.add(marker);
+    enemy.userData.teamMarker = marker;
+  }
+
+  function livingTarget(target) {
+    return target?.isPlayer ? !state.isRespawning && state.health > 0
+      : Boolean(target && enemies.includes(target) && !target.userData.isDead);
+  }
+
+  function pickTeamTarget(enemy) {
+    let best = null, bestDistance = Infinity;
+    const candidates = enemies;
+    const consider = target => {
+      if (target === enemy || !livingTarget(target)) return;
+      const team = target.isPlayer ? target.team : target.userData.team;
+      if (team === enemy.userData.team || !teamArena.canReach(target.position)) return;
+      let distance = enemy.position.distanceToSquared(target.position);
+      if (navigation.hasLineOfSight(enemy.position, target.position, 0.12)) distance *= 0.65;
+      if (distance < bestDistance) { bestDistance = distance; best = target; }
+    };
+    for (const target of candidates) consider(target);
+    consider(playerActor);
+    return best;
+  }
+
+  function updateTeams(delta, takeDamage) {
+    if (!teamArena || teamMatch.ended) return;
+    syncPlayerActor();
+    for (let i = respawns.length - 1; i >= 0; i--) {
+      if (respawns[i].due <= teamMatch.elapsed && spawnTeamBot(respawns[i].team)) respawns.splice(i, 1);
+    }
+    // A copy keeps ragdoll expiry/removal from skipping the next living actor.
+    for (const enemy of [...enemies]) {
+      if (teamMatch.ended) break;
+      const data = enemy.userData;
+      if (data.isDead) continue;
+      data.mixer?.update(delta);
+      if (data.model) updateSourceProceduralBones(data.model);
+      updateEnemyMuzzleFlash(enemy, delta);
+      if (data.teamMarker) data.teamMarker.visible = data.team === playerActor.team ||
+        navigation.hasLineOfSight(playerActor.position, enemy.position, 0.12);
+
+      if (!livingTarget(data.target) || (!data.isAttacking && teamMatch.elapsed >= data.nextTargetTime)) {
+        data.target = pickTeamTarget(enemy);
+        data.nextTargetTime = teamMatch.elapsed + 0.4 + Math.random() * 0.15;
+        data.isAttacking = false; data.pendingDamage = false;
+      }
+      const target = data.target;
+      if (!target) { playEnemyAnimation(enemy, "walk"); continue; }
+      targetEye.copy(target.position); targetEye.y += config.playerHeight;
+      if (data.isHitReacting) {
+        data.hitTimer = Math.max(0, data.hitTimer - delta);
+        enemy.lookAt(target.position.x, enemy.position.y, target.position.z);
+        if (data.hitTimer <= 0) { data.isHitReacting = false; playEnemyAnimation(enemy, "walk"); }
+        continue;
+      }
+      if (data.isAttacking) {
+        data.attackTimer = Math.max(0, data.attackTimer - delta);
+        data.attackElapsed += delta;
+      }
+      const canAttack = canEnemyAttack(enemy, targetEye);
+      if (canAttack) enemy.lookAt(target.position.x, enemy.position.y, target.position.z);
+      if (!canAttack && !data.isAttacking) {
+        moveEnemy(enemy, target.position, delta);
+        playEnemyAnimation(enemy, "walk");
+      } else if (canAttack && !data.isAttacking && teamMatch.elapsed - data.lastAttack >= config.enemyAttackCooldown / 1000) {
+        data.lastAttack = teamMatch.elapsed;
+        data.isAttacking = true; data.attackElapsed = 0; data.pendingDamage = true;
+        data.protectedUntil = 0;
+        data.attackTimer = Math.max(playEnemyAttack(enemy) || 0, data.attackDamageDelay || 0);
+      }
+      if (data.isAttacking && data.pendingDamage && data.attackElapsed >= data.attackDamageDelay) {
+        data.pendingDamage = false;
+        triggerEnemyMuzzleFlash(enemy);
+        if (data.type.asset.attackSound) playAssetSound(data.type.asset.attackSound,
+          Math.max(0.05, 1 - enemy.position.distanceTo(camera.position) / 65));
+        if (livingTarget(target) && canEnemyAttack(enemy, targetEye)) {
+          if (target.isPlayer) takeDamage(data.damage, data.team);
+          else {
+            const point = target.position.clone(); point.y += config.playerHeight * 0.6;
+            damageEnemy(target, data.damage, { attackerTeam: data.team, point,
+              direction: target.position.clone().sub(enemy.position).normalize() });
+          }
+        }
+      }
+      if (data.isAttacking && data.attackTimer <= 0) {
+        data.isAttacking = false; data.pendingDamage = false; playEnemyAnimation(enemy, "walk");
+      }
+    }
+    for (const enemy of enemies) ragdolls.trackPose(enemy, enemy.userData.ragdollDefinition, delta);
+    syncEnemyMuzzleLight();
+  }
+
   function update(delta, isPlaying, takeDamage) {
     if (!isPlaying) return;
+    if (teamMatch) { updateTeams(delta, takeDamage); return; }
 
     const nowTime = performance.now();
     const playerPosition = camera.position;
@@ -1121,7 +1279,7 @@ export function createEnemies({
 
   function moveEnemy(enemy, playerPosition, delta) {
     if (navigation) {
-      const target = navigation.getMoveTarget(enemy.position, playerPosition);
+      const target = (teamArena || navigation).getMoveTarget(enemy.position, playerPosition);
       const dx = target.x - enemy.position.x;
       const dz = target.z - enemy.position.z;
       const length = Math.hypot(dx, dz);
@@ -1332,8 +1490,10 @@ export function createEnemies({
     return hits;
   }
 
-  function damageEnemy(enemy, damage, { instantKill = false, ...impact } = {}) {
+  function damageEnemy(enemy, damage, { instantKill = false, attackerTeam = teamMatch?.options.playerTeam, ...impact } = {}) {
     if (!enemy || !enemies.includes(enemy)) return false;
+    if (teamMatch && (teamMatch.ended || attackerTeam === enemy.userData.team ||
+        (!enemy.userData.isDead && teamMatch.elapsed < enemy.userData.protectedUntil))) return false;
     if (enemy.userData.isDead) {
       ragdolls.hit(enemy, { ...impact, damage });
       return false; // A corpse can react to force, but never award another kill.
@@ -1352,6 +1512,11 @@ export function createEnemies({
       enemy.userData.hitTimer = 0;
       enemy.userData.isAttacking = false;
       enemy.userData.pendingDamage = false;
+      if (enemy.userData.teamMarker) enemy.userData.teamMarker.visible = false;
+      if (teamMatch) {
+        respawns.push({ team: enemy.userData.team, due: teamMatch.elapsed + teamMatch.options.respawnDelay });
+        onTeamKill(attackerTeam, enemy.userData.team);
+      }
 
       const deathSound = enemy.userData.type.asset.deathSound;
       if (deathSound) playAssetSound(deathSound, 1.0);
@@ -1415,12 +1580,18 @@ export function createEnemies({
   }
 
   function reset() {
+    respawns.length = 0;
+    teamArena = null;
     while (enemies.length) removeEnemy(enemies[0]);
   }
 
   return {
     preloadAll,
     spawnWave,
+    startTeams,
+    getTeamActors,
+    canPlayerDamage: enemy => !teamMatch || (enemy?.userData.team !== teamMatch.options.playerTeam &&
+      (enemy?.userData.isDead || teamMatch.elapsed >= enemy?.userData.protectedUntil)),
     spawnOne,
     update,
     updateRagdolls: ragdolls.update,
