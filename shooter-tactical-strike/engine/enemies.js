@@ -206,17 +206,22 @@ export function createEnemies({
     if (cached) return cached.promise;
     cached = { source: null, failed: false, promise: null };
     weaponCache.set(cacheKey, cached);
-    cached.promise = loadWeaponAsset(asset.weapon).then(result => {
-      cached.source = result.scene;
+    cached.promise = loadWeaponAsset(asset.weapon).then(async result => {
+      const source = result.scene;
       // World weapons follow the character's hand. Hold their native idle pose.
       if (result.animations.length) {
-        const mixer = new THREE.AnimationMixer(cached.source);
+        const mixer = new THREE.AnimationMixer(source);
         mixer.clipAction(result.animations[0]).play();
         mixer.update(0);
         // Keep the evaluated pose without retaining a mixer for each enemy.
       }
-      updateSourceProceduralBones(cached.source);
-      cached.source.updateMatrixWorld(true);
+      updateSourceProceduralBones(source);
+      source.updateMatrixWorld(true);
+      // Auto-detect the same-name PHY after evaluating idle, so a standalone
+      // collision export aligns with the actual displayed pose. Publish the
+      // cached model only after physics is ready, avoiding partial attachments.
+      cached.physics = await ragdolls.loadWeapon(asset.weapon.model, result, asset.weapon.physics);
+      cached.source = source;
       prepareEnemyMeshes(cached.source);
       enemies.forEach(enemy => {
         if (enemyWeaponCacheKey(enemy.userData.type.asset) === cacheKey) attachEnemyWeapon(enemy);
@@ -520,6 +525,7 @@ export function createEnemies({
     hand.add(socket);
 
     enemy.userData.weapon = weapon;
+    enemy.userData.weaponPhysics = cached.physics;
     setupEnemyMuzzleFlash(enemy);
     enemy.updateMatrixWorld(true);
   }
