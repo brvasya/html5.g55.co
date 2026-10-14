@@ -1056,9 +1056,13 @@ export function createEnemies({
   }
 
   function spawnTeamBot(team) {
-    const point = teamArena.getSpawnPoint(team, getTeamActors());
-    if (!point) return false;
     const definition = teamMatch.options.teams[team];
+    // Both initial spawns and respawns can use the unchanged wave selector,
+    // which asks the current map for a reachable point around the player.
+    const point = definition.spawnMode === "wave"
+      ? getRandomFloorPoint()
+      : teamArena.getSpawnPoint(team, getTeamActors());
+    if (!point) return false;
     if (!enemyTypes[definition.type]) throw new Error(`Unknown ${team} team character: ${definition.type}`);
     const enemy = createEnemy(point.x, point.y, point.z, definition.type, team);
     enemy.rotation.y = teamArena.facing(team) + Math.PI;

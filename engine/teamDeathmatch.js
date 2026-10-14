@@ -11,6 +11,7 @@ export function createTeamDeathmatch(settings = {}) {
     teams: Object.fromEntries(["blue", "red"].map(team => [team, {
       type: settings.teams?.[team]?.type || (team === "blue" ? "soldier" : "zombie"),
       bots: Math.floor(number(settings.teams?.[team]?.bots, team === "blue" ? 3 : 8, 0, 24)),
+      spawnMode: settings.teams?.[team]?.spawnMode === "wave" ? "wave" : "team",
       stats: { ...settings.teams?.[team]?.stats }
     }]))
   };
