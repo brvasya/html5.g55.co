@@ -15,7 +15,7 @@ enemyHealth: 100,
 enemySpeed: [1.5, 3],
 enemyDamage: 10,
 attackDistance: 2,
-attackDamageDelay: 0.5,
+attackDamageDelay: 0.7,
 animationBase: "Idle",
 anim: {
 walk: ["Run_OnFire", "Run_OnFire_01"],
