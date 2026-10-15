@@ -90,12 +90,11 @@ canvas { display: block; }
 .cs-hud #crosshair.fire {
   width: 40px;
   height: 40px;
-  opacity: 1;
   background:
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 0 / 2px 9px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 100% / 2px 9px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 0 center / 9px 2px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 100% center / 9px 2px no-repeat;
+    linear-gradient(#fff, #fff) center 0 / 2px 9px no-repeat,
+    linear-gradient(#fff, #fff) center 100% / 2px 9px no-repeat,
+    linear-gradient(#fff, #fff) 0 center / 9px 2px no-repeat,
+    linear-gradient(#fff, #fff) 100% center / 9px 2px no-repeat;
 }
 
 .cs-hud.scoped #crosshair,
