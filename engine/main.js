@@ -400,6 +400,7 @@ function createEnemySystemIfNeeded() {
     defaultEnemyType: GAME_ASSETS.enemies.defaultType,
     teamMatch,
     onTeamKill: (attackerTeam, victimTeam) => teamMatch?.recordKill(attackerTeam, victimTeam),
+    onBotHit: impact => impacts.spawnBlood(impact.point, impact.normal, impact),
     playAudio: sounds.playAudio
   });
 

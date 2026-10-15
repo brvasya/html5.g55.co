@@ -17,6 +17,7 @@ export function createEnemies({
   enemyTypes,
   teamMatch = null,
   onTeamKill = () => {},
+  onBotHit = () => {},
   playAudio = (audio, volume = 1.0) => {
     audio.volume = volume;
     audio.currentTime = 0;
@@ -1119,6 +1120,32 @@ export function createEnemies({
     return best;
   }
 
+  function hitTeamBot(attacker, target) {
+    const data = attacker.userData;
+    const point = target.position.clone();
+    point.y += config.playerHeight * 0.6;
+    attackRayOrigin.copy(attacker.position);
+    attackRayOrigin.y += config.playerHeight * 0.8;
+    attackRayDirection.subVectors(point, attackRayOrigin).normalize();
+    attackRaycaster.set(attackRayOrigin, attackRayDirection);
+    attackRaycaster.near = 0;
+    attackRaycaster.far = Infinity;
+    // Use this target's animated hitboxes so spray starts at its body surface.
+    const hit = getHit(attackRaycaster, target);
+    const impact = {
+      point: hit?.point ?? point,
+      normal: hit?.normal ?? attackRayDirection.clone().negate(),
+      direction: attackRayDirection.clone(),
+      bone: hit?.bone,
+      melee: !data.type.asset.weapon
+    };
+    const healthBefore = target.userData.health;
+    damageEnemy(target, data.damage, { ...impact, attackerTeam: data.team });
+    // damageEnemy returns kills, so compare HP to include nonlethal hits while
+    // excluding friendly fire, spawn protection and other rejected damage.
+    if (target.userData.health < healthBefore) onBotHit({ ...impact, damage: data.damage });
+  }
+
   function updateTeams(delta, takeDamage) {
     if (!teamArena || teamMatch.ended) return;
     syncPlayerActor();
@@ -1172,11 +1199,7 @@ export function createEnemies({
           Math.max(0.05, 1 - enemy.position.distanceTo(camera.position) / 65));
         if (livingTarget(target) && canEnemyAttack(enemy, targetEye)) {
           if (target.isPlayer) takeDamage(data.damage, data.team);
-          else {
-            const point = target.position.clone(); point.y += config.playerHeight * 0.6;
-            damageEnemy(target, data.damage, { attackerTeam: data.team, point,
-              direction: target.position.clone().sub(enemy.position).normalize() });
-          }
+          else hitTeamBot(enemy, target);
         }
       }
       if (data.isAttacking && data.attackTimer <= 0) {
@@ -1402,7 +1425,7 @@ export function createEnemies({
     return null;
   }
 
-  function getHit(activeRaycaster) {
+  function getHit(activeRaycaster, targetEnemy = null) {
     let bestEnemy = null;
     let bestHitbox = null;
     let bestDistance = Infinity;
@@ -1412,6 +1435,7 @@ export function createEnemies({
     const far = Number.isFinite(activeRaycaster.far) ? activeRaycaster.far : Infinity;
 
     for (const enemy of enemies) {
+      if (targetEnemy && enemy !== targetEnemy) continue;
       if (enemy.userData.isDead && !enemy.userData.ragdoll) continue;
 
       const hitboxes = enemy.userData.hitboxes;
