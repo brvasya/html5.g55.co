@@ -1,49 +1,6 @@
-:root {
-  --ui-accent: #27b7eb;
-  --ui-accent-bright: #59d2ff;
-  --ui-accent-soft: rgba(39, 183, 235, 0.18);
-  --ui-success: #8ee68a;
-  --ui-warning: #f0c45b;
-  --ui-danger: #ff675f;
-  --ui-text: #f7fafc;
-  --ui-muted: rgba(235, 242, 247, 0.62);
-  --ui-faint: rgba(235, 242, 247, 0.36);
-  --ui-line: rgba(255, 255, 255, 0.11);
-  --ui-line-strong: rgba(255, 255, 255, 0.18);
-  --ui-panel: rgba(9, 13, 18, 0.78);
-  --ui-panel-solid: rgba(8, 12, 17, 0.94);
-  --ui-panel-soft: rgba(20, 27, 34, 0.66);
-  --ui-overlay: rgba(3, 6, 9, 0.62);
-  --ui-radius: 12px;
-  --ui-radius-small: 8px;
-  --ui-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
-}
-
-* { box-sizing: border-box; }
-
-html,
-body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #080b0e;
-  color: var(--ui-text);
-  user-select: none;
-  touch-action: none;
-  cursor: default;
-  font-family: var(--ui-font);
-}
-
 canvas { display: block; }
 
 /* HUD */
-#hud {
-  position: fixed;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-}
 
 .cs-hud {
   color: var(--ui-text);
@@ -51,16 +8,6 @@ canvas { display: block; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-}
-
-.cs-hud #stats {
-  position: static;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
-  line-height: 1;
-  font-size: inherit;
 }
 
 /* Crosshair */
@@ -77,7 +24,6 @@ canvas { display: block; }
 #crosshair::after {
   content: "";
   position: absolute;
-  background: rgba(255, 255, 255, 0.92);
 }
 
 #crosshair::before {
@@ -100,11 +46,6 @@ canvas { display: block; }
   opacity: 0.92;
   transition: width 70ms ease, height 70ms ease, opacity 90ms ease;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
-  background:
-    linear-gradient(#fff, #fff) center 0 / 2px 8px no-repeat,
-    linear-gradient(#fff, #fff) center 100% / 2px 8px no-repeat,
-    linear-gradient(#fff, #fff) 0 center / 8px 2px no-repeat,
-    linear-gradient(#fff, #fff) 100% center / 8px 2px no-repeat;
 }
 
 .cs-hud #crosshair::before,
@@ -114,17 +55,10 @@ canvas { display: block; }
   width: 40px;
   height: 40px;
   opacity: 1;
-  background:
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 0 / 2px 9px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 100% / 2px 9px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 0 center / 9px 2px no-repeat,
-    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 100% center / 9px 2px no-repeat;
 }
 
 .cs-hud.scoped #crosshair,
-.cs-hud.scope-active #crosshair,
-body.scoped #crosshair,
-body.scope-active #crosshair {
+body.scoped #crosshair {
   display: none;
 }
 
@@ -142,8 +76,7 @@ body.scope-active #crosshair {
     linear-gradient(to bottom, transparent calc(50% - 1px), rgba(0, 0, 0, 0.9) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px));
 }
 
-#sniperScope.active,
-#sniperScope.open { display: block; }
+#sniperScope.active { display: block; }
 
 #sniperScope::before {
   content: "";
@@ -190,10 +123,7 @@ body.scope-active #crosshair {
   min-height: 44px;
   padding: 0 6px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(19, 26, 33, 0.82), rgba(7, 11, 15, 0.78));
   border: 1px solid var(--ui-line);
-  border-radius: 10px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
 }
 
 .cs-badge,
@@ -214,7 +144,6 @@ body.scope-active #crosshair {
 
 .cs-badge span {
   margin-left: 7px;
-  color: var(--ui-text);
 }
 
 .cs-score {
@@ -232,7 +161,6 @@ body.scope-active #crosshair {
 
 .cs-round span {
   margin-left: 7px;
-  color: var(--ui-accent-bright);
   font-size: 14px;
 }
 
@@ -244,10 +172,7 @@ body.scope-active #crosshair {
   min-width: 172px;
   padding: 12px 14px 13px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(17, 23, 29, 0.76), rgba(7, 11, 15, 0.82));
   border: 1px solid var(--ui-line);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
 .cs-bottom-left::before,
@@ -258,7 +183,6 @@ body.scope-active #crosshair {
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--ui-accent), transparent);
   opacity: 0.8;
 }
 
@@ -275,12 +199,10 @@ body.scope-active #crosshair {
 
 .cs-big,
 .cs-ammo {
-  color: var(--ui-text);
   font-size: 42px;
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: -0.04em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .cs-ammo small {
@@ -290,17 +212,6 @@ body.scope-active #crosshair {
   letter-spacing: -0.02em;
 }
 
-.cs-bottom-left.danger,
-.cs-bottom-right.danger {
-  border-color: rgba(255, 103, 95, 0.42);
-  box-shadow: 0 0 0 1px rgba(255, 103, 95, 0.06), 0 12px 32px rgba(0, 0, 0, 0.3);
-}
-
-.cs-bottom-left.danger::before,
-.cs-bottom-right.danger::before {
-  background: linear-gradient(90deg, transparent, var(--ui-danger), transparent);
-}
-
 .cs-bottom-left.danger .cs-big,
 .cs-bottom-right.danger .cs-ammo,
 .cs-bottom-right.danger small {
@@ -308,7 +219,6 @@ body.scope-active #crosshair {
 }
 
 /* Buttons */
-button { all: unset; display: inline-block; }
 
 .cs-button {
   display: inline-flex;
@@ -318,16 +228,12 @@ button { all: unset; display: inline-block; }
   margin-top: 16px;
   padding: 0 22px;
   border: 1px solid var(--ui-line-strong);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--ui-text);
   font: 700 12px/1 var(--ui-font);
   letter-spacing: 0.11em;
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
   transition: transform 110ms ease, background 110ms ease, border-color 110ms ease, box-shadow 110ms ease;
 }
 
@@ -335,8 +241,6 @@ button { all: unset; display: inline-block; }
 
 .cs-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.26);
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .cs-button:active {
@@ -346,9 +250,6 @@ button { all: unset; display: inline-block; }
 
 #startButton {
   min-width: 224px;
-  border-color: rgba(89, 210, 255, 0.54);
-  background: linear-gradient(180deg, #21b6ea, #078fbe);
-  box-shadow: 0 10px 26px rgba(0, 153, 204, 0.24);
 }
 
 #startButton:hover {
@@ -359,22 +260,13 @@ button { all: unset; display: inline-block; }
 
 #moreGamesButton {
   min-width: 144px;
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.82);
 }
 
 /* Main/pause/wave/game-over overlay */
 #overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  display: grid;
   place-items: center;
   padding: 24px;
   text-align: center;
-  background:
-    radial-gradient(circle at 50% 44%, rgba(19, 31, 40, 0.22), transparent 42%),
-    rgba(2, 5, 8, 0.66);
 }
 
 #panel {
@@ -382,10 +274,7 @@ button { all: unset; display: inline-block; }
   width: min(570px, 92vw);
   padding: 36px 38px 34px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(17, 23, 29, 0.86), rgba(7, 11, 15, 0.92));
   border: 1px solid var(--ui-line-strong);
-  border-radius: 16px;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
 }
 
 #panel::before {
@@ -395,7 +284,6 @@ button { all: unset; display: inline-block; }
   right: 64px;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--ui-accent-bright), transparent);
   opacity: 0.82;
 }
 
@@ -438,14 +326,10 @@ p {
   z-index: 6;
   transform: translateX(-50%);
   padding: 9px 13px;
-  color: var(--ui-muted);
   font: 700 10px/1 var(--ui-font);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: rgba(8, 12, 17, 0.7);
   border: 1px solid var(--ui-line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
   pointer-events: none;
 }
 
@@ -485,7 +369,6 @@ p {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   padding-left: max(12px, env(safe-area-inset-left));
   overflow: hidden;
-  background: rgb(3 7 10 / .6);
 }
 
 #buyMenu.open { display: flex; opacity: 1; visibility: visible; pointer-events: auto; }
@@ -495,7 +378,6 @@ p {
 #buyMenu button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 
 #buyMenu .cs-buy-panel {
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.56);
   position: relative;
   inset: auto;
   display: flex;
@@ -510,8 +392,6 @@ p {
   padding: 22px;
   overflow: hidden;
   border: 1px solid rgb(215 232 242 / .18);
-  border-radius: 16px;
-  background: linear-gradient(150deg, #10171c, #0a0f12);
   color: var(--ui-text);
   text-align: left;
   font-family: inherit;
@@ -564,8 +444,6 @@ p {
   margin: 0;
   padding: 0;
   border: 1px solid rgb(255 255 255 / .14);
-  border-radius: 9px;
-  background: rgb(255 255 255 / .045);
   color: var(--ui-muted);
   font-size: 26px;
   font-weight: 700;
@@ -584,8 +462,6 @@ p {
   margin: 0;
   padding: 8px 12px;
   border: 1px solid rgb(134 230 139 / .18);
-  border-radius: 8px;
-  background: rgb(134 230 139 / .065);
   color: var(--ui-success);
   font-size: 17px;
   font-weight: 800;
@@ -629,8 +505,6 @@ p {
   margin: 0;
   padding: 12px;
   border: 1px solid rgb(220 234 240 / .14);
-  border-radius: 11px;
-  background: rgb(255 255 255 / .03);
   color: inherit;
   text-align: left;
   opacity: 1;
@@ -651,8 +525,6 @@ p {
 #buyMenu .cs-buy-card.active,
 #buyMenu .cs-buy-card.active:hover,
 #buyMenu .cs-buy-card.active:focus-within {
-  border-color: var(--ui-success);
-  background: rgb(134 230 139 / .055);
   transform: none;
 }
 
@@ -735,8 +607,6 @@ p {
   margin: 0;
   padding: 0;
   border: 1px solid rgb(255 255 255 / .12);
-  border-radius: 6px;
-  background: rgb(0 0 0 / .12);
   color: var(--ui-muted);
   font-size: 10px;
   font-weight: 700;
@@ -800,14 +670,10 @@ p {
   align-self: flex-start;
   margin: 0;
   padding: 3px 5px;
-  border-color: rgb(255 255 255 / .25);
-  color: #cfdbe3;
   font-size: 10px;
   line-height: 1.1;
   letter-spacing: 0;
 }
-
-#buyMenu .cs-upgrade-level.complete { color: var(--ui-success); border-color: currentColor; }
 
 #buyMenu .cs-buy-actions {
   position: relative;
@@ -841,9 +707,6 @@ p {
   margin: 0;
   padding: 6px 3px;
   border: 1px solid rgb(255 255 255 / .14);
-  border-radius: 7px;
-  background: rgb(255 255 255 / .04);
-  color: #d4dce0;
   font: inherit;
   font-size: 10px;
   font-weight: 800;
@@ -870,22 +733,13 @@ p {
 
 #buyMenu .cs-buy-price.unavailable { color: var(--ui-muted); }
 
-#buyMenu .cs-buy-actions .cs-buy-action:disabled { color: var(--ui-muted); opacity: 1; cursor: default; }
+#buyMenu .cs-buy-actions .cs-buy-action:disabled { opacity: 1; cursor: default; }
 
 #buyMenu .cs-buy-actions .cs-buy-upgrade.maxed {
-  border-color: rgb(134 230 139 / .22);
-  background: rgb(134 230 139 / .05);
-  color: var(--ui-success);
   opacity: 1;
 }
 
 #buyMenu .cs-buy-upgrade.maxed .cs-buy-price { color: var(--ui-success); }
-
-@media (hover: hover) and (pointer: fine) {
-  #buyMenu .cs-buy-card:not(.active):not(.locked):hover { border-color: rgb(220 234 240 / .3); background: rgb(255 255 255 / .045); }
-  #buyMenu .cs-buy-actions .cs-buy-action:not(:disabled):hover,
-  #buyMenu .cs-buy-close:hover { border-color: var(--ui-accent-bright); background: rgb(76 215 255 / .065); }
-}
 
 body.keyboard-navigation #buyMenu .cs-buy-select:focus,
 body.keyboard-navigation #buyMenu .cs-buy-action:focus,
@@ -948,7 +802,7 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
 
 @media (max-height: 500px) {
   #buyMenu { padding: 6px; padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
-  #buyMenu .cs-buy-panel { gap: 6px; padding: 8px; border-radius: 12px; }
+  #buyMenu .cs-buy-panel { gap: 6px; padding: 8px; }
   #buyMenu .cs-buy-head { gap: 8px; }
   #buyMenu .cs-buy-title { font-size: 18px; }
   #buyMenu .cs-buy-subtitle { margin-top: 3px; font-size: 9px; line-height: 1.2; }
@@ -1016,12 +870,10 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
   transform: translate(-50%, -50%) scale(0.86);
   opacity: 0;
   max-width: calc(100vw - 32px);
-  color: #fff;
   font: 900 clamp(20px, 4vw, 54px)/1 var(--ui-font);
   letter-spacing: 0.08em;
   text-align: center;
   white-space: nowrap;
-  text-shadow: 0 2px 16px rgba(255, 44, 44, 0.42);
 }
 
 #headshotMessage::after {
@@ -1031,7 +883,6 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
   right: 15%;
   bottom: -10px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 103, 95, 0.95), transparent);
 }
 
 #headshotMessage.show {
@@ -1131,85 +982,15 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
 }
 
 /* Main menu — live scene, left-aligned modern FPS layout. */
-body.main-menu-active #hud {
-  opacity: 0;
-}
 
 body.main-menu-active canvas {
   transform-origin: 50% 50%;
   animation: menu-scene-drift 12s ease-in-out infinite alternate;
 }
 
-#overlay.main-menu {
-  place-items: center start;
-  padding:
-    clamp(28px, 6vh, 72px)
-    clamp(24px, 7vw, 108px);
-  text-align: left;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(3, 7, 10, 0.94) 0%,
-      rgba(3, 7, 10, 0.78) 27%,
-      rgba(3, 7, 10, 0.42) 50%,
-      rgba(3, 7, 10, 0.10) 76%,
-      rgba(3, 7, 10, 0.02) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.26) 0%,
-      transparent 36%,
-      rgba(0, 0, 0, 0.28) 100%
-    );
-}
-
-#overlay.main-menu #panel {
-  width: min(680px, 88vw);
-  padding: 0;
-  overflow: visible;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-#overlay.main-menu #panel::before {
-  left: 0;
-  right: auto;
-  top: -20px;
-  width: 64px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--ui-accent-bright);
-  box-shadow: 0 0 22px rgba(89, 210, 255, 0.35);
-  opacity: 1;
-}
-
 #overlay.main-menu h1 {
-  max-width: 760px;
-  margin: 0 0 18px;
   color: #fff;
-  font-size: clamp(46px, 7.2vw, 88px);
-  font-weight: 700;
-  line-height: 0.94;
-  letter-spacing: -0.035em;
-  text-transform: uppercase;
   text-wrap: balance;
-  text-shadow:
-    0 4px 30px rgba(0, 0, 0, 0.54),
-    0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-#overlay.main-menu p {
-  max-width: none;
-  margin: 0 0 22px;
-  color: rgba(242, 247, 250, 0.68);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.5;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 #overlay.main-menu .cs-button {
@@ -1256,31 +1037,6 @@ body.main-menu-active canvas {
 }
 
 @media (max-width: 700px) {
-  #overlay.main-menu {
-    place-items: end start;
-    padding: 28px 20px 34px;
-    background:
-      linear-gradient(
-        180deg,
-        rgba(2, 5, 8, 0.18) 0%,
-        rgba(2, 5, 8, 0.52) 44%,
-        rgba(2, 5, 8, 0.96) 100%
-      );
-  }
-
-  #overlay.main-menu #panel {
-    width: 100%;
-  }
-
-  #overlay.main-menu h1 {
-    margin-bottom: 14px;
-    font-size: clamp(38px, 12vw, 58px);
-  }
-
-  #overlay.main-menu p {
-    margin-bottom: 16px;
-    font-size: 9px;
-  }
 
   #overlay.main-menu #startButton,
   #overlay.main-menu #moreGamesButton {
@@ -1308,13 +1064,8 @@ body.main-menu-active canvas {
 }
 
 @media (max-width: 420px) {
-  #overlay.main-menu {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
 
   #overlay.main-menu #panel {
-    min-width: 0;
     max-width: 100%;
   }
 
@@ -1357,21 +1108,6 @@ body.main-menu-active canvas {
     width: min(520px, 100%);
     max-width: 100%;
     margin-inline: auto;
-  }
-
-  /* Pause / wave / game-over actions use one consistent width. */
-  #overlay:not(.main-menu) #startButton,
-  #overlay:not(.main-menu) #moreGamesButton {
-    display: flex;
-    width: min(320px, 100%);
-    max-width: 100%;
-    min-width: 0;
-    margin-left: auto !important;
-    margin-right: auto;
-  }
-
-  #overlay:not(.main-menu) #moreGamesButton {
-    margin-top: 9px;
   }
 }
 
@@ -1417,68 +1153,7 @@ body.main-menu-active canvas {
 
 /* Split main-menu game title: "Series: Subtitle". */
 #overlay.main-menu h1 {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 7px;
-  max-width: min(820px, 88vw);
   margin-bottom: 20px;
-  font-size: inherit;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  text-shadow: none;
-}
-
-#overlay.main-menu .main-title-prefix {
-  display: block;
-  color: var(--ui-accent-bright);
-  font-size: clamp(18px, 2.2vw, 30px);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.48);
-}
-
-#overlay.main-menu .main-title-name {
-  display: block;
-  max-width: 820px;
-  color: #fff;
-  font-size: clamp(46px, 7vw, 86px);
-  font-weight: 700;
-  line-height: 0.92;
-  letter-spacing: -0.035em;
-  text-transform: uppercase;
-  text-wrap: balance;
-  text-shadow:
-    0 5px 32px rgba(0, 0, 0, 0.56),
-    0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-@media (max-width: 700px) {
-  #overlay.main-menu h1 {
-    gap: 6px;
-    max-width: 100%;
-    margin-bottom: 16px;
-  }
-
-  #overlay.main-menu .main-title-prefix {
-    font-size: clamp(16px, 4.8vw, 22px);
-    letter-spacing: 0.10em;
-  }
-
-  #overlay.main-menu .main-title-name {
-    max-width: 100%;
-    font-size: clamp(36px, 11.5vw, 56px);
-    line-height: 0.94;
-  }
-}
-
-@media (max-width: 420px) {
-  #overlay.main-menu .main-title-name {
-    font-size: clamp(32px, 11vw, 48px);
-  }
 }
 
 /* Mobile controls: two-thumb aiming and a compact, safe-area-aware HUD. */
@@ -1488,8 +1163,6 @@ body.touch-device .cs-bottom-right {
   bottom: auto;
   min-width: 0;
   padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(8, 16, 23, .62);
   box-shadow: 0 3px 12px rgba(0, 0, 0, .15);
 }
 body.touch-device .cs-bottom-left {
@@ -1536,7 +1209,6 @@ body.touch-device .cs-topbar {
   top: max(10px, env(safe-area-inset-top, 0px) + 6px);
   min-height: 34px;
   padding: 0;
-  background: rgba(8, 16, 23, .56);
   box-shadow: none;
 }
 body.touch-device .cs-badge,
@@ -1597,7 +1269,6 @@ body.touch-device .cs-badge span { font-size: 11px; }
   height: 104px;
   border: 1px solid rgba(255, 255, 255, .24);
   border-radius: 50%;
-  background: rgba(8, 16, 23, .18);
   pointer-events: auto;
 }
 .touch-stick-ring { position: absolute; inset: 15px; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; }
@@ -1609,7 +1280,6 @@ body.touch-device .cs-badge span { font-size: 11px; }
   height: 38px;
   margin: -19px 0 0 -19px;
   border-radius: 50%;
-  background: rgba(39, 183, 235, .86);
   border: 1px solid rgba(255, 255, 255, .25);
   pointer-events: none;
 }
@@ -1635,8 +1305,6 @@ body.touch-device .cs-badge span { font-size: 11px; }
   margin: 0;
   border: 1px solid rgba(255, 255, 255, .28);
   border-radius: 50%;
-  color: #fff;
-  background: rgba(8, 16, 23, .42);
   box-shadow: 0 3px 10px rgba(0,0,0,.12);
   pointer-events: auto;
   position: relative;
@@ -1647,8 +1315,8 @@ body.touch-device .cs-badge span { font-size: 11px; }
 }
 .touch-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .touch-button-label { position: relative; z-index: 1; pointer-events: none; }
-.touch-button.active { background: rgba(39, 183, 235, .5); border-color: var(--ui-accent-bright); }
-.touch-button.selected { background: rgba(39, 183, 235, .7); border-color: var(--ui-accent-bright); box-shadow: 0 0 0 2px rgba(39,183,235,.24); }
+.touch-button.active { border-color: var(--ui-accent-bright); }
+.touch-button.selected { border-color: var(--ui-accent-bright); }
 .touch-button:disabled { opacity: .42; }
 .touch-button.reloading { opacity: .9; }
 .touch-button-reload::after {
@@ -1660,30 +1328,28 @@ body.touch-device .cs-badge span { font-size: 11px; }
   width: var(--reload-progress, 0%);
   background: var(--ui-accent-bright);
 }
-.touch-button-row .touch-button { width: 46px; height: 44px; border-radius: 12px; font-size: 8px; }
+.touch-button-row .touch-button { width: 46px; height: 44px; font-size: 8px; }
 .touch-button-row svg { width: 18px; height: 18px; }
 .touch-actions { position: absolute; right: var(--touch-right); bottom: var(--touch-bottom); width: 200px; height: 182px; pointer-events: none; }
 .touch-actions .touch-button { position: absolute; }
-.touch-button-fire { right: 8px; bottom: 20px; width: 78px; height: 78px; background: rgba(17,155,212,.85); border: 2px solid rgba(119,220,255,.72); font-size: 11px; }
+.touch-button-fire { right: 8px; bottom: 20px; width: 78px; height: 78px; border: 2px solid rgba(119,220,255,.72); font-size: 11px; }
 .touch-button-fire svg { width: 30px; height: 30px; }
-.touch-button-fire.active { background: rgba(42,192,244,.94); }
 .touch-button-jump { right: 108px; bottom: 88px; }
 .touch-button-reload { right: 110px; bottom: 20px; }
 .touch-button-scope { right: 16px; bottom: 116px; }
 .touch-fire-hint { position: absolute; right: 0; bottom: 0; font-size: 9px; }
 .touch-weapon-trigger { appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; cursor: pointer; }
-.touch-weapon-trigger.active { background: rgba(39,183,235,.2); }
 body.keyboard-navigation #touchControls button:focus-visible { outline: 2px solid var(--ui-accent-bright); outline-offset: -3px; }
 .touch-weapon-picker { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; pointer-events: auto; }
-.touch-picker-backdrop { position: absolute; inset: 0; border: 0; background: rgba(3,8,12,.45); width: 100%; height: 100%; }
-.touch-picker-panel { position: relative; width: min(450px, 86vw); padding: 12px; border: 1px solid var(--ui-line-strong); border-radius: 14px; background: rgba(8,16,23,.97); color: var(--ui-text); }
+.touch-picker-backdrop { position: absolute; inset: 0; border: 0; width: 100%; height: 100%; }
+.touch-picker-panel { position: relative; width: min(450px, 86vw); padding: 12px; border: 1px solid var(--ui-line-strong); color: var(--ui-text); }
 .touch-picker-heading { display: flex; align-items: center; justify-content: space-between; font: 700 14px var(--ui-font); margin-bottom: 6px; }
-.touch-picker-close { width: 44px; height: 44px; color: #fff; border: 0; background: rgba(255,255,255,.08); border-radius: 10px; font-size: 25px; }
+.touch-picker-close { width: 44px; height: 44px; border: 0; font-size: 25px; }
 .touch-weapon-list { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
-.touch-weapon-option { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 8px; border: 1px solid var(--ui-line); border-radius: 8px; background: rgba(255,255,255,.05); color: #fff; font: 700 11px var(--ui-font); }
+.touch-weapon-option { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 8px; border: 1px solid var(--ui-line); font: 700 11px var(--ui-font); }
 .touch-weapon-option small { font-size: 10px; color: var(--ui-muted); }
-.touch-weapon-option[aria-pressed="true"], .touch-weapon-option.active { border-color: var(--ui-accent-bright); background: var(--ui-accent-soft); }
-.rotate-device { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 12px; background: rgba(6,13,19,.97); color: #fff; text-align: center; font: 12px/1.5 var(--ui-font); pointer-events: auto; }
+.touch-weapon-option[aria-pressed="true"], .touch-weapon-option.active { border-color: var(--ui-accent-bright); }
+.rotate-device { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 12px; text-align: center; font: 12px/1.5 var(--ui-font); pointer-events: auto; }
 .rotate-device-icon { font-size: 64px; color: var(--ui-accent-bright); }
 .rotate-device strong { font-size: 24px; }
 #touchControls.portrait > :not(.rotate-device) { display: none !important; }
@@ -1713,84 +1379,17 @@ body.touch-device.touch-controls-visible.touch-portrait #hud { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .touch-hint { transition: none; } }
 
 /* Desktop QA: stable actions, visible focus, and readable state feedback. */
-[hidden] { display: none !important; }
-button { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-body:not(.keyboard-navigation) button:focus,
-body:not(.keyboard-navigation) a:focus,
-[role="dialog"]:focus { outline: none; }
-body.keyboard-navigation button:focus-visible,
-body.keyboard-navigation a:focus-visible { outline: 3px solid var(--ui-accent-bright); outline-offset: 4px; }
+button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button:disabled { cursor: default; }
 #startButton[data-loading="true"] {
   cursor: wait;
   justify-content: center !important;
-  background: linear-gradient(90deg, #148bb5 var(--load-progress, 0%), rgba(10,31,42,.9) var(--load-progress, 0%));
-  box-shadow: none;
-}
-#startButton[data-loading="true"]::after { content: "" !important; }
-#panel .menu-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 20px auto 0;
-  width: 100%;
-  max-width: 500px;
 }
 #overlay #panel .menu-actions .cs-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  min-height: 52px;
-  height: 52px;
   box-sizing: border-box;
-  margin: 0 !important;
-  padding: 0 20px;
 }
-#overlay.main-menu #panel .menu-actions { grid-template-columns: 1.45fr 1fr; margin-left: 0; }
-#overlay.main-menu #panel #startButton { justify-content: space-between; }
-#overlay.main-menu p { max-width: 670px; font-size: 11px; line-height: 1.8; letter-spacing: .045em; }
-/* Quiet secondary actions align with the primary action row. */
-.menu-secondary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  width: 100%;
-  max-width: 500px;
-  margin: 16px auto 0;
-}
-.menu-secondary button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 8px;
-  color: var(--ui-muted);
-  font: 700 12px/1 var(--ui-font);
-  letter-spacing: .11em;
-  text-transform: uppercase;
-  background: transparent;
-  transition: background 120ms ease, color 120ms ease;
-  text-align: center;
-  cursor: pointer;
-}
-.menu-secondary button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, .06);
-}
-#overlay.main-menu .menu-secondary button { font-size: 13px; letter-spacing: .12em; }
-#overlay.main-menu .menu-secondary {
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-  margin-left: 0;
-}
-#overlay:not(.main-menu) #fullscreenButton { display: none; }
+/* Status feedback. */
 #uiStatus {
-  position: fixed;
   z-index: 45;
   left: 50%;
   bottom: max(24px, env(safe-area-inset-bottom, 0px) + 12px);
@@ -1798,15 +1397,9 @@ button:disabled { cursor: default; }
   max-width: min(540px, 86vw);
   padding: 10px 16px;
   border: 1px solid var(--ui-line-strong);
-  border-radius: 10px;
-  background: rgba(7,16,24,.94);
-  color: #fff;
   font: 500 13px/1.45 var(--ui-font);
   text-align: center;
-  opacity: 0;
-  pointer-events: none;
 }
-#uiStatus.visible { opacity: 1; }
 #reloadStatus {
   position: fixed;
   z-index: 8;
@@ -1814,9 +1407,6 @@ button:disabled { cursor: default; }
   left: 50%;
   transform: translateX(-50%);
   padding: 7px 12px;
-  border-radius: 6px;
-  background: rgba(6,14,20,.7);
-  color: #fff;
   font: 700 11px/1.3 var(--ui-font);
   text-align: center;
   opacity: 0;
@@ -1826,104 +1416,17 @@ button:disabled { cursor: default; }
 body.touch-device #reloadStatus, body.main-menu-active #reloadStatus, body.main-menu-active #buyHint { display: none; }
 @media (max-height: 560px) {
   #overlay:not(.main-menu) #panel { padding-top: 22px; padding-bottom: 18px; }
-  #panel .menu-actions { margin-top: 14px; }
-  .menu-secondary { margin-top: 8px; }
-  #overlay.main-menu { padding-top: 20px; padding-bottom: 18px; }
-  #overlay.main-menu p { margin-bottom: 12px; }
-}
-@media (max-height: 400px) {
-  #overlay.main-menu .main-title-name { font-size: clamp(30px, 7vw, 54px); }
-  #overlay.main-menu .main-title-prefix { font-size: 17px; }
-  #overlay.main-menu h1 { margin-bottom: 12px; }
-  #overlay.main-menu p { font-size: 10px; line-height: 1.55; }
-  #overlay #panel .menu-actions .cs-button { height: 46px; min-height: 46px; }
-}
-@media (max-width: 460px) {
-  #overlay #panel .menu-actions,
-  #overlay #panel .menu-secondary { grid-template-columns: minmax(0, 1fr); max-width: 320px; }
-  #overlay.main-menu #panel .menu-actions { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 420px) {
-  #overlay.main-menu .menu-secondary button { font-size: 12px; letter-spacing: .08em; }
 }
 @media (prefers-reduced-motion: reduce) {
   button, a { transition: none !important; }
 }
 
-/* Text-only map selection; mirrored in the existing critical first-paint styles. */
-.map-select { display: none; }
-#overlay.main-menu .map-select {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  width: 100%;
-  max-width: 500px;
-  margin: 0;
-}
-#overlay.main-menu .map-option {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  color: var(--ui-muted);
-  background: transparent;
-  font: 700 13px/1 var(--ui-font);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  text-align: center;
-  cursor: pointer;
-}
-#overlay.main-menu .map-option::after {
-  content: "";
-  position: absolute;
-  bottom: 3px;
-  left: 35%;
-  right: 35%;
-  height: 2px;
-  background: var(--ui-accent-bright);
-  opacity: 0;
-}
-#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent-bright); }
-#overlay.main-menu .map-option[aria-pressed="true"]::after { opacity: 1; }
-#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); }
-#overlay.main-menu .map-option:disabled { cursor: wait; opacity: .65; }
-@media (max-width: 460px) {
-  #overlay.main-menu .map-select { max-width: 320px; }
-}
-
-/* Configured choices settle before the first visible menu frame. */
-html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
-#overlay.main-menu .map-select[data-layout="three"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-#overlay.main-menu .map-select[data-layout="picker"] { display: block; }
-#overlay.main-menu .map-picker {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--ui-line-strong);
-  border-radius: 8px;
-  color: var(--ui-accent-bright);
-  background: rgba(8, 16, 23, .7);
-  font: 700 13px/1.2 var(--ui-font);
-  letter-spacing: .04em;
-  cursor: pointer;
-}
-#overlay.main-menu .map-picker option { color: var(--ui-text); background: #081017; }
-#overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
-
-/* CS:GO Panorama-inspired tactical series theme.
-   Paint only: retain all existing geometry, typography, states, and controls.
-   Extra selector specificity also themes the existing inline menu paint. */
+/* Tactical theme: shared colors and component appearance. */
 html:root {
   --ui-accent: #b8a375;
   --ui-accent-bright: #d6c18e;
   --ui-accent-soft: rgba(184, 163, 117, .12);
   --ui-success: #9bd58a;
-  --ui-warning: #d6c18e;
   --ui-danger: #f17b72;
   --ui-text: #f2f4f6;
   --ui-muted: rgba(218, 225, 233, .72);
@@ -1932,11 +1435,9 @@ html:root {
   --ui-line-strong: rgba(221, 230, 240, .24);
   --ui-panel: rgba(29, 36, 44, .84);
   --ui-panel-solid: rgba(20, 26, 33, .96);
-  --ui-panel-soft: rgba(47, 57, 68, .68);
   --ui-overlay: rgba(10, 14, 19, .6);
   --ui-radius: 2px;
   --ui-radius-small: 2px;
-  --ui-shadow: 0 10px 30px rgba(0, 0, 0, .34);
   --cs-crosshair: #94ec73;
   --cs-crosshair-fire: #b4ff91;
   --cs-button-ink: #f2f4f6;
@@ -2005,8 +1506,6 @@ body #uiStatus {
   color: var(--ui-text);
   box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
 }
-
-body #reloadStatus { color: var(--ui-text); }
 
 body #headshotMessage {
   color: var(--ui-text);
@@ -2270,3 +1769,393 @@ body .rotate-device {
   background: var(--ui-panel-solid);
   color: var(--ui-text);
 }
+
+/* Center the logo, title, and actions together across responsive breakpoints. */
+body #overlay.main-menu {
+  align-items: safe center;
+  padding-block: clamp(12px, 3vh, 32px);
+}
+
+body #overlay.main-menu #panel {
+  display: flex;
+  flex-direction: column;
+}
+
+body #overlay.main-menu #mainMenuLogo {
+  position: static;
+  order: -2;
+  flex-shrink: 0;
+  margin: 0 0 56px;
+}
+
+body #overlay.main-menu #panel::before {
+  position: static;
+  order: -1;
+  flex-shrink: 0;
+  margin-bottom: 17px;
+}
+
+@media (max-width: 700px) {
+  body #overlay.main-menu #mainMenuLogo { margin-bottom: 32px; }
+}
+
+@media (max-height: 650px) {
+  body #overlay.main-menu #mainMenuLogo { margin-bottom: 24px; }
+}
+
+@media (max-height: 500px) {
+  body #overlay.main-menu #mainMenuLogo { margin-bottom: 4px; }
+}
+
+@media (max-height: 300px) {
+  body #overlay.main-menu #mainMenuLogo { margin-bottom: 2px; }
+}
+
+@media (max-height: 400px) {
+  body #overlay.main-menu { padding-block: 8px; }
+}
+
+@media (max-height: 320px) {
+  body #overlay.main-menu #panel::before { margin-bottom: 8px; }
+  body #overlay.main-menu h1 { gap: 4px; margin-bottom: 8px; }
+  body #overlay.main-menu p { margin-bottom: 8px; }
+  body #overlay.main-menu #panel .menu-actions { margin-top: 8px; }
+  body #overlay.main-menu #panel .menu-secondary { margin-top: 4px; }
+}
+
+/* Menu presentation and startup visibility. */
+@font-face {
+  font-family: "Game UI";
+  src: url("./assets/font.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
+:root {
+  --ui-font: "Game UI", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #080b0e;
+  color: var(--ui-text);
+  font-family: var(--ui-font);
+  user-select: none;
+  touch-action: none;
+  cursor: default;
+}
+body > canvas { position: fixed; inset: 0; display: block; }
+#hud { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+body.main-menu-active #hud { opacity: 0; }
+/* Keep runtime HUD elements hidden while the main menu is visible. */
+body.main-menu-active :is(#buyMenu, #buyHint, #headshotMessage, #reloadStatus, #sniperScope, #touchControls, #damageFlash) {
+  display: none;
+}
+button { all: unset; display: inline-block; box-sizing: border-box; }
+[hidden] { display: none !important; }
+body:not(.keyboard-navigation) button:focus,
+body:not(.keyboard-navigation) a:focus,
+[role="dialog"]:focus { outline: none; }
+body.keyboard-navigation button:focus-visible,
+body.keyboard-navigation a:focus-visible {
+  outline: 3px solid var(--ui-accent-bright);
+  outline-offset: 4px;
+}
+#overlay { position: fixed; inset: 0; z-index: 10; display: grid; }
+/* Reveal the complete menu only after the UI font is ready. */
+html.menu-font-pending #overlay.main-menu #panel { visibility: hidden; }
+html.ui-font-fallback { --ui-font: Arial, sans-serif; }
+#overlay.main-menu {
+  font-family: var(--ui-font);
+  place-items: center start;
+  padding: clamp(28px, 6vh, 72px) clamp(24px, 7vw, 108px);
+  text-align: left;
+}
+#overlay.main-menu #panel {
+  position: relative;
+  width: min(680px, 88vw);
+  min-width: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+  transform: none;
+  opacity: 1;
+}
+/* Logo dimensions are reserved before the image is decoded. */
+#mainMenuLogo { display: none; }
+#overlay.main-menu #mainMenuLogo {
+  display: block;
+  width: 130px;
+  height: auto;
+  aspect-ratio: 248 / 63;
+  filter: invert(1);
+  pointer-events: none;
+  user-select: none;
+}
+#overlay.main-menu #panel::before {
+  content: "";
+  width: 64px;
+  height: 3px;
+  opacity: 1;
+}
+#overlay.main-menu h1 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  max-width: min(820px, 88vw);
+  margin: 0 0 20px;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}
+#overlay.main-menu .main-title-prefix {
+  display: block;
+  color: var(--ui-accent-bright);
+  font-size: clamp(18px, 2.2vw, 30px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  text-shadow: 0 3px 18px rgba(0,0,0,.48);
+}
+#overlay.main-menu .main-title-name {
+  display: block;
+  max-width: 820px;
+  font-size: clamp(46px, 7vw, 86px);
+  font-weight: 700;
+  line-height: .92;
+  letter-spacing: -.035em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+#overlay.main-menu p {
+  max-width: 670px;
+  margin: 0 0 22px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.8;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+/* Both copies are in the HTML; head-time detection chooses before first paint. */
+.controls-touch, html.touch-device .controls-desktop { display: none; }
+html.touch-device .controls-touch { display: inline; }
+#panel .menu-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px auto 0;
+  width: 100%;
+  max-width: 500px;
+}
+#overlay.main-menu #panel .menu-actions {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  margin-left: 0;
+}
+#overlay #panel .menu-actions .cs-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 52px;
+  height: 52px;
+  margin: 0 !important;
+  padding: 0 20px;
+  border: 1px solid var(--ui-line-strong);
+  font: 700 12px/1 var(--ui-font);
+  letter-spacing: .11em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* Paint-only progress and hover: neither changes the button's geometry. */
+#overlay.main-menu #panel .menu-actions .cs-button { transform: none; }
+#overlay.main-menu #panel #startButton {
+  position: relative;
+  justify-content: center;
+  font-size: 13px;
+  letter-spacing: .12em;
+  font-variant-numeric: tabular-nums;
+}
+#overlay.main-menu #panel #startButton::after {
+  content: "→";
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+#overlay.main-menu #panel #startButton[data-loading="true"] {
+  cursor: wait;
+}
+#startButton[data-loading="true"]::after { content: "" !important; }
+/* Quiet secondary actions align with the primary action row. */
+.menu-secondary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+  margin: 16px auto 0;
+}
+.menu-secondary button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--ui-muted);
+  font: 700 12px/1 var(--ui-font);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  background: transparent;
+  transition: background 120ms ease, color 120ms ease;
+  text-align: center;
+  cursor: pointer;
+}
+#overlay.main-menu .menu-secondary button { font-size: 13px; letter-spacing: .12em; }
+#overlay.main-menu .menu-secondary {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  margin-left: 0;
+}
+#overlay:not(.main-menu) #fullscreenButton { display: none; }
+#uiStatus { position: fixed; opacity: 0; pointer-events: none; }
+#uiStatus.visible { opacity: 1; }
+@media (max-width: 700px) {
+  #overlay.main-menu {
+    place-items: end start;
+    padding: 28px 20px 34px;
+  }
+  #overlay.main-menu #panel { width: 100%; max-width: 100%; }
+  #overlay.main-menu #mainMenuLogo { width: 110px; }
+  #overlay.main-menu h1 { gap: 6px; max-width: 100%; margin-bottom: 16px; }
+  #overlay.main-menu .main-title-prefix { font-size: clamp(16px, 4.8vw, 22px); }
+  #overlay.main-menu .main-title-name { max-width: 100%; font-size: clamp(36px, 11.5vw, 56px); line-height: .94; }
+  #overlay.main-menu p { margin-bottom: 16px; }
+}
+@media (max-width: 420px) {
+  #overlay.main-menu { padding-left: 14px; padding-right: 14px; }
+  #overlay.main-menu #panel #startButton { font-size: 12px; letter-spacing: .08em; }
+  #overlay.main-menu .main-title-name { font-size: clamp(32px, 11vw, 48px); }
+}
+@media (max-height: 560px) {
+  #panel .menu-actions { margin-top: 14px; }
+  .menu-secondary { margin-top: 8px; }
+  #overlay.main-menu { padding-top: 20px; padding-bottom: 18px; }
+  #overlay.main-menu p { margin-bottom: 12px; }
+}
+@media (max-height: 400px) {
+  #overlay.main-menu .main-title-name { font-size: clamp(30px, 7vw, 54px); }
+  #overlay.main-menu .main-title-prefix { font-size: 17px; }
+  #overlay.main-menu h1 { margin-bottom: 12px; }
+  #overlay.main-menu p { font-size: 10px; line-height: 1.55; }
+  #overlay #panel .menu-actions .cs-button { height: 46px; min-height: 46px; }
+}
+@media (max-width: 460px) {
+  #overlay #panel .menu-actions,
+  #overlay #panel .menu-secondary,
+  #overlay.main-menu #panel .menu-actions { grid-template-columns: minmax(0, 1fr); max-width: 320px; }
+}
+@media (max-width: 420px) {
+  #overlay.main-menu .menu-secondary button { font-size: 12px; letter-spacing: .08em; }
+}
+/* Keep branding above the title even in short desktop/landscape viewports. */
+@media (max-height: 650px) {
+  #overlay.main-menu #mainMenuLogo { max-width: 120px; }
+}
+@media (max-height: 500px) {
+  #overlay.main-menu #mainMenuLogo { width: 96px; }
+}
+@media (min-width: 701px) and (min-height: 401px) and (max-height: 460px) {
+  #overlay.main-menu .main-title-name { font-size: clamp(30px, 7vw, 54px); }
+}
+@media (max-height: 300px) {
+  #overlay.main-menu #mainMenuLogo { width: 88px; }
+}
+
+/* Text-only map selection. */
+.map-select { display: none; }
+#overlay.main-menu .map-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0;
+}
+#overlay.main-menu .map-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--ui-muted);
+  background: transparent;
+  font: 700 13px/1 var(--ui-font);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+}
+#overlay.main-menu .map-option::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 35%;
+  right: 35%;
+  height: 2px;
+  background: var(--ui-accent-bright);
+  opacity: 0;
+}
+#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent-bright); }
+#overlay.main-menu .map-option[aria-pressed="true"]::after { opacity: 1; }
+#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); }
+#overlay.main-menu .map-option:disabled { cursor: wait; opacity: .65; }
+@media (max-width: 460px) {
+  #overlay.main-menu .map-select { max-width: 320px; }
+}
+
+/* Configured choices settle before the first visible menu frame. */
+html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
+#overlay.main-menu .map-select[data-layout="three"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#overlay.main-menu .map-select[data-layout="picker"] { display: block; }
+#overlay.main-menu .map-picker {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-line-strong);
+  color: var(--ui-accent-bright);
+  font: 700 13px/1.2 var(--ui-font);
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+#overlay.main-menu .map-picker option { color: var(--ui-text); }
+#overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
+#startButton[data-loading="true"] { --load-progress: 0%; }
