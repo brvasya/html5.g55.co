@@ -21,7 +21,17 @@ export function createWorld({ THREE, scene }) {
   const gableShape = new THREE.Shape();
   gableShape.moveTo(-0.5, 0); gableShape.lineTo(0.5, 0); gableShape.lineTo(0, 1); gableShape.closePath();
   const gableGeo = new THREE.ShapeGeometry(gableShape);
+  // Closed roof volume, shared by every solid building. It is not walkable
+  // ground and must never enter the flat navigation footprint list.
+  const roofCollisionGeo = new THREE.BufferGeometry();
+  roofCollisionGeo.setAttribute("position", new THREE.Float32BufferAttribute([
+    -0.5, 0, 0.5, 0.5, 0, 0.5, 0, 1, 0.5,
+    -0.5, 0, -0.5, 0.5, 0, -0.5, 0, 1, -0.5
+  ], 3));
+  roofCollisionGeo.setIndex([0, 1, 2, 4, 3, 5, 3, 4, 1, 3, 1, 0, 3, 0, 2, 3, 2, 5, 1, 4, 5, 1, 5, 2]);
+  roofCollisionGeo.computeVertexNormals();
   const temp = new THREE.Object3D(), hiddenMaterial = new THREE.MeshBasicMaterial({ visible: false });
+  const roofCollisionMaterial = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
   let elapsed = 0, navigation;
   const textures = {
     plaster: surfaceTexture("plaster"), stone: surfaceTexture("stone"),
@@ -258,8 +268,14 @@ export function createWorld({ THREE, scene }) {
     box(-3.8, 0.53, -38.8, 2.8, 1.06, 1.4, mat.wood, 0, true, "Hostage house bench");
   }
 
-  function roof(x, z, w, d, eave, rise = 2) {
+  function roof(x, z, w, d, eave, rise = 2, solid = true) {
     const half = w / 2 + 0.42, length = d + 0.84, angle = Math.atan2(rise, half);
+    if (solid) {
+      const collision = new THREE.Mesh(roofCollisionGeo, roofCollisionMaterial);
+      collision.name = "Tiled roof"; collision.position.set(x, eave - 0.1, z);
+      collision.scale.set(half * 2, rise + 0.2, length);
+      root.add(collision); colliders.push(collision);
+    }
     box(x, eave - 0.12, z, w + 0.55, 0.28, d + 0.55, mat.trim);
     for (const side of [-1, 1]) {
       instance(boxGeo, mat.roof, x + side * half / 2, eave + rise / 2, z,
@@ -271,8 +287,8 @@ export function createWorld({ THREE, scene }) {
       instance(gableGeo, mat.ochre, x, eave, z + side * d / 2, w, rise, 1, 0, side < 0 ? Math.PI : 0, 0);
     }
     // Short chimney stacks and caps read against the sky at street height.
-    box(x + w * 0.24, eave + rise + 0.2, z - d * 0.25, 0.68, 1.7, 0.85, mat.peach);
-    box(x + w * 0.24, eave + rise + 1.13, z - d * 0.25, 0.92, 0.2, 1.08, mat.trim);
+    box(x + w * 0.24, eave + rise + 0.2, z - d * 0.25, 0.68, 1.7, 0.85, mat.peach, 0, solid, "Chimney", false);
+    box(x + w * 0.24, eave + rise + 1.13, z - d * 0.25, 0.92, 0.2, 1.08, mat.trim, 0, solid, "Chimney cap", false);
   }
   function windowDetail(x, z, yaw, lx, y, width = 1.25, shutters = true) {
     // These are deliberately decorative upper-floor windows, never spawn sites.
@@ -290,7 +306,8 @@ export function createWorld({ THREE, scene }) {
     }
   }
   function facade(x, z, yaw, width, height, material, options = {}) {
-    if (!options.openGround) localBox(x, z, yaw, 0, 0.37, 0.04, width, 0.74, 0.17, mat.stone);
+    const groundDetails = !options.openGround && !options.upperOnly;
+    if (groundDetails) localBox(x, z, yaw, 0, 0.37, 0.04, width, 0.74, 0.17, mat.stone);
     localBox(x, z, yaw, 0, 4.2, 0.055, width + 0.08, 0.2, 0.22, mat.trim);
     localBox(x, z, yaw, 0, height - 0.28, 0.11, width + 0.28, 0.26, 0.34, mat.trim);
     const bays = Math.max(1, Math.floor((width - 1.4) / 3.6));
@@ -299,10 +316,10 @@ export function createWorld({ THREE, scene }) {
       windowDetail(x, z, yaw, lx, 6.1, 1.18 + (i % 2) * 0.12);
       if (height > 11.5) windowDetail(x, z, yaw, lx, 9.4, 1.08, i % 2 === 0);
     }
-    for (const side of [-1, 1]) for (let y = 0.5; y < height - 0.4; y += 0.64) {
+    for (const side of [-1, 1]) for (let y = options.upperOnly ? 4.34 : 0.5; y < height - 0.4; y += 0.64) {
       localBox(x, z, yaw, side * (width / 2 - 0.18), y, 0.12, y % 1.28 < 0.64 ? 0.5 : 0.74, 0.55, 0.18, mat.trim, false);
     }
-    if (!options.openGround) {
+    if (groundDetails) {
       for (let i = 0; i < Math.max(1, Math.floor(width / 5)); i++) {
         const lx = (i + 0.5) * width / Math.max(1, Math.floor(width / 5)) - width / 2;
         localBox(x, z, yaw, lx, 1.45, 0.11, 1.5, 2.9, 0.17, mat.trim);
@@ -313,7 +330,8 @@ export function createWorld({ THREE, scene }) {
     }
     // Thin drainpipe held against the wall, never a navigation obstruction.
     const p = localPosition(x, z, yaw, width / 2 - 0.46, 0.25);
-    cylinder(p[0], height / 2, p[1], 0.065, height, mat.iron, 0, 0, 0, false);
+    const bottom = options.upperOnly ? 4 : 0;
+    cylinder(p[0], (height + bottom) / 2, p[1], 0.065, height - bottom, mat.iron, 0, 0, 0, false);
   }
   function dressedBuilding(x, z, w, d, h, material, sides = [0, 1, 2, 3], openGround = false) {
     roof(x, z, w, d, h, Math.min(2.2, w * 0.16));
@@ -325,7 +343,8 @@ export function createWorld({ THREE, scene }) {
   }
   function arch(x, z, width, spring, rise, yaw = 0) {
     // Real open arch: the curved spandrel itself is also the shot collider.
-    const half = width / 2, top = spring + rise + 0.45, shape = new THREE.Shape();
+    // The cap meets the long-hall ceiling underside; no floating strip above it.
+    const half = width / 2, top = 5.1, shape = new THREE.Shape();
     shape.moveTo(-half, top); shape.lineTo(half, top); shape.lineTo(half, spring);
     for (let i = 1; i <= 20; i++) {
       const t = i / 20 * Math.PI; shape.lineTo(Math.cos(t) * half, spring + Math.sin(t) * rise);
@@ -356,7 +375,8 @@ export function createWorld({ THREE, scene }) {
     mesh.receiveShadow = true; root.add(mesh);
   }
   function balcony(x, z, yaw, width = 5.4, y = 4.8) {
-    localBox(x, z, yaw, 0, y, 0.6, width, 0.25, 1.7, mat.trim);
+    const slab = localPosition(x, z, yaw, 0, 0.6);
+    box(slab[0], y, slab[1], width, 0.25, 1.7, mat.trim, yaw, true, "Balcony slab", false);
     for (const dx of [-width / 2 + 0.55, width / 2 - 0.55]) localBox(x, z, yaw, dx, y - 0.4, 0.25, 0.22, 0.6, 0.85, mat.stone);
     localBox(x, z, yaw, 0, y + 1, 1.41, width, 0.08, 0.08, mat.iron);
     localBox(x, z, yaw, 0, y + 0.24, 1.41, width, 0.06, 0.06, mat.iron);
@@ -396,7 +416,9 @@ export function createWorld({ THREE, scene }) {
     }
     for (const [z, length, height, material] of [[32, 16, 10.4, mat.ochre], [13, 20, 10, mat.pale], [-7, 19, 10.8, mat.peach], [-32, 28, 10, mat.ivory]]) {
       box(-36.12, height / 2, z, 0.26, height, length, material);
-      facade(-35.94, z, Math.PI / 2, length - 0.35, height, material);
+      // These boundary walls touch the cellar: ground-floor facade details
+      // would otherwise protrude through its interior stone wall.
+      facade(-35.94, z, Math.PI / 2, length - 0.35, height, material, { upperOnly: z < 0 });
       roof(-41, z, 10, length, height, 1.9);
     }
     for (const [x, width, h, material] of [[-24, 23, 12, mat.peach], [-4, 17, 11.5, mat.ivory], [13, 17, 12.8, mat.ochre], [30, 17, 11.5, mat.pale]]) {
@@ -412,24 +434,30 @@ export function createWorld({ THREE, scene }) {
     sign("23", "", 6.2, 2.15, -27.64, 0.42, 0.5);
   }
   function stall(x, z, width, depth, green = true) {
+    const canopyY = 3.24, slope = 0.12, canopyHalfDepth = (depth + 0.8) / 2;
+    const frontZ = z + Math.cos(slope) * canopyHalfDepth;
+    const frontY = canopyY - Math.sin(slope) * canopyHalfDepth;
     box(x, 0.75, z, width, 1.5, depth, mat.wood, 0, true, "Market stall counter");
-    box(x, 1.5, z, width + 0.16, 0.13, depth + 0.16, mat.darkWood);
+    box(x, 1.5, z, width + 0.16, 0.13, depth + 0.16, mat.darkWood, 0, true, "Market counter top");
     for (let dx = -width / 2 + 0.3; dx < width / 2; dx += 0.44) box(x + dx, 0.76, z + depth / 2 + 0.016, 0.025, 1.3, 0.035, mat.darkWood, 0, false, "Stall boards", false, false);
-    for (const dx of [-width / 2 + 0.14, width / 2 - 0.14]) for (const dz of [-depth / 2 + 0.1, depth / 2 - 0.1])
-      box(x + dx, 2.1, z + dz, 0.09, 2.5, 0.09, mat.darkWood);
+    for (const dx of [-width / 2 + 0.14, width / 2 - 0.14]) for (const dz of [-depth / 2 + 0.1, depth / 2 - 0.1]) {
+      const top = canopyY - Math.tan(slope) * dz - 0.02;
+      box(x + dx, (top + 1.5) / 2, z + dz, 0.09, top - 1.5, 0.09, mat.darkWood, 0, true, "Stall support post", false);
+    }
     const strips = Math.round(width / 0.42), sw = (width + 0.65) / strips;
     for (let i = 0; i < strips; i++) {
       const material = i % 2 === 0 ? mat.canvas : green ? mat.stripe : mat.rose;
       const sx = x - (width + 0.65) / 2 + (i + 0.5) * sw;
-      instance(boxGeo, material, sx, 3.24, z, sw + 0.005, 0.045, depth + 0.8, -0.12, 0, 0);
-      box(sx, 2.96, z + depth / 2 + 0.41, sw + 0.005, 0.26, 0.035, material);
+      instance(boxGeo, material, sx, canopyY, z, sw, 0.045, depth + 0.8, slope, 0, 0);
+      box(sx, frontY - 0.13, frontZ, sw, 0.26, 0.035, material);
     }
-    box(x, 3.46, z - depth / 2 - 0.25, width + 0.7, 0.08, 0.07, mat.darkWood);
+    const backY = canopyY + Math.sin(slope) * canopyHalfDepth;
+    box(x, backY - 0.04, z - Math.cos(slope) * canopyHalfDepth, width + 0.7, 0.08, 0.07, mat.darkWood);
     for (let bin = 0; bin < 3; bin++) {
       const bx = x + (bin - 1) * width / 3, bw = width / 3 - 0.2;
-      box(bx, 1.6, z, bw, 0.12, depth - 0.2, mat.darkWood);
-      for (const dz of [-depth / 2 + 0.1, depth / 2 - 0.1]) box(bx, 1.75, z + dz, bw, 0.24, 0.08, mat.wood);
-      for (const dx of [-bw / 2, bw / 2]) box(bx + dx, 1.74, z, 0.07, 0.22, depth - 0.15, mat.wood);
+      box(bx, 1.6, z, bw, 0.12, depth - 0.2, mat.darkWood, 0, true, "Produce bin base", false);
+      for (const dz of [-depth / 2 + 0.1, depth / 2 - 0.1]) box(bx, 1.75, z + dz, bw, 0.24, 0.08, mat.wood, 0, true, "Produce bin board", false);
+      for (const dx of [-bw / 2, bw / 2]) box(bx + dx, 1.74, z, 0.07, 0.22, depth - 0.15, mat.wood, 0, true, "Produce bin board", false);
       for (let i = 0; i < 15; i++) {
         const px = bx + (i % 5 - 2) * bw / 5.7, pz = z + (Math.floor(i / 5) - 1) * depth / 4;
         instance(sphereGeo, [mat.red, mat.apple, mat.yellow][bin], px, 1.82 + random() * 0.05, pz, 0.13, 0.12, 0.13, 0, 0, 0, false);
@@ -496,27 +524,33 @@ export function createWorld({ THREE, scene }) {
     box(-24.9, 0.48, 39.1, 3.2, 0.96, 1.8, mat.stone, 0, true, "Courtyard fountain basin");
     box(-24.9, 0.99, 39.1, 3.45, 0.18, 2.05, mat.trim);
     box(-24.9, 1.09, 39.1, 2.92, 0.035, 1.55, mat.water, 0, false, "Fountain water", false, false);
-    box(-24.9, 1.6, 40.4, 2.2, 3.2, 0.45, mat.stone);
+    box(-24.9, 1.6, 40.4, 2.2, 3.2, 0.45, mat.stone, 0, true, "Fountain back");
     cylinder(-24.9, 2.1, 40.05, 0.12, 0.45, mat.iron, Math.PI / 2);
     sign("ACQUA", "", -24.9, 2.8, 40.12, 1.2, 0.36, Math.PI);
     for (const [x, z] of [[-28.2, 39.8], [34.5, 28.5], [-35, 4.8], [17, -28.8]]) {
       box(x, 0.36, z, 1.55, 0.72, 1.55, mat.stone, 0, true, "Tree planter");
-      tree(x, z, 1, false);
+      tree(x, z, 1, true);
     }
     for (const [x, z] of [[-15.5, 29.1], [10.4, 14.9], [-14.7, -19.5], [29, 1.7]]) {
       cylinder(x, 0.03, z, 0.42, 0.04, mat.iron, 0, 0, 0, false);
       for (let k = -2; k <= 2; k++) box(x, 0.057, z + k * 0.11, 0.58, 0.008, 0.028, mat.darkStone, 0, false, "Drain", false, false);
     }
     const lines = [ [[-16.6, 8, 2], [-13.5, 7.35, 2], [-12.6, 8, 2]], [[9.2, 9.1, 22], [21.5, 7.8, 22], [35.7, 9, 22]], [[-12.8, 11, -14], [7, 9.9, -14], [25.7, 10.8, -14]] ];
-    for (const pts of lines) {
+    let laundryLine;
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const pts = lines[lineIndex];
       const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
       wire(curve.getPoints(20).map(p => p.toArray()));
+      if (lineIndex === 1) laundryLine = curve;
     }
     // Laundry is high overhead, leaving all ground routes and sightlines clear.
     for (let i = 0; i < 5; i++) {
-      const x = 16 + i * 2.5, y = 8.05 + Math.abs(i - 2) * 0.08;
-      box(x, y - 0.55, 22.02, i % 2 ? 0.7 : 1.1, 1.1, 0.035, i % 2 ? mat.pale : mat.canvas, 0.06 * (i - 2), false, "Hanging linen", false, false);
-      for (const dx of [-0.28, 0.28]) box(x + dx, y + 0.02, 22.02, 0.045, 0.11, 0.05, mat.wood, 0, false, "Peg", false, false);
+      const t = (i + 1) / 6, point = laundryLine.getPoint(t);
+      box(point.x, point.y - 0.55, point.z, i % 2 ? 0.7 : 1.1, 1.1, 0.035, i % 2 ? mat.pale : mat.canvas, 0, false, "Hanging linen", false, false);
+      for (const dt of [-0.01, 0.01]) {
+        const peg = laundryLine.getPoint(t + dt);
+        box(peg.x, peg.y - 0.01, peg.z, 0.045, 0.11, 0.05, mat.wood, 0, false, "Peg", false, false);
+      }
     }
     // Quiet interior dressing: trims, old radio, shelves and a rug.
     for (const [x, z, w, d] of [[-26, 18, 17.3, 19.3], [-27, -22, 17.3, 13.3], [3, -35, 21.3, 13.3]]) {
@@ -536,14 +570,14 @@ export function createWorld({ THREE, scene }) {
     for (const [x, z, sx, sy, sz] of hills) instance(sphereGeo, mat.hill, x, -3, z, sx, sy, sz, 0, 0, 0, false);
     for (const [x, z, w, d, h, material] of [[-51, -49, 14, 13, 16, mat.ochre], [-23, -59, 12, 15, 17, mat.peach], [1, -61, 17, 15, 14, mat.pale], [30, -56, 13, 14, 15, mat.ochre], [53, -39, 13, 17, 14, mat.ivory], [-56, 27, 12, 14, 16, mat.ivory], [57, 29, 12, 13, 14, mat.peach], [4, 58, 15, 14, 14, mat.ochre]]) {
       box(x, h / 2, z, w, h, d, material, 0, false, "Distant village", false, false);
-      roof(x, z, w, d, h, 1.9);
+      roof(x, z, w, d, h, 1.9, false);
     }
     // A restrained village campanile locates the north skyline.
     box(-18, 11.5, -57, 4.6, 23, 4.6, mat.pale, 0, false, "Campanile", false, false);
     box(-18, 23.25, -57, 5.1, 0.55, 5.1, mat.trim, 0, false, "Tower cornice", false, false);
     for (const dx of [-1.9, 1.9]) for (const dz of [-1.9, 1.9]) box(-18 + dx, 25, -57 + dz, 0.52, 3.3, 0.52, mat.trim, 0, false, "Bell tower pier", false, false);
     cylinder(-18, 24.2, -57, 0.72, 0.95, mat.iron, 0, 0, 0, false);
-    roof(-18, -57, 5.4, 5.4, 26.7, 2.4);
+    roof(-18, -57, 5.4, 5.4, 26.7, 2.4, false);
     for (const [x, z, s] of [[-51, -12, 1.9], [49, -19, 2.1], [48, 43, 1.8], [-48, 45, 1.9], [-36, -54, 1.7]]) tree(x, z, s, false);
   }
   function createSky() {
