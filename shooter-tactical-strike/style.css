@@ -1731,8 +1731,8 @@ html.ui-font-fallback { --ui-font: Arial, sans-serif; }
   padding: clamp(28px, 6vh, 72px) clamp(24px, 7vw, 108px);
   text-align: left;
   background:
-    linear-gradient(90deg, rgba(17,17,17,.94) 0%, rgba(17,17,17,.78) 27%, rgba(17,17,17,.42) 50%, rgba(17,17,17,.10) 76%, rgba(17,17,17,.02) 100%),
-    linear-gradient(180deg, rgba(0,0,0,.26) 0%, transparent 36%, rgba(0,0,0,.28) 100%);
+    linear-gradient(90deg, rgba(34,34,34,.94) 0%, rgba(34,34,34,.78) 27%, rgba(34,34,34,.42) 50%, rgba(34,34,34,.10) 76%, rgba(34,34,34,.02) 100%),
+    linear-gradient(180deg, rgba(34,34,34,.26) 0%, rgba(34,34,34,0) 36%, rgba(34,34,34,.28) 100%);
 }
 #overlay.main-menu #panel {
   position: relative;
@@ -1944,7 +1944,7 @@ html.touch-device .controls-touch { display: inline; }
   #overlay.main-menu {
     place-items: end start;
     padding: 28px 20px 34px;
-    background: linear-gradient(180deg, rgba(17,17,17,.18) 0%, rgba(17,17,17,.52) 44%, rgba(17,17,17,.96) 100%);
+    background: linear-gradient(180deg, rgba(34,34,34,.18) 0%, rgba(34,34,34,.52) 44%, rgba(34,34,34,.96) 100%);
   }
   #overlay.main-menu #panel { width: 100%; max-width: 100%; }
   #overlay.main-menu #mainMenuLogo { width: 110px; }
@@ -2013,13 +2013,12 @@ html.touch-device .controls-touch { display: inline; }
   min-height: 44px;
   padding: 0 12px;
   color: var(--ui-muted);
-  background: var(--ui-surface);
+  background: transparent;
   font: 700 13px/1 var(--ui-font);
   letter-spacing: .1em;
   text-transform: uppercase;
   text-align: center;
   cursor: pointer;
-  border-radius: var(--ui-radius-small);
 }
 #overlay.main-menu .map-option::after {
   content: "";
@@ -2031,9 +2030,9 @@ html.touch-device .controls-touch { display: inline; }
   background: var(--ui-accent);
   opacity: 0;
 }
-#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent); background: var(--ui-accent-soft); }
+#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent); }
 #overlay.main-menu .map-option[aria-pressed="true"]::after { opacity: 1; }
-#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); background: var(--ui-surface-hover); }
+#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); }
 #overlay.main-menu .map-option:disabled { cursor: wait; opacity: .65; }
 @media (max-width: 460px) {
   #overlay.main-menu .map-select { max-width: 320px; }
