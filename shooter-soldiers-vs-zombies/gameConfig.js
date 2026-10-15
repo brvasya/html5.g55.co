@@ -31,12 +31,10 @@ stats: { enemyDamage: 100 }
 },
 
 maps: {
-defaultId: "map_office",
+defaultId: "map_italy",
 rememberSelection: true,
 items: [
-{ id: "map_office", name: "Office", load: () => import("./assets/map_office.js") },
-{ id: "map_assault", name: "Assault", load: () => import("./assets/map_assault.js") },
-{ id: "map_militia", name: "Militia", load: () => import("./assets/map_militia.js") }
+{ id: "map_italy", name: "Italy", load: () => import("./assets/map_italy.js") }
 ]
 },
 
