@@ -2270,3 +2270,58 @@ body .rotate-device {
   background: var(--ui-panel-solid);
   color: var(--ui-text);
 }
+
+
+/* Team deathmatch: blue score / match clock / red score. */
+body .cs-topbar.cs-team-topbar {
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) 94px minmax(64px, 1fr);
+  min-width: 0;
+  width: min(280px, calc(100vw - 28px));
+  min-height: 44px;
+  padding: 0;
+  gap: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cs-team-topbar > [hidden], .cs-respawn-notice[hidden] { display: none !important; }
+.cs-team-score, .cs-match-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .65);
+}
+.cs-team-blue { color: #85c8ff; background: rgba(24, 92, 169, .45); border-bottom: 3px solid #4aafff; }
+.cs-team-red { color: #ff9c9c; background: rgba(153, 37, 43, .45); border-bottom: 3px solid #ff6262; }
+.cs-match-timer { color: #f0f3f6; font-size: 18px; border-inline: 1px solid var(--ui-line); }
+.cs-match-timer.urgent { color: #ffb66c; }
+body .cs-team-cash {
+  min-width: 0;
+  min-height: 20px;
+  justify-content: flex-start;
+  padding: 4px 0 0;
+  border: 0;
+  font-size: 13px;
+}
+.cs-respawn-notice {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 22px;
+  border: 1px solid var(--ui-line);
+  background: rgba(15, 21, 28, .85);
+  color: #f0f3f6;
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+#hud.is-respawning #crosshair { visibility: hidden; }
+@media (max-height: 500px), (max-width: 600px) {
+  body .cs-topbar.cs-team-topbar { width: 222px; grid-template-columns: 64px 94px 64px; min-height: 36px; }
+  .cs-team-score, .cs-match-timer { min-height: 36px; font-size: 20px; }
+  .cs-match-timer { font-size: 16px; }
+}
