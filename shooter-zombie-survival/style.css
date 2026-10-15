@@ -1895,7 +1895,8 @@ html.touch-device .controls-touch { display: inline; }
   background: var(--ui-accent-hover);
   color: var(--ui-primary-ink);
 }
-#overlay.main-menu #panel #moreGamesButton:hover {
+#moreGamesButton:hover,
+#overlay #panel #moreGamesButton:hover {
   color: var(--ui-text);
   border-color: var(--ui-line-strong);
   background: var(--ui-surface-hover);
