@@ -1,3 +1,33 @@
+/* G55 shared game UI. Keep this file identical across game packages.
+   Website palette: charcoal surfaces, cyan actions, and the existing Roboto asset.
+   Includes shared menus, loading, shop, touch controls, and waves/team HUDs. */
+:root {
+  --ui-font: "Game UI", Arial, sans-serif;
+  --ui-bg: #111;
+  --ui-surface: #222;
+  --ui-surface-hover: #333;
+  --ui-text: #eee;
+  --ui-muted: #999;
+  --ui-faint: #999;
+  --ui-accent: #0099cc;
+  --ui-accent-bright: #0099cc;
+  --ui-accent-hover: #00b8e6;
+  --ui-accent-soft: rgba(0, 153, 204, .16);
+  --ui-primary-ink: #111;
+  --ui-loading-fill: #006080;
+  --ui-success: #8ee68a;
+  --ui-success-soft: rgba(142, 230, 138, .08);
+  --ui-danger: #ff675f;
+  --ui-line: #333;
+  --ui-line-strong: #444;
+  --ui-panel-solid: #222;
+  --ui-hud: rgba(17, 17, 17, .84);
+  --ui-overlay: rgba(17, 17, 17, .7);
+  --ui-radius: 10px;
+  --ui-radius-small: 5px;
+  --ui-shadow: 0 6px 20px rgba(0, 0, 0, .24);
+}
+
 canvas { display: block; }
 
 /* HUD */
@@ -24,6 +54,7 @@ canvas { display: block; }
 #crosshair::after {
   content: "";
   position: absolute;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 #crosshair::before {
@@ -46,6 +77,11 @@ canvas { display: block; }
   opacity: 0.92;
   transition: width 70ms ease, height 70ms ease, opacity 90ms ease;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+  background:
+    linear-gradient(#fff, #fff) center 0 / 2px 8px no-repeat,
+    linear-gradient(#fff, #fff) center 100% / 2px 8px no-repeat,
+    linear-gradient(#fff, #fff) 0 center / 8px 2px no-repeat,
+    linear-gradient(#fff, #fff) 100% center / 8px 2px no-repeat;
 }
 
 .cs-hud #crosshair::before,
@@ -55,6 +91,11 @@ canvas { display: block; }
   width: 40px;
   height: 40px;
   opacity: 1;
+  background:
+    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 0 / 2px 9px no-repeat,
+    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) center 100% / 2px 9px no-repeat,
+    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 0 center / 9px 2px no-repeat,
+    linear-gradient(var(--ui-accent-bright), var(--ui-accent-bright)) 100% center / 9px 2px no-repeat;
 }
 
 .cs-hud.scoped #crosshair,
@@ -123,7 +164,10 @@ body.scoped #crosshair {
   min-height: 44px;
   padding: 0 6px;
   overflow: hidden;
+  background: var(--ui-hud);
   border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
 }
 
 .cs-badge,
@@ -144,6 +188,7 @@ body.scoped #crosshair {
 
 .cs-badge span {
   margin-left: 7px;
+  color: var(--ui-text);
 }
 
 .cs-score {
@@ -161,6 +206,7 @@ body.scoped #crosshair {
 
 .cs-round span {
   margin-left: 7px;
+  color: var(--ui-accent-bright);
   font-size: 14px;
 }
 
@@ -172,7 +218,10 @@ body.scoped #crosshair {
   min-width: 172px;
   padding: 12px 14px 13px;
   overflow: hidden;
+  background: var(--ui-hud);
   border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
 }
 
 .cs-bottom-left::before,
@@ -183,6 +232,7 @@ body.scoped #crosshair {
   right: 0;
   top: 0;
   height: 2px;
+  background: var(--ui-accent);
   opacity: 0.8;
 }
 
@@ -199,10 +249,12 @@ body.scoped #crosshair {
 
 .cs-big,
 .cs-ammo {
+  color: var(--ui-text);
   font-size: 42px;
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: -0.04em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
 }
 
 .cs-ammo small {
@@ -210,6 +262,17 @@ body.scoped #crosshair {
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.02em;
+}
+
+.cs-bottom-left.danger,
+.cs-bottom-right.danger {
+  border-color: rgba(255, 103, 95, 0.42);
+  box-shadow: var(--ui-shadow);
+}
+
+.cs-bottom-left.danger::before,
+.cs-bottom-right.danger::before {
+  background: var(--ui-danger);
 }
 
 .cs-bottom-left.danger .cs-big,
@@ -228,38 +291,56 @@ body.scoped #crosshair {
   margin-top: 16px;
   padding: 0 22px;
   border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   font: 700 12px/1 var(--ui-font);
   letter-spacing: 0.11em;
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: var(--ui-shadow);
   transition: transform 110ms ease, background 110ms ease, border-color 110ms ease, box-shadow 110ms ease;
 }
 
 .cs-button + .cs-button { margin-left: 10px; }
 
 .cs-button:hover {
-  transform: translateY(-1px);
+  transform: none;
+  border-color: var(--ui-line-strong);
+  background: var(--ui-surface-hover);
 }
 
 .cs-button:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--ui-shadow);
 }
 
 #startButton {
   min-width: 224px;
 }
 
-#startButton:hover {
-  border-color: rgba(122, 224, 255, 0.82);
-  background: linear-gradient(180deg, #32c7f7, #0799cb);
-  box-shadow: 0 12px 30px rgba(0, 153, 204, 0.34);
+#startButton,
+#overlay #panel #startButton {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  box-shadow: none;
+  color: var(--ui-primary-ink);
+}
+
+#startButton:not(:disabled):hover,
+#overlay #panel #startButton:not(:disabled):hover {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-hover);
+  box-shadow: none;
+  color: var(--ui-primary-ink);
 }
 
 #moreGamesButton {
   min-width: 144px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
 }
 
 /* Main/pause/wave/game-over overlay */
@@ -267,6 +348,8 @@ body.scoped #crosshair {
   place-items: center;
   padding: 24px;
   text-align: center;
+  background:
+    var(--ui-overlay);
 }
 
 #panel {
@@ -274,7 +357,10 @@ body.scoped #crosshair {
   width: min(570px, 92vw);
   padding: 36px 38px 34px;
   overflow: hidden;
+  background: var(--ui-panel-solid);
   border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
 }
 
 #panel::before {
@@ -284,6 +370,7 @@ body.scoped #crosshair {
   right: 64px;
   top: 0;
   height: 2px;
+  background: var(--ui-accent);
   opacity: 0.82;
 }
 
@@ -326,10 +413,14 @@ p {
   z-index: 6;
   transform: translateX(-50%);
   padding: 9px 13px;
+  color: var(--ui-muted);
   font: 700 10px/1 var(--ui-font);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  background: var(--ui-hud);
   border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-small);
+  box-shadow: var(--ui-shadow);
   pointer-events: none;
 }
 
@@ -341,7 +432,7 @@ p {
   display: inline-block;
   margin-left: .55em;
   border: 1px solid currentColor;
-  border-radius: 3px;
+  border-radius: var(--ui-radius-small);
   padding: .2em .4em;
   font-size: .65em;
   font-weight: 700;
@@ -369,6 +460,7 @@ p {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   padding-left: max(12px, env(safe-area-inset-left));
   overflow: hidden;
+  background: var(--ui-overlay);
 }
 
 #buyMenu.open { display: flex; opacity: 1; visibility: visible; pointer-events: auto; }
@@ -378,6 +470,7 @@ p {
 #buyMenu button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 
 #buyMenu .cs-buy-panel {
+  box-shadow: var(--ui-shadow);
   position: relative;
   inset: auto;
   display: flex;
@@ -391,7 +484,9 @@ p {
   margin: 0;
   padding: 22px;
   overflow: hidden;
-  border: 1px solid rgb(215 232 242 / .18);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-panel-solid);
   color: var(--ui-text);
   text-align: left;
   font-family: inherit;
@@ -443,7 +538,9 @@ p {
   min-height: 40px;
   margin: 0;
   padding: 0;
-  border: 1px solid rgb(255 255 255 / .14);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-surface);
   color: var(--ui-muted);
   font-size: 26px;
   font-weight: 700;
@@ -462,6 +559,8 @@ p {
   margin: 0;
   padding: 8px 12px;
   border: 1px solid rgb(134 230 139 / .18);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-success-soft);
   color: var(--ui-success);
   font-size: 17px;
   font-weight: 800;
@@ -504,7 +603,9 @@ p {
   height: auto;
   margin: 0;
   padding: 12px;
-  border: 1px solid rgb(220 234 240 / .14);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
   color: inherit;
   text-align: left;
   opacity: 1;
@@ -525,6 +626,8 @@ p {
 #buyMenu .cs-buy-card.active,
 #buyMenu .cs-buy-card.active:hover,
 #buyMenu .cs-buy-card.active:focus-within {
+  border-color: var(--ui-success);
+  background: var(--ui-success-soft);
   transform: none;
 }
 
@@ -606,7 +709,9 @@ p {
   min-height: 0;
   margin: 0;
   padding: 0;
-  border: 1px solid rgb(255 255 255 / .12);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-bg);
   color: var(--ui-muted);
   font-size: 10px;
   font-weight: 700;
@@ -670,10 +775,14 @@ p {
   align-self: flex-start;
   margin: 0;
   padding: 3px 5px;
+  border-color: var(--ui-line);
+  color: var(--ui-text);
   font-size: 10px;
   line-height: 1.1;
   letter-spacing: 0;
 }
+
+#buyMenu .cs-upgrade-level.complete { color: var(--ui-success); border-color: currentColor; }
 
 #buyMenu .cs-buy-actions {
   position: relative;
@@ -706,7 +815,10 @@ p {
   min-height: 46px;
   margin: 0;
   padding: 6px 3px;
-  border: 1px solid rgb(255 255 255 / .14);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   font: inherit;
   font-size: 10px;
   font-weight: 800;
@@ -733,13 +845,22 @@ p {
 
 #buyMenu .cs-buy-price.unavailable { color: var(--ui-muted); }
 
-#buyMenu .cs-buy-actions .cs-buy-action:disabled { opacity: 1; cursor: default; }
+#buyMenu .cs-buy-actions .cs-buy-action:disabled { color: var(--ui-muted); opacity: 1; cursor: default; }
 
 #buyMenu .cs-buy-actions .cs-buy-upgrade.maxed {
+  border-color: rgb(134 230 139 / .22);
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
   opacity: 1;
 }
 
 #buyMenu .cs-buy-upgrade.maxed .cs-buy-price { color: var(--ui-success); }
+
+@media (hover: hover) and (pointer: fine) {
+  #buyMenu .cs-buy-card:not(.active):not(.locked):hover { border-color: var(--ui-line-strong); background: var(--ui-surface-hover); }
+  #buyMenu .cs-buy-actions .cs-buy-action:not(:disabled):hover,
+  #buyMenu .cs-buy-close:hover { border-color: var(--ui-accent-bright); background: var(--ui-surface-hover); }
+}
 
 body.keyboard-navigation #buyMenu .cs-buy-select:focus,
 body.keyboard-navigation #buyMenu .cs-buy-action:focus,
@@ -802,7 +923,7 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
 
 @media (max-height: 500px) {
   #buyMenu { padding: 6px; padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
-  #buyMenu .cs-buy-panel { gap: 6px; padding: 8px; }
+  #buyMenu .cs-buy-panel { gap: 6px; padding: 8px; border-radius: var(--ui-radius); }
   #buyMenu .cs-buy-head { gap: 8px; }
   #buyMenu .cs-buy-title { font-size: 18px; }
   #buyMenu .cs-buy-subtitle { margin-top: 3px; font-size: 9px; line-height: 1.2; }
@@ -870,10 +991,12 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
   transform: translate(-50%, -50%) scale(0.86);
   opacity: 0;
   max-width: calc(100vw - 32px);
+  color: var(--ui-text);
   font: 900 clamp(20px, 4vw, 54px)/1 var(--ui-font);
   letter-spacing: 0.08em;
   text-align: center;
   white-space: nowrap;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
 }
 
 #headshotMessage::after {
@@ -883,6 +1006,7 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
   right: 15%;
   bottom: -10px;
   height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 103, 95, 0.95), transparent);
 }
 
 #headshotMessage.show {
@@ -938,7 +1062,8 @@ body.keyboard-navigation #buyMenu .cs-buy-close:focus { outline: 2px solid var(-
     padding: 28px 22px 26px;
   }
 
-  #startButton { min-width: 190px; }
+  #startButton { min-width: 190px;
+  }
   #moreGamesButton { min-width: 126px; }
 
   #sniperScope {
@@ -989,14 +1114,14 @@ body.main-menu-active canvas {
 }
 
 #overlay.main-menu h1 {
-  color: #fff;
+  color: var(--ui-text);
   text-wrap: balance;
 }
 
 #overlay.main-menu .cs-button {
   min-height: 52px;
   margin-top: 0;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-small);
 }
 
 #overlay.main-menu #startButton {
@@ -1109,8 +1234,6 @@ body.main-menu-active canvas {
     max-width: 100%;
     margin-inline: auto;
   }
-
-  /* Pause / wave / game-over actions use one consistent width. */
 }
 
 @media (max-width: 420px) {
@@ -1165,7 +1288,9 @@ body.touch-device .cs-bottom-right {
   bottom: auto;
   min-width: 0;
   padding: 6px 10px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, .15);
+  border-radius: var(--ui-radius);
+  background: var(--ui-hud);
+  box-shadow: var(--ui-shadow);
 }
 body.touch-device .cs-bottom-left {
   left: max(12px, env(safe-area-inset-left, 0px) + 10px);
@@ -1211,6 +1336,7 @@ body.touch-device .cs-topbar {
   top: max(10px, env(safe-area-inset-top, 0px) + 6px);
   min-height: 34px;
   padding: 0;
+  background: var(--ui-hud);
   box-shadow: none;
 }
 body.touch-device .cs-badge,
@@ -1254,8 +1380,8 @@ body.touch-device .cs-badge span { font-size: 11px; }
   transform: translateX(-50%);
 }
 .touch-hint {
-  color: rgba(255, 255, 255, .8);
-  text-shadow: 0 1px 3px #000;
+  color: var(--ui-text);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
   font: 600 10px/1.3 var(--ui-font);
   letter-spacing: .02em;
   white-space: nowrap;
@@ -1269,11 +1395,12 @@ body.touch-device .cs-badge span { font-size: 11px; }
   bottom: var(--touch-bottom);
   width: 104px;
   height: 104px;
-  border: 1px solid rgba(255, 255, 255, .24);
+  border: 1px solid var(--ui-line);
   border-radius: 50%;
+  background: rgba(17, 17, 17, .24);
   pointer-events: auto;
 }
-.touch-stick-ring { position: absolute; inset: 15px; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; }
+.touch-stick-ring { position: absolute; inset: 15px; border: 1px solid var(--ui-line); border-radius: 50%; }
 .touch-stick-knob {
   position: absolute;
   left: 50%;
@@ -1282,7 +1409,8 @@ body.touch-device .cs-badge span { font-size: 11px; }
   height: 38px;
   margin: -19px 0 0 -19px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, .25);
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-line);
   pointer-events: none;
 }
 .touch-stick-label { position: absolute; bottom: -17px; left: 50%; transform: translateX(-50%); }
@@ -1305,9 +1433,11 @@ body.touch-device .cs-badge span { font-size: 11px; }
   height: 52px;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, .28);
+  border: 1px solid var(--ui-line);
   border-radius: 50%;
-  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  color: var(--ui-text);
+  background: var(--ui-hud);
+  box-shadow: var(--ui-shadow);
   pointer-events: auto;
   position: relative;
   overflow: hidden;
@@ -1317,8 +1447,8 @@ body.touch-device .cs-badge span { font-size: 11px; }
 }
 .touch-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .touch-button-label { position: relative; z-index: 1; pointer-events: none; }
-.touch-button.active { border-color: var(--ui-accent-bright); }
-.touch-button.selected { border-color: var(--ui-accent-bright); }
+.touch-button.active { background: var(--ui-loading-fill); border-color: var(--ui-accent-bright); }
+.touch-button.selected { background: var(--ui-loading-fill); border-color: var(--ui-accent-bright); box-shadow: 0 0 0 2px var(--ui-accent-soft); }
 .touch-button:disabled { opacity: .42; }
 .touch-button.reloading { opacity: .9; }
 .touch-button-reload::after {
@@ -1328,30 +1458,32 @@ body.touch-device .cs-badge span { font-size: 11px; }
   bottom: 0;
   height: 4px;
   width: var(--reload-progress, 0%);
-  background: var(--ui-accent-bright);
+  background: var(--ui-accent);
 }
-.touch-button-row .touch-button { width: 46px; height: 44px; font-size: 8px; }
+.touch-button-row .touch-button { width: 46px; height: 44px; border-radius: var(--ui-radius-small); font-size: 8px; }
 .touch-button-row svg { width: 18px; height: 18px; }
 .touch-actions { position: absolute; right: var(--touch-right); bottom: var(--touch-bottom); width: 200px; height: 182px; pointer-events: none; }
 .touch-actions .touch-button { position: absolute; }
-.touch-button-fire { right: 8px; bottom: 20px; width: 78px; height: 78px; border: 2px solid rgba(119,220,255,.72); font-size: 11px; }
+.touch-button-fire { right: 8px; bottom: 20px; width: 78px; height: 78px; background: var(--ui-accent); border: 2px solid var(--ui-accent); font-size: 11px; color: var(--ui-primary-ink); }
 .touch-button-fire svg { width: 30px; height: 30px; }
+.touch-button-fire.active { background: var(--ui-accent-hover); }
 .touch-button-jump { right: 108px; bottom: 88px; }
 .touch-button-reload { right: 110px; bottom: 20px; }
 .touch-button-scope { right: 16px; bottom: 116px; }
 .touch-fire-hint { position: absolute; right: 0; bottom: 0; font-size: 9px; }
 .touch-weapon-trigger { appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; cursor: pointer; }
+.touch-weapon-trigger.active { background: var(--ui-accent-soft); }
 body.keyboard-navigation #touchControls button:focus-visible { outline: 2px solid var(--ui-accent-bright); outline-offset: -3px; }
 .touch-weapon-picker { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; pointer-events: auto; }
-.touch-picker-backdrop { position: absolute; inset: 0; border: 0; width: 100%; height: 100%; }
-.touch-picker-panel { position: relative; width: min(450px, 86vw); padding: 12px; border: 1px solid var(--ui-line-strong); color: var(--ui-text); }
+.touch-picker-backdrop { position: absolute; inset: 0; border: 0; background: var(--ui-overlay); width: 100%; height: 100%; }
+.touch-picker-panel { position: relative; width: min(450px, 86vw); padding: 12px; border: 1px solid var(--ui-line-strong); border-radius: var(--ui-radius); background: var(--ui-panel-solid); color: var(--ui-text); }
 .touch-picker-heading { display: flex; align-items: center; justify-content: space-between; font: 700 14px var(--ui-font); margin-bottom: 6px; }
-.touch-picker-close { width: 44px; height: 44px; border: 0; font-size: 25px; }
+.touch-picker-close { width: 44px; height: 44px; color: var(--ui-text); border: 0; background: var(--ui-surface); border-radius: var(--ui-radius-small); font-size: 25px; }
 .touch-weapon-list { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
-.touch-weapon-option { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 8px; border: 1px solid var(--ui-line); font: 700 11px var(--ui-font); }
+.touch-weapon-option { min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 8px; border: 1px solid var(--ui-line); border-radius: var(--ui-radius-small); background: var(--ui-surface); color: var(--ui-text); font: 700 11px var(--ui-font); }
 .touch-weapon-option small { font-size: 10px; color: var(--ui-muted); }
-.touch-weapon-option[aria-pressed="true"], .touch-weapon-option.active { border-color: var(--ui-accent-bright); }
-.rotate-device { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 12px; text-align: center; font: 12px/1.5 var(--ui-font); pointer-events: auto; }
+.touch-weapon-option[aria-pressed="true"], .touch-weapon-option.active { border-color: var(--ui-accent-bright); background: var(--ui-accent-soft); }
+.rotate-device { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 12px; background: var(--ui-panel-solid); color: var(--ui-text); text-align: center; font: 12px/1.5 var(--ui-font); pointer-events: auto; }
 .rotate-device-icon { font-size: 64px; color: var(--ui-accent-bright); }
 .rotate-device strong { font-size: 24px; }
 #touchControls.portrait > :not(.rotate-device) { display: none !important; }
@@ -1383,9 +1515,13 @@ body.touch-device.touch-controls-visible.touch-portrait #hud { opacity: 0; }
 /* Desktop QA: stable actions, visible focus, and readable state feedback. */
 button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button:disabled { cursor: default; }
-#startButton[data-loading="true"] {
+#startButton[data-loading="true"],
+#overlay #panel #startButton[data-loading="true"] {
   cursor: wait;
   justify-content: center !important;
+  background: linear-gradient(90deg, var(--ui-loading-fill) var(--load-progress, 0%), var(--ui-surface) var(--load-progress, 0%));
+  box-shadow: none;
+  color: var(--ui-text);
 }
 #overlay #panel .menu-actions .cs-button {
   box-sizing: border-box;
@@ -1399,6 +1535,9 @@ button:disabled { cursor: default; }
   max-width: min(540px, 86vw);
   padding: 10px 16px;
   border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-panel-solid);
+  color: var(--ui-text);
   font: 500 13px/1.45 var(--ui-font);
   text-align: center;
 }
@@ -1409,6 +1548,9 @@ button:disabled { cursor: default; }
   left: 50%;
   transform: translateX(-50%);
   padding: 7px 12px;
+  border-radius: var(--ui-radius-small);
+  background: var(--ui-hud);
+  color: var(--ui-text);
   font: 700 11px/1.3 var(--ui-font);
   text-align: center;
   opacity: 0;
@@ -1423,356 +1565,8 @@ body.touch-device #reloadStatus, body.main-menu-active #reloadStatus, body.main-
   button, a { transition: none !important; }
 }
 
-/* Tactical theme: shared colors and component appearance. */
-html:root {
-  --ui-accent: #b8a375;
-  --ui-accent-bright: #d6c18e;
-  --ui-accent-soft: rgba(184, 163, 117, .12);
-  --ui-success: #9bd58a;
-  --ui-danger: #f17b72;
-  --ui-text: #f2f4f6;
-  --ui-muted: rgba(218, 225, 233, .72);
-  --ui-faint: rgba(218, 225, 233, .5);
-  --ui-line: rgba(221, 230, 240, .12);
-  --ui-line-strong: rgba(221, 230, 240, .24);
-  --ui-panel: rgba(29, 36, 44, .84);
-  --ui-panel-solid: rgba(20, 26, 33, .96);
-  --ui-overlay: rgba(10, 14, 19, .6);
-  --ui-radius: 2px;
-  --ui-radius-small: 2px;
-  --cs-crosshair: #94ec73;
-  --cs-crosshair-fire: #b4ff91;
-  --cs-button-ink: #f2f4f6;
-  --cs-primary-fill: #3c4c59;
-  --cs-primary-hover: #4d6170;
-}
-
-html:root,
-html:root body { background: #10151b; }
-
-/* Cool translucent panels, white HUD numerals, and subdued separators. */
-body .cs-topbar,
-body .cs-bottom-left,
-body .cs-bottom-right {
-  background: linear-gradient(180deg, rgba(33, 41, 50, .76), rgba(15, 21, 28, .72));
-  border-color: var(--ui-line);
-  border-radius: var(--ui-radius);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, .24);
-}
-
-body .cs-bottom-left::before,
-body .cs-bottom-right::before { background: rgba(232, 237, 244, .28); }
-
-body .cs-big,
-body .cs-ammo,
-body .cs-badge span,
-body .cs-round span {
-  color: var(--ui-text);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, .8);
-}
-
-body .cs-bottom-left.danger,
-body .cs-bottom-right.danger {
-  border-color: rgba(241, 123, 114, .5);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, .28);
-}
-
-body .cs-bottom-left.danger::before,
-body .cs-bottom-right.danger::before { background: var(--ui-danger); }
-
-body #crosshair::before,
-body #crosshair::after { background: var(--cs-crosshair); }
-
-body .cs-hud #crosshair {
-  background:
-    linear-gradient(var(--cs-crosshair), var(--cs-crosshair)) center 0 / 2px 8px no-repeat,
-    linear-gradient(var(--cs-crosshair), var(--cs-crosshair)) center 100% / 2px 8px no-repeat,
-    linear-gradient(var(--cs-crosshair), var(--cs-crosshair)) 0 center / 8px 2px no-repeat,
-    linear-gradient(var(--cs-crosshair), var(--cs-crosshair)) 100% center / 8px 2px no-repeat;
-}
-
-body .cs-hud #crosshair.fire {
-  background:
-    linear-gradient(var(--cs-crosshair-fire), var(--cs-crosshair-fire)) center 0 / 2px 9px no-repeat,
-    linear-gradient(var(--cs-crosshair-fire), var(--cs-crosshair-fire)) center 100% / 2px 9px no-repeat,
-    linear-gradient(var(--cs-crosshair-fire), var(--cs-crosshair-fire)) 0 center / 9px 2px no-repeat,
-    linear-gradient(var(--cs-crosshair-fire), var(--cs-crosshair-fire)) 100% center / 9px 2px no-repeat;
-}
-
-body #buyHint,
-body #reloadStatus,
-body #uiStatus {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius-small);
-  background: var(--ui-panel-solid);
-  color: var(--ui-text);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
-}
-
-body #headshotMessage {
-  color: var(--ui-text);
-  text-shadow: 0 2px 6px rgba(0, 0, 0, .85);
-}
-
-body #headshotMessage::after {
-  background: linear-gradient(90deg, transparent, rgba(242, 244, 246, .65), transparent);
-}
-
-/* Preserve the live-scene menu and its original responsive composition. */
-body #overlay {
-  background:
-    radial-gradient(circle at 50% 44%, rgba(57, 72, 90, .16), transparent 42%),
-    var(--ui-overlay);
-}
-
-body #panel {
-  background: linear-gradient(180deg, rgba(35, 43, 53, .94), rgba(20, 26, 33, .96));
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, .42);
-}
-
-body #panel::before {
-  background: linear-gradient(90deg, transparent, var(--ui-accent), transparent);
-}
-
-body #overlay.main-menu {
-  background:
-    linear-gradient(90deg, rgba(12, 18, 25, .94) 0%, rgba(12, 18, 25, .78) 27%, rgba(12, 18, 25, .4) 50%, rgba(12, 18, 25, .1) 76%, rgba(12, 18, 25, .02) 100%),
-    linear-gradient(180deg, rgba(8, 12, 18, .22) 0%, transparent 36%, rgba(8, 12, 18, .28) 100%);
-}
-
-body #overlay.main-menu #panel::before {
-  border-radius: 0;
-  background: var(--ui-accent-bright);
-  box-shadow: none;
-}
-
-body #overlay.main-menu .main-title-name {
-  color: var(--ui-text);
-  text-shadow: 0 4px 24px rgba(0, 0, 0, .65);
-}
-
-body #overlay.main-menu p { color: var(--ui-muted); }
-
-/* Flat gunmetal actions; gold is reserved for restrained selection accents. */
-body .cs-button,
-body #overlay #panel .menu-actions .cs-button {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius-small);
-  background: rgba(39, 48, 59, .72);
-  color: var(--ui-text);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, .2);
-}
-
-body .cs-button:hover {
-  border-color: rgba(224, 233, 242, .4);
-  background: rgba(64, 78, 93, .86);
-}
-
-body #startButton,
-body #overlay #panel #startButton,
-body #overlay.main-menu #panel #startButton {
-  border-color: rgba(214, 193, 142, .46);
-  background: var(--cs-primary-fill);
-  color: var(--cs-button-ink);
-  box-shadow: inset 0 -2px 0 rgba(184, 163, 117, .64), 0 4px 12px rgba(0, 0, 0, .24);
-}
-
-body #startButton:not(:disabled):hover,
-body #overlay #panel #startButton:not(:disabled):hover,
-body #overlay.main-menu #panel #startButton:not(:disabled):hover {
-  border-color: rgba(214, 193, 142, .72);
-  background: var(--cs-primary-hover);
-  box-shadow: inset 0 -2px 0 var(--ui-accent-bright), 0 4px 12px rgba(0, 0, 0, .24);
-}
-
-body #startButton[data-loading="true"],
-body #overlay #panel #startButton[data-loading="true"],
-body #overlay.main-menu #panel #startButton[data-loading="true"] {
-  border-color: var(--ui-line-strong);
-  background: linear-gradient(90deg, #485967 var(--load-progress, 0%), rgba(24, 31, 40, .95) var(--load-progress, 0%));
-  color: var(--ui-text);
-  box-shadow: none;
-}
-
-body #moreGamesButton,
-body #overlay #panel #moreGamesButton,
-body #overlay.main-menu #panel #moreGamesButton {
-  border-color: var(--ui-line-strong);
-  background: rgba(28, 36, 46, .74);
-  color: var(--ui-text);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, .2);
-}
-
-body #moreGamesButton:hover,
-body #overlay #panel #moreGamesButton:hover,
-body #overlay.main-menu #panel #moreGamesButton:hover {
-  border-color: rgba(224, 233, 242, .4);
-  background: rgba(53, 67, 82, .86);
-  color: var(--ui-text);
-}
-
-body .menu-secondary button { border-radius: var(--ui-radius-small); }
-
-body .menu-secondary button:hover {
-  background: rgba(207, 221, 237, .07);
-  color: var(--ui-text);
-}
-
-body #overlay.main-menu .map-picker {
-  border-radius: var(--ui-radius-small);
-  background: var(--ui-panel);
-}
-
-body #overlay.main-menu .map-picker option { background: #1c242e; }
-
-/* Equipment panels retain all affordability and ownership state colors. */
-body #buyMenu { background: var(--ui-overlay); }
-
-body #buyMenu .cs-buy-panel {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius);
-  background: linear-gradient(150deg, #252e39, #151c24);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, .48);
-}
-
-body #buyMenu .cs-buy-title { color: var(--ui-text); }
-
-body #buyMenu .cs-buy-close,
-body #buyMenu .cs-buy-key {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius-small);
-  background: rgba(8, 14, 21, .26);
-}
-
-body #buyMenu .cs-buy-score {
-  border-color: rgba(155, 213, 138, .28);
-  border-radius: var(--ui-radius-small);
-  background: rgba(155, 213, 138, .06);
-}
-
-body #buyMenu .cs-buy-card {
-  border-color: var(--ui-line);
-  border-radius: var(--ui-radius-small);
-  background: rgba(211, 225, 242, .035);
-}
-
-body #buyMenu .cs-buy-card.owned {
-  border-color: rgba(184, 163, 117, .32);
-  box-shadow: inset 2px 0 0 var(--ui-accent);
-}
-
-body #buyMenu .cs-buy-card.active,
-body #buyMenu .cs-buy-card.active:hover,
-body #buyMenu .cs-buy-card.active:focus-within {
-  border-color: var(--ui-success);
-  background: rgba(155, 213, 138, .055);
-  box-shadow: inset 2px 0 0 var(--ui-success);
-}
-
-body #buyMenu .cs-upgrade-level {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius-small);
-  color: var(--ui-muted);
-}
-
-body #buyMenu .cs-upgrade-level.complete {
-  border-color: var(--ui-success);
-  color: var(--ui-success);
-}
-
-body #buyMenu .cs-buy-actions .cs-buy-action {
-  border-color: var(--ui-line-strong);
-  border-radius: var(--ui-radius-small);
-  background: rgba(9, 15, 23, .26);
-  color: var(--ui-text);
-}
-
-body #buyMenu .cs-buy-actions .cs-buy-action:disabled { color: var(--ui-muted); }
-
-body #buyMenu .cs-buy-actions .cs-buy-upgrade.maxed {
-  border-color: rgba(155, 213, 138, .28);
-  background: rgba(155, 213, 138, .05);
-  color: var(--ui-success);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  body #buyMenu .cs-buy-card:not(.active):not(.locked):hover {
-    border-color: rgba(224, 233, 242, .36);
-    background: rgba(180, 201, 225, .07);
-  }
-  body #buyMenu .cs-buy-actions .cs-buy-action:not(:disabled):hover,
-  body #buyMenu .cs-buy-close:hover {
-    border-color: rgba(224, 233, 242, .44);
-    background: rgba(180, 201, 225, .1);
-  }
-}
-
-/* Touch controls keep their original shapes, hit areas, and placement. */
-body.touch-device .cs-topbar,
-body.touch-device .cs-bottom-left,
-body.touch-device .cs-bottom-right {
-  border-radius: var(--ui-radius);
-  background: rgba(20, 28, 38, .72);
-}
-
-body .touch-stick,
-body .touch-button {
-  border-color: rgba(221, 230, 240, .34);
-  background: rgba(20, 28, 38, .5);
-  color: var(--ui-text);
-}
-
-body .touch-stick-ring { border-color: var(--ui-line-strong); }
-
-body .touch-stick-knob {
-  border-color: rgba(221, 230, 240, .5);
-  background: rgba(110, 132, 151, .9);
-}
-
-body .touch-button.active { background: rgba(94, 117, 140, .62); }
-
-body .touch-button.selected {
-  background: rgba(88, 109, 131, .7);
-  box-shadow: 0 0 0 2px rgba(184, 163, 117, .2);
-}
-
-body .touch-button-row .touch-button { border-radius: var(--ui-radius); }
-
-body .touch-button-fire {
-  border-color: rgba(214, 193, 142, .62);
-  background: rgba(62, 81, 99, .9);
-  color: var(--cs-button-ink);
-}
-
-body .touch-button-fire.active { background: rgba(86, 109, 132, .96); }
-
-body .touch-weapon-trigger.active { background: var(--ui-accent-soft); }
-
-body .touch-picker-backdrop { background: rgba(8, 12, 18, .5); }
-
-body .touch-picker-panel {
-  border-radius: var(--ui-radius);
-  background: var(--ui-panel-solid);
-}
-
-body .touch-picker-close,
-body .touch-weapon-option {
-  border-radius: var(--ui-radius-small);
-  background: rgba(211, 225, 242, .06);
-  color: var(--ui-text);
-}
-
-body .touch-weapon-option[aria-pressed="true"],
-body .touch-weapon-option.active { background: var(--ui-accent-soft); }
-
-body .rotate-device {
-  background: var(--ui-panel-solid);
-  color: var(--ui-text);
-}
-
 /* Team deathmatch: blue score / match clock / red score. */
+
 body .cs-topbar.cs-team-topbar {
   display: grid;
   grid-template-columns: minmax(64px, 1fr) 94px minmax(64px, 1fr);
@@ -1783,7 +1577,9 @@ body .cs-topbar.cs-team-topbar {
   gap: 0;
   font-variant-numeric: tabular-nums;
 }
+
 .cs-team-topbar > [hidden], .cs-respawn-notice[hidden] { display: none !important; }
+
 .cs-team-score, .cs-match-timer {
   display: flex;
   align-items: center;
@@ -1792,12 +1588,17 @@ body .cs-topbar.cs-team-topbar {
   font-size: 23px;
   font-weight: 700;
   line-height: 1;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .65);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
 }
+
 .cs-team-blue { color: #85c8ff; background: rgba(24, 92, 169, .45); border-bottom: 3px solid #4aafff; }
+
 .cs-team-red { color: #ff9c9c; background: rgba(153, 37, 43, .45); border-bottom: 3px solid #ff6262; }
-.cs-match-timer { color: #f0f3f6; font-size: 18px; border-inline: 1px solid var(--ui-line); }
+
+.cs-match-timer { color: var(--ui-text); font-size: 18px; border-inline: 1px solid var(--ui-line); }
+
 .cs-match-timer.urgent { color: #ffb66c; }
+
 body .cs-team-cash {
   min-width: 0;
   min-height: 20px;
@@ -1806,6 +1607,7 @@ body .cs-team-cash {
   border: 0;
   font-size: 13px;
 }
+
 .cs-respawn-notice {
   position: absolute;
   top: 44%;
@@ -1813,13 +1615,15 @@ body .cs-team-cash {
   transform: translate(-50%, -50%);
   padding: 14px 22px;
   border: 1px solid var(--ui-line);
-  background: rgba(15, 21, 28, .85);
-  color: #f0f3f6;
+  background: var(--ui-hud);
+  color: var(--ui-text);
   font-size: 20px;
   font-weight: 700;
   white-space: nowrap;
 }
+
 #hud.is-respawning #crosshair { visibility: hidden; }
+
 @media (max-height: 500px), (max-width: 600px) {
   body .cs-topbar.cs-team-topbar { width: 222px; grid-template-columns: 64px 94px 64px; min-height: 36px; }
   .cs-team-score, .cs-match-timer { min-height: 36px; font-size: 20px; }
@@ -1867,6 +1671,18 @@ body #overlay.main-menu #panel::before {
   body #overlay.main-menu #mainMenuLogo { margin-bottom: 2px; }
 }
 
+@media (max-height: 400px) {
+  body #overlay.main-menu { padding-block: 8px; }
+}
+
+@media (max-height: 320px) {
+  body #overlay.main-menu #panel::before { margin-bottom: 8px; }
+  body #overlay.main-menu h1 { gap: 4px; margin-bottom: 8px; }
+  body #overlay.main-menu p { margin-bottom: 8px; }
+  body #overlay.main-menu #panel .menu-actions { margin-top: 8px; }
+  body #overlay.main-menu #panel .menu-secondary { margin-top: 4px; }
+}
+
 /* Menu presentation and startup visibility. */
 @font-face {
   font-family: "Game UI";
@@ -1875,17 +1691,13 @@ body #overlay.main-menu #panel::before {
   font-weight: 100 900;
   font-display: block;
 }
-
-:root {
-  --ui-font: "Game UI", Arial, sans-serif;
-}
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #080b0e;
+  background: var(--ui-bg);
   color: var(--ui-text);
   font-family: var(--ui-font);
   user-select: none;
@@ -1918,6 +1730,9 @@ html.ui-font-fallback { --ui-font: Arial, sans-serif; }
   place-items: center start;
   padding: clamp(28px, 6vh, 72px) clamp(24px, 7vw, 108px);
   text-align: left;
+  background:
+    linear-gradient(90deg, rgba(17,17,17,.94) 0%, rgba(17,17,17,.78) 27%, rgba(17,17,17,.42) 50%, rgba(17,17,17,.10) 76%, rgba(17,17,17,.02) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.26) 0%, transparent 36%, rgba(0,0,0,.28) 100%);
 }
 #overlay.main-menu #panel {
   position: relative;
@@ -1949,6 +1764,9 @@ html.ui-font-fallback { --ui-font: Arial, sans-serif; }
   content: "";
   width: 64px;
   height: 3px;
+  border-radius: 999px;
+  background: var(--ui-accent);
+  box-shadow: none;
   opacity: 1;
 }
 #overlay.main-menu h1 {
@@ -1973,21 +1791,24 @@ html.ui-font-fallback { --ui-font: Arial, sans-serif; }
   line-height: 1;
   letter-spacing: .10em;
   text-transform: uppercase;
-  text-shadow: 0 3px 18px rgba(0,0,0,.48);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
 }
 #overlay.main-menu .main-title-name {
   display: block;
   max-width: 820px;
+  color: var(--ui-text);
   font-size: clamp(46px, 7vw, 86px);
   font-weight: 700;
   line-height: .92;
   letter-spacing: -.035em;
   text-transform: uppercase;
   text-wrap: balance;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .65);
 }
 #overlay.main-menu p {
   max-width: 670px;
   margin: 0 0 22px;
+  color: var(--ui-muted);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.8;
@@ -2021,6 +1842,8 @@ html.touch-device .controls-touch { display: inline; }
   margin: 0 !important;
   padding: 0 20px;
   border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-small);
+  color: var(--ui-text);
   font: 700 12px/1 var(--ui-font);
   letter-spacing: .11em;
   text-align: center;
@@ -2034,9 +1857,13 @@ html.touch-device .controls-touch { display: inline; }
 #overlay.main-menu #panel #startButton {
   position: relative;
   justify-content: center;
+  border-color: var(--ui-accent);
   font-size: 13px;
   letter-spacing: .12em;
   font-variant-numeric: tabular-nums;
+  background: var(--ui-accent);
+  box-shadow: none;
+  color: var(--ui-primary-ink);
 }
 #overlay.main-menu #panel #startButton::after {
   content: "→";
@@ -2052,8 +1879,27 @@ html.touch-device .controls-touch { display: inline; }
 }
 #overlay.main-menu #panel #startButton[data-loading="true"] {
   cursor: wait;
+  background: linear-gradient(90deg, var(--ui-loading-fill) var(--load-progress, 0%), var(--ui-surface) var(--load-progress, 0%));
+  box-shadow: none;
+  color: var(--ui-text);
 }
 #startButton[data-loading="true"]::after { content: "" !important; }
+#overlay.main-menu #panel #moreGamesButton {
+  border-color: var(--ui-line-strong);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow);
+}
+#overlay.main-menu #panel #startButton:not(:disabled):hover {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-hover);
+  color: var(--ui-primary-ink);
+}
+#overlay.main-menu #panel #moreGamesButton:hover {
+  color: var(--ui-text);
+  border-color: var(--ui-line-strong);
+  background: var(--ui-surface-hover);
+}
 /* Quiet secondary actions align with the primary action row. */
 .menu-secondary {
   display: grid;
@@ -2071,6 +1917,7 @@ html.touch-device .controls-touch { display: inline; }
   min-width: 0;
   min-height: 44px;
   padding: 0 12px;
+  border-radius: var(--ui-radius-small);
   color: var(--ui-muted);
   font: 700 12px/1 var(--ui-font);
   letter-spacing: .11em;
@@ -2079,6 +1926,10 @@ html.touch-device .controls-touch { display: inline; }
   transition: background 120ms ease, color 120ms ease;
   text-align: center;
   cursor: pointer;
+}
+.menu-secondary button:hover {
+  color: var(--ui-text);
+  background: var(--ui-surface-hover);
 }
 #overlay.main-menu .menu-secondary button { font-size: 13px; letter-spacing: .12em; }
 #overlay.main-menu .menu-secondary {
@@ -2092,6 +1943,7 @@ html.touch-device .controls-touch { display: inline; }
   #overlay.main-menu {
     place-items: end start;
     padding: 28px 20px 34px;
+    background: linear-gradient(180deg, rgba(17,17,17,.18) 0%, rgba(17,17,17,.52) 44%, rgba(17,17,17,.96) 100%);
   }
   #overlay.main-menu #panel { width: 100%; max-width: 100%; }
   #overlay.main-menu #mainMenuLogo { width: 110px; }
@@ -2160,12 +2012,13 @@ html.touch-device .controls-touch { display: inline; }
   min-height: 44px;
   padding: 0 12px;
   color: var(--ui-muted);
-  background: transparent;
+  background: var(--ui-surface);
   font: 700 13px/1 var(--ui-font);
   letter-spacing: .1em;
   text-transform: uppercase;
   text-align: center;
   cursor: pointer;
+  border-radius: var(--ui-radius-small);
 }
 #overlay.main-menu .map-option::after {
   content: "";
@@ -2174,12 +2027,12 @@ html.touch-device .controls-touch { display: inline; }
   left: 35%;
   right: 35%;
   height: 2px;
-  background: var(--ui-accent-bright);
+  background: var(--ui-accent);
   opacity: 0;
 }
-#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent-bright); }
+#overlay.main-menu .map-option[aria-pressed="true"] { color: var(--ui-accent); background: var(--ui-accent-soft); }
 #overlay.main-menu .map-option[aria-pressed="true"]::after { opacity: 1; }
-#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); }
+#overlay.main-menu .map-option:not([aria-pressed="true"]):not(:disabled):hover { color: var(--ui-text); background: var(--ui-surface-hover); }
 #overlay.main-menu .map-option:disabled { cursor: wait; opacity: .65; }
 @media (max-width: 460px) {
   #overlay.main-menu .map-select { max-width: 320px; }
@@ -2195,11 +2048,13 @@ html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius-small);
   color: var(--ui-accent-bright);
+  background: var(--ui-surface);
   font: 700 13px/1.2 var(--ui-font);
   letter-spacing: .04em;
   cursor: pointer;
 }
-#overlay.main-menu .map-picker option { color: var(--ui-text); }
+#overlay.main-menu .map-picker option { color: var(--ui-text); background: var(--ui-surface); }
 #overlay.main-menu .map-picker:disabled { cursor: wait; opacity: .65; }
 #startButton[data-loading="true"] { --load-progress: 0%; }
