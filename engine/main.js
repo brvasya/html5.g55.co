@@ -1106,6 +1106,7 @@ function respawnPlayer() {
   state.isRespawning = false;
   state.respawnRemaining = 0;
   state.spawnProtectedUntil = teamMatch.elapsed + teamMatch.options.spawnProtection;
+  dom.damageFlash.style.transition = "opacity 0.12s ease";
   dom.damageFlash.style.opacity = "0";
   cameraShake.damageShakeTime = 0;
   cameraShake.deathShakeTime = 0;
@@ -1127,7 +1128,7 @@ function beginPlayerRespawn(attackerTeam = null) {
   stopSecondaryAction();
   resetKillCombo();
   hud.clearHeadshot();
-  dom.damageFlash.style.opacity = "0";
+  showPlayerDeathFlash();
   sounds.playPlayerDie();
   teamMatch.recordKill(attackerTeam, teamMatch.options.playerTeam);
 }
@@ -2233,12 +2234,31 @@ function takeDamage(amount, attackerTeam = null) {
   dom.damageFlash.style.background = "rgba(255, 0, 0, 0.35)";
   dom.damageFlash.style.opacity = "1";
   setTimeout(() => {
-    // A wave-ending blast must not leave the nonlethal red flash stuck onscreen.
-    if (!state.isGameOver) dom.damageFlash.style.opacity = "0";
+    // An earlier nonlethal hit must not clear the tint after the player dies.
+    if (state.health > 0) dom.damageFlash.style.opacity = "0";
   }, 120);
 
   sounds.playPlayerHit();
   updateHud();
+}
+
+function showPlayerDeathFlash() {
+  dom.damageFlash.style.display = "block";
+  dom.damageFlash.style.position = "fixed";
+  dom.damageFlash.style.left = "0";
+  dom.damageFlash.style.top = "0";
+  dom.damageFlash.style.width = "100vw";
+  dom.damageFlash.style.height = "100vh";
+  dom.damageFlash.style.pointerEvents = "none";
+  dom.damageFlash.style.zIndex = "2";
+  dom.damageFlash.style.transition = "opacity 1.0s ease";
+  dom.damageFlash.style.background = "rgba(160, 0, 0, 0.45)";
+  dom.damageFlash.style.opacity = "0";
+
+  requestAnimationFrame(() => {
+    // Respawn/reset/menu may happen before this frame is drawn.
+    if (state.health <= 0 && !mainMenuNeedsReset) dom.damageFlash.style.opacity = "1";
+  });
 }
 
 function endGame() {
@@ -2264,21 +2284,7 @@ function endGame() {
   cameraShake.impulseRotZ = (Math.random() - 0.5) * 0.05;
   cameraShake.deathShakeTime = 0.2;
 
-  dom.damageFlash.style.display = "block";
-  dom.damageFlash.style.position = "fixed";
-  dom.damageFlash.style.left = "0";
-  dom.damageFlash.style.top = "0";
-  dom.damageFlash.style.width = "100vw";
-  dom.damageFlash.style.height = "100vh";
-  dom.damageFlash.style.pointerEvents = "none";
-  dom.damageFlash.style.zIndex = "2";
-  dom.damageFlash.style.transition = "opacity 1.0s ease";
-  dom.damageFlash.style.background = "rgba(160, 0, 0, 0.45)";
-  dom.damageFlash.style.opacity = "0";
-
-  requestAnimationFrame(() => {
-    dom.damageFlash.style.opacity = "1";
-  });
+  showPlayerDeathFlash();
 
   sounds.playPlayerDie();
 
