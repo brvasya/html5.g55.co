@@ -6,9 +6,29 @@ import { SHOTGUN } from "./assets/shotgun.js";
 import { SNIPER } from "./assets/sniper.js";
 import { MINIGUN } from "./assets/minigun.js";
 import { SOLDIER } from "./assets/soldier.js";
+import { ZOMBIE } from "./assets/zombie.js";
 
 export const GAME_CONFIG = {
 weaponFov: 50,
+
+mode: "teamDeathmatch",
+teamDeathmatch: {
+scoreLimit: 50,
+timeLimit: 300,
+respawnDelay: 3,
+spawnProtection: 2,
+playerTeam: "blue",
+teams: {
+blue: {
+type: "soldier", bots: 3,
+stats: { enemyDamage: 25 }
+},
+red: {
+type: "zombie", bots: 16,
+stats: { enemyDamage: 100 }
+}
+}
+},
 
 maps: {
 defaultId: "map_office",
@@ -26,7 +46,7 @@ enemiesPerWave: 3,
 maxEnemies: 24
 },
 enemySpawn: {
-types: ["soldier"]
+types: ["soldier", "zombie"]
 }
 };
 
@@ -43,7 +63,8 @@ weaponSlots: [
 
 enemies: {
 types: {
-soldier: { asset: SOLDIER }
+soldier: { asset: SOLDIER },
+zombie: { asset: ZOMBIE }
 }
 }
 };
