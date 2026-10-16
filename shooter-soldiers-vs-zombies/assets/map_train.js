@@ -299,8 +299,11 @@ export function createWorld({ THREE, scene }) {
     box(15.85, 14.2, 26.8, 61, 0.32, 0.3, mat.metal);
     box(15.85, 14.2, 33.4, 61, 0.32, 0.3, mat.metal);
     box(15.85, 15, 30.1, 61.5, 0.3, 7.2, mat.roof);
+    // Roof and glazing block shots, without blocking the floor below them.
+    collider(15.85, 15, 30.1, 61.5, 0.3, 7.2, 0, 'Depot monitor roof', false);
     for (const z of [26.8, 33.4]) {
       box(15.85, 14.65, z, 61, 0.7, 0.1, mat.glass, false, '', false);
+      collider(15.85, 14.65, z, 61, 0.7, 0.1, 0, 'Depot monitor glazing', false);
       for (let x = -14; x <= 46; x += 3.75) box(x, 14.6, z, 0.08, 0.9, 0.15, mat.metal, false, '', false);
     }
     for (const x of [-13.5, -2, 9.5, 21, 32.5, 45.7]) {
@@ -367,13 +370,13 @@ export function createWorld({ THREE, scene }) {
     siteOutline(27.2, 36, 15.7, 5.4);
     for (const z of [-23, -13, -3]) {
       box(43.9, 0.62, z, 0.35, 1.24, 3, mat.rust, true, 'Rail end buffer');
-      box(43.65, 1.04, z, 0.26, 0.22, 2.8, mat.white);
+      box(43.65, 1.04, z, 0.26, 0.22, 2.8, mat.white, true, 'Rail buffer front plate');
     }
   }
   function wagon(x, z, length, material, type, number) {
     // Full underframe / side skirts explicitly close the non-playable underside.
     box(x, 0.61, z, length, 1.08, 3.1, mat.dark, true, 'Freight wagon underframe');
-    box(x, 1.19, z, length + 0.12, 0.24, 3.6, mat.metal);
+    box(x, 1.19, z, length + 0.12, 0.24, 3.6, mat.metal, true, 'Freight wagon deck');
     for (const dz of [-1.52, 1.52]) {
       box(x, 0.76, z + dz, length, 0.48, 0.13, mat.rust);
       for (const dx of [-length * 0.33, length * 0.33]) {
@@ -392,10 +395,13 @@ export function createWorld({ THREE, scene }) {
       box(x, 2.7, z, length, 2.8, 3.45, material, true, 'Closed freight boxcar');
       box(x, 4.16, z, length + 0.2, 0.16, 3.62, mat.roof);
       box(x, 4.27, z, length + 0.1, 0.12, 2.5, mat.roof);
+      collider(x, 4.16, z, length + 0.2, 0.16, 3.62, 0, 'Freight wagon roof edge', false);
+      collider(x, 4.27, z, length + 0.1, 0.12, 2.5, 0, 'Freight wagon roof crown', false);
       for (const side of [-1, 1]) {
         for (let dx = -length / 2 + 0.35; dx < length / 2; dx += 1.12) box(x + dx, 2.73, z + side * 1.77, 0.085, 2.6, 0.1, material);
         box(x, 2.65, z + side * 1.84, 3.4, 2.45, 0.1, mat.metal);
         box(x, 2.68, z + side * 1.91, 3.12, 2.22, 0.06, material);
+        collider(x, 2.65, z + side * 1.835, 3.4, 2.45, 0.22, 0, 'Freight wagon sliding door');
         box(x, 3.99, z + side * 1.88, 5.5, 0.08, 0.15, mat.rail);
         box(x + 1.25, 2.4, z + side * 1.98, 0.055, 0.42, 0.07, mat.rail);
         sign(number, 'TARE 24 600 KG / RAIL FREIGHT', x - length * 0.3, 2.5, z + side * 1.835, 3.1, 0.7, side > 0 ? 0 : Math.PI, '#404a45', '#dad5bb');
@@ -421,6 +427,7 @@ export function createWorld({ THREE, scene }) {
       for (const dx of [-length * 0.23, length * 0.23]) {
         box(x + dx, 2.43, z, length * 0.39, 2.3, 2.85, material, true, 'Marked hazardous freight container');
         box(x + dx, 3.63, z, length * 0.39 + 0.08, 0.15, 3, mat.metal);
+        collider(x + dx, 3.63, z, length * 0.39 + 0.08, 0.15, 3, 0, 'Cargo container top cover', false);
         for (const side of [-1, 1]) {
           for (let rib = -2; rib <= 2; rib++) box(x + dx + rib * 0.8, 2.45, z + side * 1.47, 0.08, 2.13, 0.085, material);
           sign(number, 'CAUTION / CONTROLLED CARGO', x + dx, 2.6, z + side * 1.53, 3.8, 0.95, side > 0 ? 0 : Math.PI, '#b38c37', '#302f24');
@@ -435,8 +442,9 @@ export function createWorld({ THREE, scene }) {
     for (let i = 0; i < 3; i++) instance(warningBladeGeo, mat.dark, x, y, z, 1, 1, 1, 0, yaw, i * Math.PI * 2 / 3, false);
   }
   function siteOutline(x, z, w, d) {
-    for (const dz of [-d / 2, d / 2]) groundPlane(w, 0.15, x, z + dz, mat.yellow, 0.025);
-    for (const dx of [-w / 2, w / 2]) groundPlane(0.15, d, x + dx, z, mat.yellow, 0.025);
+    // Above the 0.026 ballast surface; rails and sleepers still occlude the paint.
+    for (const dz of [-d / 2, d / 2]) groundPlane(w, 0.15, x, z + dz, mat.yellow, 0.04);
+    for (const dx of [-w / 2, w / 2]) groundPlane(0.15, d, x + dx, z, mat.yellow, 0.04);
   }
   function createLandmarks() {
     // Water tower belongs to the closed northern office roof, out of navigation.
@@ -458,7 +466,7 @@ export function createWorld({ THREE, scene }) {
     for (const gx of [-11.8, 33.7]) {
       for (const gz of [-27.4, 6.4]) {
         box(gx, 4.65, gz, 0.38, 9.3, 0.38, mat.metal, true, 'Signal gantry pier');
-        box(gx, 0.28, gz, 0.8, 0.56, 0.8, mat.concrete);
+        box(gx, 0.28, gz, 0.8, 0.56, 0.8, mat.concrete, true, 'Signal gantry footing');
       }
       for (const y of [8.9, 9.9]) box(gx, y, -10.5, 0.24, 0.18, 34, mat.metal);
       for (let z0 = -27; z0 < 6; z0 += 3.3) {
@@ -482,13 +490,14 @@ export function createWorld({ THREE, scene }) {
     // Cover is concentrated at crossings; the floor remains clear around trains.
     box(-9.7, 1.4, 2.7, 3, 2.8, 2.6, mat.green, true, 'A electrical cabinet');
     box(-9.7, 2.9, 2.7, 3.15, 0.2, 2.72, mat.roof);
+    collider(-9.7, 2.9, 2.7, 3.15, 0.2, 2.72, 0, 'Electrical cabinet cap', false);
     for (let y = 0.6; y < 2.4; y += 0.18) box(-9.7, y, 4.035, 2.5, 0.05, 0.04, mat.dark, false, '', false);
     sign('DANGER / 400 V', 'HIGH VOLTAGE', -9.7, 2.37, 4.07, 2.3, 0.5);
     crate(29.8, 1.7, 2.8, 2.5, 1.25);
     crate(-9, 18.4, 2.3, 2.1, 1.65); crate(42.3, 42.5, 2.8, 2.5, 1.7);
     crate(-43.2, -7, 2.8, 2.7, 1.5); crate(-43.2, 35, 2.8, 2.7, 1.8);
     box(-42.9, 0.85, -39.5, 3.4, 1.7, 2.6, mat.green, true, 'Ivy dumpster');
-    box(-42.9, 1.77, -39.5, 3.6, 0.18, 2.75, mat.dark);
+    box(-42.9, 1.77, -39.5, 3.6, 0.18, 2.75, mat.dark, true, 'Ivy dumpster lid');
     for (const x of [-44, -41.8]) box(x, 0.25, -39.5, 0.23, 0.5, 2.6, mat.metal);
     box(24, 1.1, -42.6, 3.2, 2.2, 2, mat.metal, true, 'Ivy utility cabinet');
     for (const x of [23.2, 24.8]) box(x, 1.1, -41.55, 1.45, 1.95, 0.06, mat.base);
@@ -538,7 +547,8 @@ export function createWorld({ THREE, scene }) {
   }
   function createBackdrop() {
     // Authored, low-cost industrial skyline. No gameplay randomness or downloads.
-    for (const p of [[-60,-23,16,42,18],[-50,38,12,26,16],[16,-58,46,15,18],[56,-23,14,35,23],[60,28,18,32,17],[-8,61,42,16,15]]) {
+    // Keep every background footprint outside the physical perimeter walls.
+    for (const p of [[-60,-23,16,42,18],[-55.5,38,12,26,16],[16,-58,46,15,18],[56,-23,14,35,23],[60,28,18,32,17],[-8,61,42,16,15]]) {
       const [x,z,w,d,h] = p;
       box(x, h / 2 - 0.1, z, w, h, d, mat.darkBrick, false, '', false);
       box(x, h + 0.1, z, w + 0.4, 0.4, d + 0.4, mat.roof, false, '', false);
