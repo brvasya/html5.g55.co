@@ -34,7 +34,8 @@ maps: {
 defaultId: "map_italy",
 rememberSelection: true,
 items: [
-{ id: "map_italy", name: "Italy", load: () => import("./assets/map_italy.js") }
+{ id: "map_italy", name: "Italy", load: () => import("./assets/map_italy.js") },
+{ id: "map_train", name: "Train", load: () => import("./assets/map_train.js") }
 ]
 },
 
