@@ -4,7 +4,7 @@ import { SMG } from "./assets/smg.js";
 import { RIFLE } from "./assets/rifle.js";
 import { SHOTGUN } from "./assets/shotgun.js";
 import { SNIPER } from "./assets/sniper.js";
-import { MINIGUN } from "./assets/minigun.js";
+import { LAUNCHER } from "./assets/launcher.js";
 import { SOLDIER } from "./assets/soldier.js";
 import { ZOMBIE } from "./assets/zombie.js";
 
@@ -13,10 +13,10 @@ weaponFov: 50,
 
 mode: "teamDeathmatch",
 teamDeathmatch: {
-scoreLimit: 50,
+scoreLimit: 100,
 timeLimit: 300,
 respawnDelay: 3,
-spawnProtection: 2,
+spawnProtection: 0,
 playerTeam: "blue",
 teams: {
 blue: {
@@ -24,7 +24,7 @@ type: "soldier", bots: 3,
 stats: { enemyDamage: 25 }
 },
 red: {
-type: "zombie", bots: 16,
+type: "zombie", bots: 30,
 stats: { enemyDamage: 100 }
 }
 }
@@ -61,7 +61,7 @@ weaponSlots: [
 { id: 3, asset: RIFLE, owned: false, price: 2500 },
 { id: 4, asset: SHOTGUN, owned: false, price: 3500 },
 { id: 5, asset: SNIPER, owned: false, price: 4500 },
-{ id: 6, asset: MINIGUN, owned: false, price: 6000 }
+{ id: 6, asset: LAUNCHER, owned: false, price: 6000 }
 ],
 
 enemies: {
