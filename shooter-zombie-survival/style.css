@@ -2048,7 +2048,7 @@ html.menu-config-pending #overlay.main-menu #panel { visibility: hidden; }
   padding: 0 12px;
   border: 1px solid var(--ui-line-strong);
   border-radius: var(--ui-radius-small);
-  color: var(--ui-accent-bright);
+  color: var(--ui-text);
   background: var(--ui-surface);
   font: 700 13px/1.2 var(--ui-font);
   letter-spacing: .04em;
