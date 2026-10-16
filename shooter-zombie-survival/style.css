@@ -3,7 +3,7 @@
    Includes shared menus, loading, shop, touch controls, and waves/team HUDs. */
 :root {
   --ui-font: "Game UI", Arial, sans-serif;
-  --ui-bg: #111;
+  --ui-bg: #222;
   --ui-surface: #222;
   --ui-surface-hover: #333;
   --ui-text: #eee;
