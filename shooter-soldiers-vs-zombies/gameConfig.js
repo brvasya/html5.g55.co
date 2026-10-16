@@ -34,8 +34,12 @@ maps: {
 defaultId: "map_italy",
 rememberSelection: true,
 items: [
-{ id: "map_italy", name: "Italy", load: () => import("./assets/map_italy.js") },
-{ id: "map_train", name: "Train", load: () => import("./assets/map_train.js") }
+{ id: "map_italy", name: "Italy", load: () => import("./assets/maps/map_italy.js") },
+{ id: "map_train", name: "Train", load: () => import("./assets/maps/map_train.js") },
+{ id: "map_inferno", name: "Inferno", load: () => import("./assets/maps/map_inferno.js") },
+{ id: "map_office", name: "Office", load: () => import("./assets/maps/map_office.js") },
+{ id: "map_assault", name: "Assault", load: () => import("./assets/maps/map_assault.js") },
+{ id: "map_militia", name: "Militia", load: () => import("./assets/maps/map_militia.js") }
 ]
 },
 
