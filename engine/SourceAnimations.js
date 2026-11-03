@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "./vendor/three/build/three.module.js";
 
 const RAW_POS = 1, RAW_ROT = 2, ANIM_POS = 4, ANIM_ROT = 8, DELTA = 16, RAW_ROT64 = 32;
 const euler = new THREE.Euler(0, 0, 0, "ZYX");

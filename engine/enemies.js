@@ -3,7 +3,7 @@ import { loadWeaponAsset } from "./weaponLoader.js";
 import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
 import { createRagdolls } from "./ragdolls.js";
-import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import * as SkeletonUtils from "./vendor/three/examples/jsm/utils/SkeletonUtils.js";
 
 export function createEnemies({
   THREE,

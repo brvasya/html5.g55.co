@@ -1,7 +1,7 @@
 import { updateSourceProceduralBones } from "./SourceProcedural.js";
 import { loadWeaponAsset } from "./weaponLoader.js";
 import { createMuzzleFlashTexture } from "./muzzleFlash.js";
-import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import * as SkeletonUtils from "./vendor/three/examples/jsm/utils/SkeletonUtils.js";
 import { WEAPON_UPGRADE_TIERS, MAX_WEAPON_UPGRADE_LEVEL, getWeaponUpgradeStats, getWeaponUpgradePrice } from "./weaponUpgrades.js";
 
 export function createWeaponSystem({ THREE, weaponScene, worldScene, weaponCamera, playerVelocity, weaponSlots, handsAsset, onStateChange, onReloadStart, onShootSecondaryStart }) {

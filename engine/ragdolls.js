@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "./vendor/three/build/three.module.js";
 import { parseSourcePhysics } from "./SourcePhysics.js";
 
 // HL2-style articulated bodies backed by the model's native PHY data.
@@ -7,8 +7,8 @@ let ammoPromise;
 function loadAmmo() {
   if (!ammoPromise) {
     ammoPromise = Promise.all([
-      import("./ammo.wasm.js"),
-      new THREE.FileLoader().setResponseType("arraybuffer").loadAsync(new URL("./ammo.wasm.wasm", import.meta.url).href)
+      import("./vendor/ammo/ammo.wasm.js"),
+      new THREE.FileLoader().setResponseType("arraybuffer").loadAsync(new URL("./vendor/ammo/ammo.wasm.wasm", import.meta.url).href)
     ]).then(([module, wasmBinary]) => module.default({ wasmBinary }));
     ammoPromise.catch(() => { ammoPromise = null; });
   }

@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "./vendor/three/build/three.module.js";
 import { BinaryReader } from "./BinaryReader.js";
 
 // Decode on CPU so DXT textures also work on devices without S3TC extensions.

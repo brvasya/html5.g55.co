@@ -6,8 +6,7 @@ async function findEngineBase() {
   for (const path of ["./engine/", "../engine/"]) {
     const base = new URL(path, import.meta.url);
     try {
-      // This dependency-free module also works during the early menu setup,
-      // before the page's Three.js import map has been processed.
+      // This dependency-free module can be loaded during early menu setup.
       const module = await import(new URL("mapManager.js", base).href);
       if (typeof module.resolveMapConfig !== "function") {
         throw new Error(`Invalid game engine at ${base.href}`);

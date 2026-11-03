@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "./vendor/three/build/three.module.js";
 import { SourceModelLoader, parseSourceBones } from "./SourceModelLoader.js";
 import { BinaryReader } from "./BinaryReader.js";
 import { parseAnimations, describeSequences } from "./SourceAnimations.js";
